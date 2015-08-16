@@ -281,7 +281,7 @@ replaceRdrName (GHC.L l newName) = do
 
 refactReplaceDecls :: (HasDecls a) => a -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc a
 refactReplaceDecls t decls = do
-  refactRunTransform (replaceDecls t decls)
+  liftT (replaceDecls t decls)
 
 -- |Run a transformation in the ghc-exactprint Transform monad, updating the
 -- current annotations and unique SrcSpan value.
@@ -453,7 +453,8 @@ initRdrNameMap tm = r
     nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
 
     r1 = Map.fromList $ map (\l -> (l,Map.lookup l nameMap)) rdrNames
-    r = Map.map (fromMaybe (error "initRdrNameMap:no val")) r1
+    -- r = Map.map (fromMaybe (error "initRdrNameMap:no val")) r1
+    r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
 
 -- ---------------------------------------------------------------------
 

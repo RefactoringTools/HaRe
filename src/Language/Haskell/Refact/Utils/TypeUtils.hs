@@ -985,42 +985,37 @@ addDecl:: (HasDecls t)
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
                           -- identifier's definition.
-        -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName), Maybe Anns)
-             -- ^ The declaration with optional signatures to be added,
-             -- together with optional Annotations.
+        -> ([GHC.LHsDecl GHC.RdrName],  Maybe Anns)
+             -- ^ The declaration with optional signatures to be added, together
+             -- with optional Annotations.
         -> Bool              -- ^ True means the declaration is a
                              -- toplevel declaration.
         -> RefactGhc t
 
-addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
+addDecl parent pn (declSig, mDeclAnns) topLevel = do
   case mDeclAnns of
     Nothing -> return ()
     Just declAnns -> addRefactAnns declAnns
   if isJust pn
-    then appendDecl parent (gfromJust "addDecl" pn) (decl, msig)
+    then appendDecl parent (gfromJust "addDecl" pn) declSig
     else if topLevel
-           then addTopLevelDecl (decl, msig) parent
-           else addLocalDecl parent (decl,msig)
+           then addTopLevelDecl declSig parent
+           else addLocalDecl parent declSig
  where
-  setDeclSpacing newDecl maybeSig n c = do
-         ans1 <- getRefactAnns
-         let
-             ans3 = case maybeSig of
-               Nothing -> setPrecedingLinesDecl newDecl n c ans1
-               Just s  -> setPrecedingLinesDecl newDecl 1 0 ans2
-                 where
-                   ans2 = setPrecedingLinesDecl s n c ans1
-         setRefactAnns ans3
+  setDeclSpacing newDeclSig n c = do
+    -- First clear any previous indentation
+    mapM_ (\d -> setPrecedingLinesDeclT d 0 0) newDeclSig
+    setPrecedingLinesT (head newDeclSig) n c
+    mapM_ (\d -> setPrecedingLinesT d 1 0) (tail newDeclSig)
 
   appendDecl :: (HasDecls t)
       => t        -- ^Original AST
       -> GHC.Name -- ^Name to add the declaration after
-      -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName)) -- ^declaration and maybe sig
+      -> [GHC.LHsDecl GHC.RdrName] -- ^declaration and maybe sig
       -> RefactGhc t -- ^updated AST
-  appendDecl parent' pn' (newDecl, maybeSig)
+  appendDecl parent' pn' newDeclSig
     = do
-         let maybeSigDecl = fmap wrapSig maybeSig
-         setDeclSpacing newDecl maybeSigDecl 2 0
+         liftT $ setDeclSpacing newDeclSig 2 0
          nameMap <- getRefactNameMap
          decls <- refactRunTransform (hsDecls parent')
          let
@@ -1028,43 +1023,36 @@ addDecl parent pn (decl, msig, mDeclAnns) topLevel = do
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
-         refactReplaceDecls parent' (decls1++(toList maybeSigDecl)++[newDecl]++decls2)
+         refactReplaceDecls parent' (decls1++newDeclSig++decls2)
 
 
   -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there are any.
   addTopLevelDecl :: (HasDecls t)
-       => (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
+       => [GHC.LHsDecl GHC.RdrName]
        -> t -> RefactGhc t
-  addTopLevelDecl (newDecl, maybeSig) parent'
+  addTopLevelDecl newDeclSig parent'
     = do decls <- liftT (hsDecls parent')
-         let maybeSigDecl = fmap wrapSig maybeSig
-         setDeclSpacing newDecl maybeSigDecl 2 0
-         refactReplaceDecls parent' ((toList maybeSigDecl) ++ [newDecl]++decls)
+         liftT $ setDeclSpacing newDeclSig 2 0
+         refactReplaceDecls parent' (newDeclSig++decls)
 
 
   addLocalDecl :: (HasDecls t)
-               => t -> (GHC.LHsDecl GHC.RdrName, Maybe (GHC.LSig GHC.RdrName))
+               => t -> [GHC.LHsDecl GHC.RdrName]
                -> RefactGhc t
-  addLocalDecl parent' (newDecl, maybeSig)
+  addLocalDecl parent' newDeclSig
     = do
-         decls <- refactRunTransform (hsDecls parent')
-         sigs  <- refactRunTransform (mapM wrapSigT $ toList maybeSig)
+         -- logDataWithAnns "addDecl.addLocalDecl" (newDeclSig,parent')
+         -- logDataWithAnns "addDecl.addLocalDecl" parent'
+         decls <- liftT (hsDecls parent')
          case decls of
-           [] -> setDeclSpacing newDecl (listToMaybe sigs) 1 4
+           [] -> liftT $ setDeclSpacing newDeclSig 1 4
            ds -> do
-             DP (r,c) <- refactRunTransform (getEntryDPT (head ds))
-             setDeclSpacing newDecl (listToMaybe sigs) r c
-             modifyRefactAnns (\ans -> setPrecedingLines (head ds) 1 0 ans)
-         r <- refactReplaceDecls parent' (sigs ++ [newDecl]++decls)
+             DP (r,c) <- liftT (getEntryDPT (head ds))
+             liftT $ setDeclSpacing newDeclSig r c
+             liftT $ setPrecedingLinesT (head ds) 1 0
+         r <- liftT $ replaceDecls parent' (newDeclSig++decls)
          return r
-
-  -- wrapDecl :: GHC.LHsBind name -> GHC.LHsDecl name
-  -- wrapDecl (GHC.L l d) = GHC.L l (GHC.ValD d)
-
-  wrapSig :: GHC.LSig name -> GHC.LHsDecl name
-  wrapSig (GHC.L l d) = GHC.L l (GHC.SigD d)
-
 
 -- ---------------------------------------------------------------------
 

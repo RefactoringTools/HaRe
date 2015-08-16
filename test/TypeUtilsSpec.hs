@@ -386,7 +386,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "finds multiple signatures" $ do
+    it "finds multiple signatures 1" $ do
       (t, _toks,_) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -403,6 +403,26 @@ spec = do
 
       let res = definingSigsRdrNames nameMap [n1,n2,n3] parsed
       showGhcQual res `shouldBe` "[toplevel :: Integer -> Integer, ff :: Int]"
+
+    -- ---------------------------------
+
+    it "finds multiple signatures 2" $ do
+      (t, _toks,_) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let nameMap = initRdrNameMap t
+
+      let Just ((GHC.L _ n1)) = locToName (14,1) renamed
+      showGhcQual n1 `shouldBe` "DupDef.Dd1.tup"
+
+      let Just ((GHC.L _ n2)) = locToName (14,6) renamed
+      showGhcQual n2 `shouldBe` "DupDef.Dd1.h"
+
+      let Just ((GHC.L _ n3)) = locToName (14,8) renamed
+      showGhcQual n3 `shouldBe` "DupDef.Dd1.t"
+
+      let res = definingSigsRdrNames nameMap [n1,n2,n3] parsed
+      showGhcQual res `shouldBe` "[tup :: (Int, Int), h :: Int, t :: Int]"
 
   -- -------------------------------------------------------------------
 
@@ -2198,7 +2218,7 @@ spec = do
          parsed <- getRefactParsed
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "a" parseDecl "nn = n2")
          -- let declAnns' = setPrecedingLines declAnns newDecl 2
-         parsed' <- addDecl parsed Nothing (decl,Nothing,Just declAnns) True
+         parsed' <- addDecl parsed Nothing ([decl],Just declAnns) True
          putRefactParsed parsed' emptyAnns
          return parsed'
       (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2212,14 +2232,14 @@ spec = do
 
     -- -------------------------------------------
 
-    it "adds a top level declaration with a type signature" $ do
+    it "adds a top level declaration with a type signature 1" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
          parsed <- getRefactParsed
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = 2")
-         ((GHC.L ls (GHC.SigD sig)), sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
-         parsed' <- addDecl parsed Nothing (decl,Just (GHC.L ls sig),Just $ mergeAnns sigAnns declAnns) True
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         parsed' <- addDecl parsed Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) True
          putRefactParsed parsed' emptyAnns
          return (sig,parsed')
       -- ((_hs,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
@@ -2239,7 +2259,7 @@ spec = do
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "a" parseDecl "nn = nn2")
          renamed <- getRefactRenamed
          let Just (GHC.L _l n) = locToName (21, 1) renamed
-         parsed' <- addDecl parsed (Just n) (decl,Nothing,Just declAnns) True
+         parsed' <- addDecl parsed (Just n) ([decl],Just declAnns) True
          putRefactParsed parsed' emptyAnns
          return (n,parsed')
       -- ((n,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
@@ -2260,8 +2280,8 @@ spec = do
          let Just (GHC.L _l n) = locToName (21, 1) renamed
          parsed <- getRefactParsed
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
-         ((GHC.L ls (GHC.SigD sig)), sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
-         parsed' <- addDecl parsed (Just n) (decl,Just (GHC.L ls sig),Just $ mergeAnns sigAnns declAnns) True
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         parsed' <- addDecl parsed (Just n) ([sig,decl],Just $ mergeAnns sigAnns declAnns) True
          putRefactParsed parsed' emptyAnns
          return (n,parsed')
       ((nn,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2287,7 +2307,7 @@ spec = do
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
-         newDecl <- addDecl tlDecl Nothing (decl,Nothing,Just declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
          logm $ "test:addDecl done"
 
          return (tlDecl,newDecl)
@@ -2317,9 +2337,9 @@ spec = do
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
-         ((GHC.L ls (GHC.SigD sig)), sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
 
-         newDecl <- addDecl tlDecl Nothing (decl,Just (GHC.L ls sig),Just $ mergeAnns sigAnns declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) False
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2328,7 +2348,7 @@ spec = do
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       -- putStrLn (showAnnDataItemFromState s nb)
       (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x\n  where\n    nn :: Int\n    nn = nn2"
-      (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x\n  where\n      nn :: Int\n      nn = nn2"
+      (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x\n  where\n      nn = nn2\n      nn :: Int"
 
     -- -------------------------------------------
 
@@ -2348,7 +2368,7 @@ spec = do
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
 
-         newDecl <- addDecl tlDecl Nothing (decl,Nothing,Just declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2377,7 +2397,7 @@ spec = do
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
 
-         newDecl <- addDecl tlDecl Nothing (decl,Nothing,Just declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2405,16 +2425,16 @@ spec = do
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
-         ((GHC.L ls (GHC.SigD sig)), sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
 
-         newDecl <- addDecl tlDecl Nothing (decl,Just (GHC.L ls sig),Just $ mergeAnns sigAnns declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) False
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual tl) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      b = 3"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md2 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x * b\n  where\n    b = 3\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x * b\n  where\n    nn :: Int\n    nn = nn2\n    b = 3"
-      (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      nn :: Int\n      nn = nn2\n      b = 3"
+      (showGhcQual nb) `shouldBe` "toplevel x\n  = c * x * b\n  where\n      nn = nn2\n      b = 3\n      nn :: Int"
 
 
     -- -------------------------------------------
@@ -2439,9 +2459,10 @@ spec = do
              [sqDecl] = definingDeclsRdrNames nameMap [sq] decls False False
              [afDecl] = definingDeclsRdrNames nameMap [af] decls False False
 
-         refactRunTransform (balanceComments sqDecl afDecl)
+         sqSigDecl <- liftT $ wrapSigT sqSig
+         liftT (balanceComments sqDecl afDecl)
 
-         newDecl <- addDecl tlDecl Nothing (sqDecl,Just sqSig,Nothing) False
+         newDecl <- addDecl tlDecl Nothing ([sqSigDecl,sqDecl],Nothing) False
 
          return (sqSig,sqDecl,tlDecl,afDecl,newDecl)
       -- ((sigs,_sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
@@ -2455,7 +2476,7 @@ spec = do
       (showGhcQual tl) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
       (showGhcQual aa) `shouldBe` "anotherFun 0 y\n  = sq y\n  where\n      sq x = x ^ 2"
       (exactPrintFromState s nb) `shouldBe` "\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where sq :: Int -> Int -> Int\n               sq pow 0 = 0\n               sq pow z = z^pow  --there is a comment\n               p=2"
-      (showGhcQual nb) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      sq :: Int -> Int -> Int\n      sq pow 0 = 0\n      sq pow z = z ^ pow\n      p = 2"
+      (showGhcQual nb) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      sq pow 0 = 0\n      sq pow z = z ^ pow\n      sq :: Int -> Int -> Int\n      p = 2"
 
 
   -- ---------------------------------------------

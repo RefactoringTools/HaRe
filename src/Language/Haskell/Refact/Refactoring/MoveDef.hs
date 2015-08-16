@@ -229,7 +229,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
   if isLocalFunOrPatName n renamed
       then do
-              (refactoredMod,declPns) <- applyRefac (liftToMod) RSAlreadyLoaded
+              (refactoredMod,declPns) <- applyRefac liftToMod RSAlreadyLoaded
 
               logm $ "liftToTopLevel' applyRefac done "
               -- logm $ "liftToTopLevel' applyRefac done:toks= " ++ (show (fst $ snd refactoredMod))
@@ -344,10 +344,12 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
   -- logm $ "moveDecl1:(funBinding)=" ++ showGhc (funBinding)
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',sigsRemoved) <- rmTypeSigs sigNames t
+  logm $ "moveDecl1:sigsRemoved=" ++ showGhc sigsRemoved
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
   -- logDataWithAnns "moveDecl1:(t')" t'
-
-  r <- addDecl t' defName (ghead "moveDecl1 2" funBinding,listToMaybe sigsRemoved,Nothing) topLevel
+  sigs <- liftT $ mapM wrapSigT sigsRemoved
+  -- liftT $ mapM_ (\d -> setPrecedingLinesDeclT d 0 0) (sigs++funBinding)
+  r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
 
   -- logm $ "moveDecl1:(r)=" ++ SYB.showData SYB.Parser 0 r
   return r
@@ -375,11 +377,13 @@ pnsNeedRenaming dest parent _liftedDecls pns
      pnsNeedRenaming' pn
        = do
             logm $ "MoveDef.pnsNeedRenaming' entered"
-            nameMap <- getRefactNameMap
-            (FN f,DN d) <- hsFDsFromInsideRdr nameMap dest --f: free variable names that may be shadowed by pn
-                                          --d: declaread variables names that may clash with pn
+            parsed <- getRefactParsed
+            logDataWithAnns "MoveDef.pnsNeedRenaming':parsed" parsed
+            nm <- getRefactNameMap
+            (FN f,DN d) <- hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
+                                                      --d: declaread variables names that may clash with pn
             logm $ "MoveDef.pnsNeedRenaming':(f,d)=" ++ showGhc (f,d)
-            vs <- hsVisiblePNsRdr nameMap pn parent  --vs: declarad variables that may shadow pn
+            vs <- hsVisiblePNsRdr nm pn parent  --vs: declarad variables that may shadow pn
             logm $ "MoveDef.pnsNeedRenaming':vs=" ++ showGhc vs
             let -- inscpNames = map (\(x,_,_,_)->x) $ inScopeInfo inscps
                 vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
@@ -1953,14 +1957,15 @@ foldParams pns (GHC.Match mfn pats mt rhs) _decls demotedDecls dsig dtoks
                    let [(GHC.L declSpan _)] = demotedDecls'''
                    declToks <- getToksForSpan declSpan
                    -- logm $ "MoveDef.foldParams addDecl adding to (hsBinds):[" ++ (SYB.showData SYB.Renamer 0 $ hsBinds rhs') ++ "]" -- ++AZ++
-                   rhs'' <- addDecl rhs' Nothing (ghead "foldParams 2" demotedDecls''',Nothing,Nothing) False
+                   rhs'' <- addDecl rhs' Nothing (demotedDecls''',Nothing) False
                    logm $ "MoveDef.foldParams addDecl done 1"
                    return (GHC.Match mfn pats mt rhs'')
            else  do  -- moveDecl pns match False decls True
                      -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding
                      -- logm $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
                      -- drawTokenTree "" -- ++AZ++ debug
-                     rhs' <- addDecl rhs Nothing (demotedDecls,listToMaybe dsig,Nothing) False
+                     sigs <- liftT $ mapM wrapSigT dsig
+                     rhs' <- addDecl rhs Nothing (sigs++[demotedDecls],Nothing) False
                      logm $ "MoveDef.foldParams addDecl done 2"
                      return (GHC.Match mfn pats mt rhs')
 
