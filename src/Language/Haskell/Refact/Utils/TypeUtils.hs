@@ -1538,6 +1538,7 @@ rmDecl pn incSig t = do
           unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
           unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
           when   (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+                                                          liftT $ pushDeclAnnT (head decls2')
           return $ (decls1 ++ decls2')
 
     getDone = do

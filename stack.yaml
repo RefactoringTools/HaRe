@@ -7,7 +7,7 @@ packages:
 #   extra-dep: true
 - location:
     git: https://github.com/alanz/ghc-exactprint.git
-    commit: 2a08bed90fd0e4de5e7ed9ac5fdf3034172ce156
+    commit: adf04a4509670485607da1e3115f40a5df1782c4
   extra-dep: true
 extra-deps:
 - Strafunski-StrategyLib-5.0.0.8

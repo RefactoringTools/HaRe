@@ -257,6 +257,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
          logm $ "liftToMod:(parent)=" ++ (showGhc parent)
+         -- logDataWithAnns "liftToMod:(parent)" parent
          -- error ("liftToMod:(before,parent,after)=" ++ (showGhc (before,parent,after))) -- ++AZ++
          {- ++AZ++ : hsBinds does not return class or instance definitions
          when (isClassDecl $ ghead "liftToMod" parent)
@@ -267,7 +268,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          nameMap <- getRefactNameMap
          declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
          logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
-         let liftedDecls = definingDeclsRdrNames nameMap [n] declsParent True True
+         -- let liftedDecls = definingDeclsRdrNames nameMap [n] declsParent True True
+         let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
              -- declaredPns = nub $ concatMap definedPNs liftedDecls
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
              liftedSigs  = definingSigsRdrNames nameMap [n] parent
@@ -299,10 +301,6 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              -- logDataWithAnns "liftToMod.liftToToplevel':parent'" parent'
              logm $ "liftToMod:(ffff)="
              logm $ "liftToMod:(liftedDecls')=" ++ showGhc liftedDecls'
-
-             -- drawTokenTree "liftToMod.c"
-             -- logm $ "liftToMod:(declaredPns)=" ++ (showGhc declaredPns)
-             -- logm $ "liftToMod:(liftedDecls')=" ++ (showGhc liftedDecls')
 
              let -- renamed' = replaceBinds renamed (before++parent'++after)
                  -- defName  = (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))

@@ -223,7 +223,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "finds declarations not at the top level" $ do
+    it "finds declarations not at the top level 1" $ do
       (t, _toks,_) <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn6.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -236,6 +236,22 @@ spec = do
       let res = definingDeclsRdrNames nameMap [n] decls False True
       showGhcQual n `shouldBe` "pow"
       showGhcQual res `shouldBe` "[pow = 2]"
+
+    -- ---------------------------------
+
+    it "finds declarations not at the top level 2" $ do
+      (t, _toks,_) <- ct $ parsedFileGhc "./LiftToToplevel/LetIn1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let nameMap = initRdrNameMap t
+
+      let Just (GHC.L _ n) = locToName (11,22) renamed
+      let decls = GHC.hsmodDecls $ GHC.unLoc parsed
+      -- putStrLn $ "decls=" ++ showGhc decls
+      -- putStrLn $ "decls=" ++ SYB.showData SYB.Parser 0 decls
+      let res = definingDeclsRdrNames nameMap [n] decls False True
+      showGhcQual n `shouldBe` "sq"
+      showGhcQual res `shouldBe` "[sq 0 = 0\n sq z = z ^ pow]"
 
     -- ---------------------------------
 
@@ -1976,7 +1992,7 @@ spec = do
 
     -- -----------------------------------
 
-    it "removes the non last local decl in a let/in clause" $ do
+    it "removes the non last local decl in a let/in clause 1" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/LetIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -1997,6 +2013,30 @@ spec = do
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                     pow=2\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
       -- putStrLn $ showAnnDataFromState s
       (sourceFromState s) `shouldBe` "module Demote.LetIn1 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' to 'sq'\n--This example also aims to test the demoting a local declaration in 'let'.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                 in sq x + sq y\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
+
+    -- -----------------------------------
+
+    it "removes the non last local decl in a let/in clause 2" $ do
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/LetIn2.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+
+      let Just (GHC.L _ n) = locToName (10, 22) renamed
+      let
+        comp = do
+         (parsed',_removedDecl,_removedSig) <- rmDecl n False parsed
+         putRefactParsed parsed' emptyAnns
+
+         return parsed'
+      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+
+      -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
+      (showGhcQual n) `shouldBe` "sq"
+      (GHC.showRichTokenStream $ toks) `shouldBe`"module Demote.LetIn2 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' will fail.\n\nsumSquares x y = let sq 0=0\n                     sq z=z^pow\n                     pow=2\n                 in sq x + sq y +pow\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
+      -- putStrLn $ showAnnDataFromState s
+      (sourceFromState s) `shouldBe` "module Demote.LetIn2 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the local  'pow' will fail.\n\nsumSquares x y = let pow=2\n                 in sq x + sq y +pow\n\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n  "
 
     -- -----------------------------------------------------------------
 
