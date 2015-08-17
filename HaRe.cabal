@@ -186,8 +186,7 @@ test-suite spec
     -- src
     test
   other-modules:
-      AnnotationsSpec
-    , CaseSpec
+      CaseSpec
     , DupDefSpec
     , GhcUtilsSpec
     , LocUtilsSpec

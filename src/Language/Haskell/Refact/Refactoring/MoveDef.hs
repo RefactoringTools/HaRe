@@ -377,8 +377,10 @@ pnsNeedRenaming dest parent _liftedDecls pns
      pnsNeedRenaming' pn
        = do
             logm $ "MoveDef.pnsNeedRenaming' entered"
-            parsed <- getRefactParsed
+            parsed  <- getRefactParsed
+            renamed <- getRefactRenamed
             logDataWithAnns "MoveDef.pnsNeedRenaming':parsed" parsed
+            logDataWithAnns "MoveDef.pnsNeedRenaming':renamed" renamed
             nm <- getRefactNameMap
             (FN f,DN d) <- hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
                                                       --d: declaread variables names that may clash with pn

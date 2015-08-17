@@ -440,15 +440,15 @@ initRdrNameMap tm = r
     renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
 
     checkRdr :: GHC.Located GHC.RdrName -> Maybe [GHC.SrcSpan]
-    checkRdr (GHC.L l _)= Just [l]
+    checkRdr (GHC.L l (GHC.Unqual _)) = Just [l]
+    checkRdr (GHC.L l (GHC.Qual _ _)) = Just [l]
+    checkRdr (GHC.L l _)= Nothing
 
     checkName :: GHC.Located GHC.Name -> Maybe [GHC.Located GHC.Name]
     checkName ln = Just [ln]
 
-    rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr) parsed
-    -- rdrNames = SYB.listify isLocatedRdrName parsed
-    -- names    = SYB.listify isLocatedName    renamed
-    names = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
+    rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr ) parsed
+    names    = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
 
     nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
 
