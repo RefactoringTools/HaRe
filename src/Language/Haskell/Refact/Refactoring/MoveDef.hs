@@ -645,12 +645,12 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
           liftToTop :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
           liftToTop p = do
             nm <- getRefactNameMap
-            ans <- getRefactAnns
+            ans <- liftT getAnnsT
             declsp <- liftT $ hsDecls p
             let
               doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
                 where
-                  (declsbs,_,_) = runTransform ans (hsDecls bs)
+                  (declsbs,_,_) = runTransform ans (hsDecls bs) -- ++AZ++:TODO: replace with lifT when reworking
 
               candidateBinds = map snd
                              $ filter (\(l,_bs) -> nonEmptyList l)

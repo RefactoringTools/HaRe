@@ -995,7 +995,8 @@ addDecl:: (HasDecls t)
 addDecl parent pn (declSig, mDeclAnns) topLevel = do
   case mDeclAnns of
     Nothing -> return ()
-    Just declAnns -> addRefactAnns declAnns
+    Just declAnns -> -- addRefactAnns declAnns
+      liftT $ modifyAnnsT (mergeAnns declAnns)
   if isJust pn
     then appendDecl parent (gfromJust "addDecl" pn) declSig
     else if topLevel
@@ -1588,7 +1589,6 @@ rmTypeSig pn t
      if isDone
        then return parent
        else do
-         -- decls <- liftT $ hsDecls parent
          nameMap <- getRefactNameMap
          let (decls1,decls2)= break (definesSigDRdr nameMap pn) decls
          if not $ null decls2
@@ -1612,7 +1612,8 @@ rmTypeSig pn t
                       [oldSig] <- liftT $ decl2SigT sig
                       setStateStorage (StorageSigRdr oldSig)
                       unless (null $ tail decls2) $ do
-                        modifyRefactAnns (\anns -> transferEntryDP anns sig (head $ tail decls2) )
+                        -- modifyRefactAnns (\anns -> transferEntryDP anns sig (head $ tail decls2) )
+                        liftT $ transferEntryDPT sig (head $ tail decls2)
                         unless (null decls1) $ do liftT $ balanceComments (last decls1) sig
                         liftT $ balanceComments (head decls2) (head $ tail decls2)
                       parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
@@ -1972,11 +1973,11 @@ renamePN' oldPN newName useQual t = do
                   `SYB.extM` (renameImportDecl useQual')
                   `SYB.extM` (renameFunBind useQual')
                    ) t')
-  ans <- getRefactAnns
-  let (t',(ans',_),logOut) = runTransform ans (renameTransform useQual t)
-
-  logm $ "renamePN':transform:\n" ++ unlines logOut
-  setRefactAnns ans'
+  -- ans <- getRefactAnns
+  -- let (t',(ans',_),logOut) = runTransform ans (renameTransform useQual t)
+  -- logm $ "renamePN':transform:\n" ++ unlines logOut
+  -- setRefactAnns ans'
+  t' <- liftT (renameTransform useQual t)
   return t'
 
 -- ---------------------------------------------------------------------

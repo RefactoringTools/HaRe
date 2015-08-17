@@ -2090,7 +2090,7 @@ spec = do
       let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
-         anns <- getRefactAnns
+         anns <- liftT getAnnsT
          logm $ "pristine\n" ++ showAnnData anns 0 parsed
          (renamed',sigRemoved) <- rmTypeSig n parsed
          putRefactParsed renamed' emptyAnns
@@ -2113,15 +2113,16 @@ spec = do
       let Just (GHC.L _ n) = locToName (14, 1) renamed
       let
         comp = do
-         (parsed',_removedDecl,_removedSig1) <- rmDecl n False parsed
-         (parsed2,_removedSig2) <- rmTypeSig n parsed'
+         (parsed',_removedDecl,_removedSig1) <- rmDecl    n False parsed
+         (parsed2,_removedSig2)              <- rmTypeSig n parsed'
+         -- (parsed2,_removedSig2)              <- rmTypeSig n parsed
          -- let parsed2 = parsed'
          putRefactParsed parsed2 emptyAnns
 
          return parsed2
       (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      -- putStrLn $ showAnnDataFromState s
+      putStrLn $ showAnnDataFromState s
       (showGhcQual n) `shouldBe` "Demote.WhereIn3.sq"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\nsq pow 0 = 0\nsq pow z = z^pow  --there is a comment\n\n{- foo bar -}\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\n{- foo bar -}\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"

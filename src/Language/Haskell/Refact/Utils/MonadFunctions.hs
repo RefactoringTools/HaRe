@@ -29,10 +29,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , putRefactParsed
 
        -- * Annotations
-       , modifyRefactAnns
-       , addRefactAnns
+       -- , addRefactAnns
        , setRefactAnns
-       , getRefactAnns
 
        -- *
        , putParsedModule
@@ -181,28 +179,35 @@ putRefactParsed parsed newAnns = do
   let rm = gfromJust "putRefactParsed" mrm
   let tm = rsTypecheckedMod rm
   -- let tk' = modifyAnns (rsTokenCache rm) (const newAnns)
-  let tk' = modifyAnns (rsTokenCache rm) (unionAnns newAnns)
+  let tk' = modifyAnns (rsTokenCache rm) (mergeAnns newAnns)
 
   let pm = (GHC.tm_parsed_module tm) { GHC.pm_parsed_source = parsed }
   let tm' = tm { GHC.tm_parsed_module = pm }
   let rm' = rm { rsTypecheckedMod = tm', rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}
 
+-- ---------------------------------------------------------------------
+-- addRefactAnns :: Anns -> RefactGhc ()
+-- addRefactAnns newAnns = liftT $ modifyAnnsT (mergeAnns newAnns)
+
+-- | Combine the new with old, such that the new take priority
+-- unionAnns :: Anns -> Anns -> Anns
+-- unionAnns = mergeAnns
+
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
 getRefactAnns :: RefactGhc Anns
 getRefactAnns =
   (Map.! mainTid) . tkCache . rsTokenCache . gfromJust "getRefactAnns"
     <$> gets rsModule
 
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
 setRefactAnns :: Anns -> RefactGhc ()
 setRefactAnns anns = modifyRefactAnns (const anns)
 
-addRefactAnns :: Anns -> RefactGhc ()
-addRefactAnns newAnns = modifyRefactAnns (unionAnns newAnns)
-
--- | Combine the new with old, such that the new take priority
-unionAnns :: Anns -> Anns -> Anns
-unionAnns = mergeAnns
-
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
 modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do
   st <- get
@@ -212,7 +217,8 @@ modifyRefactAnns f = do
   let rm' = rm { rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}
 
-
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
 modifyAnns :: TokenCache Anns -> (Anns -> Anns) -> TokenCache Anns
 modifyAnns tk f = tk'
   where
@@ -220,6 +226,8 @@ modifyAnns tk f = tk'
     tk' = tk {tkCache = Map.insert mainTid
                                    (f anns)
                                    (tkCache tk) }
+
+-- ----------------------------------------------------------------------
 
 putParsedModule
   :: GHC.TypecheckedModule -> RefactGhc ()
@@ -505,7 +513,8 @@ parseDeclWithAnns src = do
   case r of
     Left err -> error (show err)
     Right (anns,decl) -> do
-      addRefactAnns anns
+      -- addRefactAnns anns
+      liftT $ modifyAnnsT (mergeAnns anns)
       return decl
 
 -- EOF

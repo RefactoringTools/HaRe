@@ -67,8 +67,6 @@ module Language.Haskell.Refact.API
        , putRefactRenamed
        , getRefactParsed
        , putRefactParsed
-       , addRefactAnns
-       , getRefactAnns
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
