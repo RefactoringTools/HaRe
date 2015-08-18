@@ -46,7 +46,7 @@ install:
     (cd ghc-exactprint && git checkout original-wip && cabal install)
   - |
     git clone https://github.com/alanz/ghc-mod.git
-    (cd ghc-exactprint && git checkout loadTargets && cabal install)
+    (cd ghc-mod && git checkout loadTargets && cabal install)
   - pwd
   - cabal install --dependencies-only --enable-tests
 
