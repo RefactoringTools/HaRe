@@ -254,7 +254,7 @@ getModuleDetails modSum = do
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
-parseSourceFileGhc :: FilePath -> RefactGhc ()
+-- parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
     {-
       -- currentDir <- liftIO getCurrentDirectory
@@ -268,7 +268,8 @@ parseSourceFileGhc targetFile = do
         Nothing -> error $ "HaRe:unexpected error parsing " ++ targetFile
         Just modSum -> getModuleDetails modSum
   -}
-  loadTarget [targetFile]
+  opts <- getTargetGhcOptions [Left targetFile]
+  loadTarget opts [targetFile]
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath targetFile

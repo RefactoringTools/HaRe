@@ -77,12 +77,9 @@ spec = do
   describe "loading a file" $ do
     it "loads a file having the LANGUAGE CPP pragma" $ do
       (_t, toks,_) <- ct $ parsedFileGhc "./BCpp.hs"
-      -- let renamed = fromJust $ GHC.tm_renamed_source t
-      -- let (Just expr) = locToExp (6,1) (12,1) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
 
       origStr <- readFile "./test/testdata/BCpp.hs"
       let toksStr = (GHC.showRichTokenStream toks)
-      -- (show (filter (\(c,_) -> c /= B) $ getGroupedDiff (lines toksStr) (lines origStr))) `shouldBe` "[]"
       (show $ compareStrings toksStr origStr) `shouldBe` "[]"
 
   -- -----------------------------------
@@ -108,7 +105,7 @@ spec = do
       r' <- mapM makeRelativeToCurrentDirectory r
 
       (show r') `shouldBe` "[\"./src/Foo/Bar.hs\","
-                          ++"\"test/testdata/cabal/cabal1/src/main.hs\"]"
+                          ++"\"src/main.hs\"]"
 
 
   -- -----------------------------------
@@ -137,8 +134,8 @@ spec = do
       r' <- mapM makeRelativeToCurrentDirectory r
 
       (show r') `shouldBe` "[\"./src/Foo/Bar.hs\","++
-                            "\"test/testdata/cabal/cabal2/src/main1.hs\","++
-                            "\"test/testdata/cabal/cabal2/src/main2.hs\"]"
+                            "\"src/main1.hs\","++
+                            "\"src/main2.hs\"]"
 
   -- -----------------------------------
 
