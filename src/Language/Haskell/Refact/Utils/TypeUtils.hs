@@ -1518,7 +1518,7 @@ rmDecl pn incSig t = do
                else return parent
 
     -- ---------------------------------
-
+{-
     doRmDecl decls1 decls2
       = do
           let decls2'      = gtail "doRmDecl 1" decls2
@@ -1529,12 +1529,34 @@ rmDecl pn incSig t = do
           when   (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
                                                           liftT $ pushDeclAnnT (head decls2')
           return $ (decls1 ++ decls2')
-
+-}
     getDone = do
       s <- getStateStorage
       case s of
         StorageNone -> return False
         _           -> return True
+
+-- ---------------------------------------------------------------------
+
+-- |Utility function to remove a decl from the middle of a list, assuming the
+-- list has already been split into a (possibly empty) front before the decl,
+-- and a back where the head is the decl to be removed.
+doRmDecl :: [GHC.LHsDecl GHC.RdrName] -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+doRmDecl decls1 decls2
+  = do
+      let decls2'      = gtail "doRmDecl 1" decls2
+          declToRemove = head decls2
+      -- logm $ "doRmDecl:declToRemove=" ++ showGhc declToRemove
+      -- logm $ "doRmDecl:(decls1,decls2')=" ++ showGhc (decls1,decls2')
+
+      unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
+      -- when   (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+      --                                                 liftT $ pushDeclAnnT (head decls2')
+      when   (not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+      when   (null decls1 && not (null decls2')) $ do liftT $ pushDeclAnnT (head decls2')
+      unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
+      return $ (decls1 ++ decls2')
+
 
 -- ---------------------------------------------------------------------
 
@@ -1611,12 +1633,15 @@ rmTypeSig pn t
                   else do
                       [oldSig] <- liftT $ decl2SigT sig
                       setStateStorage (StorageSigRdr oldSig)
+                      {-
                       unless (null $ tail decls2) $ do
-                        -- modifyRefactAnns (\anns -> transferEntryDP anns sig (head $ tail decls2) )
                         liftT $ transferEntryDPT sig (head $ tail decls2)
                         unless (null decls1) $ do liftT $ balanceComments (last decls1) sig
                         liftT $ balanceComments (head decls2) (head $ tail decls2)
-                      parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
+                      -}
+                      decls' <- doRmDecl decls1 decls2
+                      parent' <- liftT $ replaceDecls parent decls'
+                      -- parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
                       return parent'
             else return parent
 
