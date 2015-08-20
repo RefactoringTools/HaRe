@@ -1546,17 +1546,20 @@ doRmDecl decls1 decls2
   = do
       let decls2'      = gtail "doRmDecl 1" decls2
           declToRemove = head decls2
-      -- logm $ "doRmDecl:declToRemove=" ++ showGhc declToRemove
-      -- logm $ "doRmDecl:(decls1,decls2')=" ++ showGhc (decls1,decls2')
 
+      logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
       unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
-      -- when   (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
-      --                                                 liftT $ pushDeclAnnT (head decls2')
-      when   (not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
-      when   (null decls1 && not (null decls2')) $ do liftT $ pushDeclAnnT (head decls2')
       unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
-      return $ (decls1 ++ decls2')
+      logDataWithAnns "doRmDecl:(decls2')" (decls2')
 
+      -- decl in the middle of a list
+      when   (not (null decls1) && not (null decls2')) $ do liftT $ transferEntryDPT (last decls1) (head decls2')
+
+      -- Removing first decl
+      when (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+
+      -- logDataWithAnns "doRmDecl:(decls2')" (decls2')
+      return $ (decls1 ++ decls2')
 
 -- ---------------------------------------------------------------------
 

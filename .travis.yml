@@ -28,7 +28,7 @@ before_install:
   - export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:/opt/cabal/1.22/bin:$PATH
 
 install:
-  - ./travis_long stack --no-terminal setup
+  - ./travis_long stack --stack-yaml stack-travis.yaml --no-terminal setup
   # - ./travis_long stack --no-terminal test --only-snapshot
   # Work around the libexec path problem as per https://github.com/DanielG/cabal-helper/issues/7
   - export PATH=~/.stack/programs/x86_64-linux/ghc-7.10.2/bin:$PATH
@@ -45,13 +45,14 @@ install:
     # (cd ghc-exactprint && git checkout wip && cabal install)
     (cd ghc-exactprint && git checkout original-wip && cabal install)
   - |
-    git clone https://github.com/alanz/ghc-mod.git
-    (cd ghc-mod && git checkout loadTargets && cabal install)
+    # git clone https://github.com/alanz/ghc-mod.git
+    git clone https://github.com/kazu-yamomoto/ghc-mod.git
+    (cd ghc-mod && git checkout master && cabal install)
   - pwd
   - cabal install --dependencies-only --enable-tests
 
 script:
- # - stack --no-terminal test
+ # - stack --stack-yaml stack-travis.yaml --no-terminal test
  - cabal configure --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
  - cabal build   # this builds all libraries and executables (including tests/benchmarks)
  - cabal test --show-details=streaming

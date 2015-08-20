@@ -243,8 +243,24 @@ testOptions = GM.defaultOptions { GM.logLevel = GM.GmError }
 -- ---------------------------------------------------------------------
 
 testCradle :: GM.Cradle
+-- testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing "./dist"
 testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing
-
+{-
+-- | The environment where this library is used.
+data Cradle = Cradle {
+    cradleProjectType:: ProjectType
+  -- | The directory where this library is executed.
+  , cradleCurrentDir :: FilePath
+  -- | The project root directory.
+  , cradleRootDir    :: FilePath
+  -- | Per-Project temporary directory
+  , cradleTempDir    :: FilePath
+  -- | The file name of the found cabal file.
+  , cradleCabalFile  :: Maybe FilePath
+  -- | The build info directory.
+  , cradleDistDir    :: FilePath
+  } deriving (Eq, Show)
+-}
 -- ---------------------------------------------------------------------
 
 defaultTestSettings :: RefactSettings
