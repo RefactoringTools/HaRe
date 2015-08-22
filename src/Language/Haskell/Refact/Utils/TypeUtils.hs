@@ -1229,29 +1229,20 @@ addActualParamsToRhs :: (SYB.Data t) =>
                         GHC.Name -> [GHC.RdrName] -> t -> RefactGhc t
 addActualParamsToRhs pn paramPNames rhs = do
     logm $ "addActualParamsToRhs:entered:(pn,paramPNames)=" ++ showGhc (pn,paramPNames)
-    -- logDataWithAnns "addActualParamsToRhs:rhs=" rhs
-    -- logAnns         "addActualParamsToRhs:rhs anns="
     nameMap <- getRefactNameMap
     let
        -- |Limit the action to actual RHS elements
        grhs :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
        grhs (GHC.GRHSs g lb) = do
-         -- logDataWithAnns "addActualParamsToRhs.grhs:g=" g
          g' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) g
-         -- logDataWithAnns "addActualParamsToRhs.grhs:g'=" g'
          return (GHC.GRHSs g' lb)
 
        worker :: (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
-        -- * | pname == pn
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
-              -- logm $ "addActualParamsToRhs:oldExp=" ++ (SYB.showData SYB.Parser 0 oldExp)
               logDataWithAnns "addActualParamsToRhs:oldExp=" oldExp
-              -- logAnns "addActualParamsToRhs:newExp anns="
-              -- let newExp' = foldl addParamToExp oldExp paramPNames
               newExp' <- liftT $ foldlM addParamToExp oldExp paramPNames
-              -- newExp' <- foldlM (liftT . addParamToExp) oldExp paramPNames
 
               edp <- liftT $ getEntryDPT oldExp
               liftT $ setEntryDPT oldExp (DP (0,0))
@@ -1259,9 +1250,6 @@ addActualParamsToRhs pn paramPNames rhs = do
               let newExp  = (GHC.L l2' (GHC.HsPar newExp'))
               liftT $ addSimpleAnnT newExp (DP (0,0)) [(G GHC.AnnOpenP,DP (0,0)),(G GHC.AnnCloseP,DP (0,0))]
               liftT $ setEntryDPT newExp edp
-              -- logm $ "addActualParamsToRhs:newExp=" ++ (SYB.showData SYB.Parser 0 newExp)
-              -- logAnns "addActualParamsToRhs:newExp anns="
-              logDataWithAnns "addActualParamsToRhs:newExp=" newExp
               return newExp
        worker x = return x
 
