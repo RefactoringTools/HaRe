@@ -448,3 +448,4 @@ testing/addCon/Case2.hs.temp.hs
 /Bug1.hs
 /Bug2.hs
 /hcar/auto/HaReTheHaskellRefactorer-AH.el
+/test/testdata/MoveDef/hlint.refact

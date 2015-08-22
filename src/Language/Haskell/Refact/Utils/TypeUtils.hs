@@ -1452,13 +1452,13 @@ rmDecl:: (SYB.Data t)
 
 rmDecl pn incSig t = do
   setStateStorage StorageNone
-  t' <- everywhereMStaged' SYB.Parser (SYB.mkM inModule
+  t' <- everywhereMStaged' SYB.Parser (SYB.mkM   inModule
                                       `SYB.extM` inLet
                                       `SYB.extM` inMatch
-                                      -- `SYB.extM` inPat
                                       ) t -- top down
          -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inBinds) t
+  -- logDataWithAnns "rmDecl:(t')" (t')
   (t'',sig') <- if incSig
                   then rmTypeSig pn t'
                   else return (t', Nothing)
@@ -1477,24 +1477,30 @@ rmDecl pn incSig t = do
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
     inLet x@(GHC.L ss (GHC.HsLet localDecls expr))
       = do
-         nameMap <- getRefactNameMap
-         decls <- liftT $ hsDecls localDecls
-         let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
-         if not $ emptyList decls2
-            then do
-              let decl = ghead "rmDecl" decls2
-              setStateStorage (StorageDeclRdr decl)
-              case length decls of
-                1 -> do -- Removing the last declaration
-                 return expr
-                _ -> do
-                 -- logm $ "rmDecl.inLet:length decls /= 1"
-                 -- let decls2' = gtail "inLet" decls2
-                 decls' <- doRmDecl decls1 decls2
-                 localDecls' <- liftT $ replaceDecls localDecls decls'
-                 -- logDataWithAnns "inLet" (GHC.L ss (GHC.HsLet localDecls' expr))
-                 return $ (GHC.L ss (GHC.HsLet localDecls' expr))
-            else return x
+         isDone <- getDone
+         if isDone
+           then return x
+           else do
+             nameMap <- getRefactNameMap
+             decls <- liftT $ hsDecls localDecls
+             let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
+             if not $ emptyList decls2
+                then do
+                  let decl = ghead "rmDecl" decls2
+                  setStateStorage (StorageDeclRdr decl)
+                  case length decls of
+                    1 -> do -- Removing the last declaration
+                     return expr
+                    _ -> do
+                     -- logm $ "rmDecl.inLet:length decls /= 1"
+                     -- let decls2' = gtail "inLet" decls2
+                     decls' <- doRmDecl decls1 decls2
+                     localDecls' <- liftT $ replaceDecls localDecls decls'
+                     -- logDataWithAnns "inLet" (GHC.L ss (GHC.HsLet localDecls' expr))
+                     return $ (GHC.L ss (GHC.HsLet localDecls' expr))
+                else do
+                  liftT $ replaceDecls localDecls decls
+                  return x
     inLet x = return x
 
     -- ---------------------------------
@@ -1514,22 +1520,14 @@ rmDecl pn incSig t = do
                  setStateStorage (StorageDeclRdr decl)
                  decls'  <- doRmDecl decls1 decls2
                  parent' <- liftT $ replaceDecls parent decls'
+                 -- logDataWithAnns "doRmDeclList:(parent')" (parent')
                  return parent'
-               else return parent
+               else do
+                 liftT $ replaceDecls parent decls
+                 return parent
 
     -- ---------------------------------
-{-
-    doRmDecl decls1 decls2
-      = do
-          let decls2'      = gtail "doRmDecl 1" decls2
-              declToRemove = head decls2
-          -- unless (null decls2') $ do modifyRefactAnns (\anns -> transferEntryDP anns declToRemove (head decls2') )
-          unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
-          unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
-          when   (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
-                                                          liftT $ pushDeclAnnT (head decls2')
-          return $ (decls1 ++ decls2')
--}
+
     getDone = do
       s <- getStateStorage
       case s of
@@ -1547,10 +1545,9 @@ doRmDecl decls1 decls2
       let decls2'      = gtail "doRmDecl 1" decls2
           declToRemove = head decls2
 
-      logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
+      -- logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
       unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
       unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
-      logDataWithAnns "doRmDecl:(decls2')" (decls2')
 
       -- decl in the middle of a list
       when   (not (null decls1) && not (null decls2')) $ do liftT $ transferEntryDPT (last decls1) (head decls2')
@@ -1588,7 +1585,7 @@ rmTypeSig :: (SYB.Data t) =>
 rmTypeSig pn t
   = do
      setStateStorage StorageNone
-     t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inGRHSs `SYB.extM` inModule) t
+     t' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inMatch `SYB.extM` inPatDecl `SYB.extM` inModule) t
      storage <- getStateStorage
      let sig' = case storage of
                   StorageSigRdr sig -> Just sig
@@ -1600,24 +1597,36 @@ rmTypeSig pn t
    inModule (modu :: GHC.ParsedSource)
       = doRmTypeSig modu
 
-   inGRHSs x@((GHC.GRHSs _a _localDecls) :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+   -- Deals with the distrinct parts of a FunBind
+   inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+   inMatch x@(GHC.L _ (GHC.Match _ _ _ (GHC.GRHSs _ _localDecls)))
       = doRmTypeSig x
+
+   inPatDecl ::GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+   inPatDecl x@(GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _)))
+      = doRmTypeSig x
+   inPatDecl x = return x
+
+   -- inPatBind ::GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
+   -- inPatBind x@(GHC.L _ (GHC.PatBind _ _ _ _ _))
+   --    = doRmTypeSig x
+   -- inPatBind x = return x
 
    -- ----------------------------------
 
    doRmTypeSig :: (HasDecls t) => t -> RefactGhc t
    doRmTypeSig parent = do
-     -- This has to happen regardless, else the layout does not propagate properly.
-     -- ++AZ++ TODO: Investigate why
-     decls <- liftT $ hsDecls parent
      isDone <- getDone
      if isDone
        then return parent
        else do
+         decls <- liftT $ hsDecls parent
+         -- logDataWithAnns "doRmTypeSig:decls" decls
          nameMap <- getRefactNameMap
          let (decls1,decls2)= break (definesSigDRdr nameMap pn) decls
          if not $ null decls2
             then do
+              logDataWithAnns "doRmTypeSig:parent" parent
               let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
               if length names > 1
                   then do
@@ -1646,7 +1655,9 @@ rmTypeSig pn t
                       parent' <- liftT $ replaceDecls parent decls'
                       -- parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
                       return parent'
-            else return parent
+            else do
+              liftT $ replaceDecls parent decls
+              return parent
 
    getDone = do
      s <- getStateStorage

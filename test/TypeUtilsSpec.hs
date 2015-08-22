@@ -1919,6 +1919,28 @@ spec = do
 
     -- ---------------------------------
 
+    it "removes a top level declaration, leaving type signature 2b" $ do
+      (t, toks,tgt) <- ct $ parsedFileGhc "./MoveDef/Md1b.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- putStrLn $ SYB.showData SYB.Parser 0 parsed
+      let Just (GHC.L _ n) = locToName (6, 1) renamed
+      let
+        comp = do
+         -- logDataWithAnns "parsed" parsed
+         (parsed',_removedDecl,_removedSig) <- rmDecl n False parsed
+         -- logDataWithAnns "parsed'" parsed'
+         putRefactParsed parsed' emptyAnns
+         return parsed'
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+
+      (showGhcQual n) `shouldBe` "MoveDef.Md1b.ff"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1b where\n\ndata D = A | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\n"
+      (sourceFromState s) `shouldBe` "module MoveDef.Md1b where\n\ndata D = A | C\n\nff :: Int -> Int\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\n"
+
+    -- ---------------------------------
+
     it "removes a top level declaration, leaving type signature 2" $ do
       (t, toks,tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -1927,8 +1949,10 @@ spec = do
       let Just (GHC.L _ n) = locToName (22, 1) renamed
       let
         comp = do
+         -- logDataWithAnns "parsed" parsed
          (parsed',_removedDecl,_removedSig) <- rmDecl n False parsed
          putRefactParsed parsed' emptyAnns
+         logDataWithAnns "parsed'" parsed'
          return parsed'
       -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -1971,7 +1995,6 @@ spec = do
       let Just (GHC.L _ n) = locToName (11, 22) renamed
       let
         comp = do
-         -- (newDecls,_removedDecl,_removedSig) <- rmDecl n True declsr
          (newDecls,_removedDecl,_removedSig) <- rmDecl n True declsp
 
          let parsed' = replaceBinds parsed newDecls
@@ -2163,12 +2186,12 @@ spec = do
       let Just (GHC.L _ n) = locToName (16, 5) renamed
       let
         comp = do
-         -- (renamed',_removedSig) <- rmTypeSig n renamed
+         -- logDataWithAnns "parsed" parsed
          (renamed',_removedSig) <- rmTypeSig n parsed
          putRefactParsed renamed' emptyAnns
          return renamed'
-      (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
-      -- (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
