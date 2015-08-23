@@ -276,10 +276,12 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
              -- declaredPns = nub $ concatMap definedPNs liftedDecls
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
-             liftedSigs  = definingSigsRdrNames nameMap [n] parent
+             -- liftedSigs  = definingSigsRdrNames nameMap [n] parent
+             liftedSigs  = definingSigsRdrNames nameMap declaredPns parent
              mLiftedSigs = liftedSigs
 
          logm $ "liftToMod:(liftedDecls)=" ++ (showGhc liftedDecls)
+         logm $ "liftToMod:(liftedSigs)="  ++ (showGhc liftedSigs)
          -- logDataWithAnns "liftToMod:(liftedDecls)="  liftedDecls
          -- TODO: what about declarations between this
          -- one and the top level that are used in this one?
@@ -1220,14 +1222,11 @@ addParamsToSigs [] ms = return ms
 addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns)) = do
   mts <- mapM getTypeForName newParams
   let ts = catMaybes mts
-  let ne = GHC.srcSpanEnd $ GHC.getLoc  $ glast "addParamsToSigs" lns
-      ls = GHC.srcSpanStart $ lt
-      replaceSpan = GHC.mkSrcSpan ne ls
-      newStr = ":: " ++ (intercalate " -> " $ map printSigComponent ts) ++ " -> "
-  logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
+  logm $ "addParamsToSigs:ts=" ++ showGhc ts
+  logDataWithAnns "addParamsToSigs:ts=" ts
+  let newStr = ":: " ++ (intercalate " -> " $ map printSigComponent ts) ++ " -> "
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
-  -- let newToks = basicTokenise newStr
-  typ' <- liftT $ foldlM addOneType ltyp ts
+  typ' <- liftT $ foldlM addOneType ltyp (reverse ts)
   sigOk <- isNewSignatureOk ts
   logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
   if sigOk
@@ -1239,7 +1238,16 @@ addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns)) = do
       hst <- typeToLHsType t
       ss1 <- uniqueSrcSpanT
       ss2 <- uniqueSrcSpanT
-      let typ = GHC.L ss1 (GHC.HsFunTy hst et)
+      hst1 <- case t of
+        (GHC.FunTy _ _) -> do
+          ss <- uniqueSrcSpanT
+          let t1 = GHC.L ss (GHC.HsParTy hst)
+          setEntryDPT hst (DP (0,0))
+          addSimpleAnnT t1  (DP (0,0)) [((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+          return t1
+        _ -> return hst
+      let typ = GHC.L ss1 (GHC.HsFunTy hst1 et)
+
       addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
       return typ
 

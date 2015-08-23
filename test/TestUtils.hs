@@ -339,7 +339,7 @@ exactPrintFromState st ast =
         anns = case Map.lookup mainTid (tkCache (rsTokenCache tm)) of
           Just a -> a
           Nothing -> error $ "exactPrintFromState:mainTid not found"
-        r = exactPrintWithAnns ast anns
+        r = exactPrint ast anns
     Nothing -> []
 
 -- ---------------------------------------------------------------------
@@ -352,7 +352,7 @@ sourceFromState st =
         anns = tkCache (rsTokenCache tm) Map.! mainTid
         parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
                  $ rsTypecheckedMod tm
-        r = exactPrintWithAnns parsed anns
+        r = exactPrint parsed anns
     Nothing -> []
 
 -- ---------------------------------------------------------------------
