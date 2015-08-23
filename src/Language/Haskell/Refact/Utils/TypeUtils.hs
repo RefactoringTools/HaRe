@@ -1535,7 +1535,7 @@ doRmDecl decls1 decls2
       let decls2'      = gtail "doRmDecl 1" decls2
           declToRemove = head decls2
 
-      logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
+      -- logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
       unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
       unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
 
@@ -1545,7 +1545,7 @@ doRmDecl decls1 decls2
       -- Removing first decl
       when (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
 
-      logDataWithAnns "doRmDecl:(decls2')" (decls2')
+      -- logDataWithAnns "doRmDecl:(decls2')" (decls2')
       return $ (decls1 ++ decls2')
 
 -- ---------------------------------------------------------------------
@@ -1616,7 +1616,7 @@ rmTypeSig pn t
          let (decls1,decls2)= break (definesSigDRdr nameMap pn) decls
          if not $ null decls2
             then do
-              logDataWithAnns "doRmTypeSig:parent" parent
+              -- logDataWithAnns "doRmTypeSig:parent" parent
               let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
               if length names > 1
                   then do

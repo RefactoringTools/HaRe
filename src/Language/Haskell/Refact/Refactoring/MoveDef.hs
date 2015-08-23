@@ -27,6 +27,7 @@ import qualified Var                   as Var
 import Control.Exception
 import Control.Monad.State
 import qualified Data.Generics.Zipper as Z
+import Data.Foldable
 import Data.List
 import Data.Maybe
 
@@ -276,7 +277,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              -- declaredPns = nub $ concatMap definedPNs liftedDecls
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
              liftedSigs  = definingSigsRdrNames nameMap [n] parent
-             mLiftedSigs = listToMaybe liftedSigs
+             mLiftedSigs = liftedSigs
 
          logm $ "liftToMod:(liftedDecls)=" ++ (showGhc liftedDecls)
          -- logDataWithAnns "liftToMod:(liftedDecls)="  liftedDecls
@@ -298,7 +299,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              -- TODO: change the order, first move the decls then add params,
              --       else the liftedDecls get mangled while still in the parent
              logm $ "liftToMod:(pns == [])"
-             (parent',liftedDecls',_mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
+             (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
              -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
              --                                 else liftedDecls'
 
@@ -312,7 +313,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                  defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
              logm $ "liftToMod:(defName)=" ++ (showGhc defName)
              parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
-             parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] (Just liftedDecls') declaredPns True
+             parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] (Just liftedDecls')
+                                                            declaredPns mLiftedSigs' True
              putRefactParsed parsed2 emptyAnns
 
              return declaredPns
@@ -333,9 +335,10 @@ moveDecl1 :: (HasDecls t,SYB.Data t)
   -> Maybe [GHC.LHsDecl GHC.RdrName]
   -> [GHC.Name]     -- ^ The signatures to remove. May be multiple if
                     --   decl being moved has a patbind.
+  -> [GHC.LSig GHC.RdrName] -- ^ lifted decls signature if present
   -> Bool           -- ^ True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
-moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
+moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
   logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
   -- logm $ "moveDecl1:(topLevel,t)=" ++ SYB.showData SYB.Parser 0 (topLevel,t)
   nameMap <- getRefactNameMap
@@ -349,11 +352,14 @@ moveDecl1 t defName ns mliftedDecls sigNames topLevel = do
   -- logm $ "moveDecl1:(funBinding)=" ++ showGhc (funBinding)
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',sigsRemoved) <- rmTypeSigs sigNames t
-  logm $ "moveDecl1:sigsRemoved=" ++ showGhc sigsRemoved
+  -- logm $ "moveDecl1:sigsRemoved=" ++ showGhc sigsRemoved
+  logm $ "moveDecl1:mliftedSigs=" ++ showGhc mliftedSigs
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
   -- logDataWithAnns "moveDecl1:(t')" t'
-  sigs <- liftT $ mapM wrapSigT sigsRemoved
+  -- sigs <- liftT $ mapM wrapSigT sigsRemoved
+  sigs <- liftT $ mapM wrapSigT mliftedSigs
   -- liftT $ mapM_ (\d -> setPrecedingLinesDeclT d 0 0) (sigs++funBinding)
+  -- r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
   r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
 
   -- logm $ "moveDecl1:(r)=" ++ SYB.showData SYB.Parser 0 r
@@ -718,13 +724,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
                if pns==[]
                  then do
-                         (parent',liftedDecls',_mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
-                                                              parent liftedDecls Nothing
+                         (parent',liftedDecls',mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
+                                                              parent liftedDecls []
                          --True means the new decl will be at the same level with its parant.
                          toMove <- refactReplaceDecls dest (before++parent'++after)
                          dest' <- moveDecl1 toMove
                                     (Just (ghead "worker" (definedNamesRdr nm (ghead "worker" parent'))))
-                                    [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                    [n] (Just liftedDecls') declaredPns mLiftedSigs' toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
                          return dest'
                          --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
                          --return (before++parent'++liftedDecls''++after)
@@ -757,11 +763,11 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                if pns==[]
                  then do
-                         (parent',liftedDecls',_mLiftedSigs')
-                             <- addParamsToParentAndLiftedDecl n dd dest liftedDecls Nothing
+                         (parent',liftedDecls',mLiftedSigs')
+                             <- addParamsToParentAndLiftedDecl n dd dest liftedDecls []
                          --True means the new decl will be at the same level with its parant.
                          parent'' <- moveDecl1 parent' Nothing
-                                      [n] (Just liftedDecls') declaredPns toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                      [n] (Just liftedDecls') declaredPns mLiftedSigs' toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
                          return parent''
                          --decl'<-doMoving declaredPns (ghead "worker" decl) True  paramAdded decl'
                          --return (before++decl'++liftedDecls''++after)
@@ -1167,9 +1173,9 @@ addParamsToParentAndLiftedDecl :: (GHC.Outputable t,SYB.Data t) =>
      GHC.Name   -- ^name of decl being lifted
   -> [GHC.Name] -- ^Declared names in parent
   -> t          -- ^parent
-  -> [GHC.LHsDecl GHC.RdrName]    -- ^decls being lifted
-  -> Maybe (GHC.LSig GHC.RdrName) -- ^ lifted decls signature if present
-  -> RefactGhc (t, [GHC.LHsDecl GHC.RdrName], Maybe (GHC.LSig GHC.RdrName))
+  -> [GHC.LHsDecl GHC.RdrName] -- ^ decls being lifted
+  -> [GHC.LSig GHC.RdrName]    -- ^ lifted decls signature if present
+  -> RefactGhc (t, [GHC.LHsDecl GHC.RdrName], [GHC.LSig GHC.RdrName])
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
   =do
        logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
@@ -1199,7 +1205,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 
                         liftedDecls' <- addParamsToDecls [liftedDecls''] pn newParams
 
-                        mLiftedSigs' <- addParamsToSigs newParamsNames mLiftedSigs
+                        mLiftedSigs' <- mapM (addParamsToSigs newParamsNames) mLiftedSigs
 
                         logm $ "addParamsToParentAndLiftedDecl:mLiftedSigs'=" ++ showGhc mLiftedSigs'
 
@@ -1209,10 +1215,9 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
 -- ---------------------------------------------------------------------
 
 -- TODO: perhaps move this to TypeUtils
-addParamsToSigs :: [GHC.Name] -> Maybe (GHC.LSig GHC.RdrName) -> RefactGhc (Maybe (GHC.LSig GHC.RdrName))
-addParamsToSigs _ Nothing = return Nothing
+addParamsToSigs :: [GHC.Name] -> GHC.LSig GHC.RdrName -> RefactGhc (GHC.LSig GHC.RdrName)
 addParamsToSigs [] ms = return ms
-addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns))) = do
+addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns)) = do
   mts <- mapM getTypeForName newParams
   let ts = catMaybes mts
   let ne = GHC.srcSpanEnd $ GHC.getLoc  $ glast "addParamsToSigs" lns
@@ -1222,17 +1227,21 @@ addParamsToSigs newParams (Just (GHC.L l (GHC.TypeSig lns ltyp@(GHC.L lt _) pns)
   logm $ "addParamsToSigs:replaceSpan=" ++ showGhc replaceSpan
   logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
   -- let newToks = basicTokenise newStr
-  let typ' = foldl addOneType ltyp ts
+  typ' <- liftT $ foldlM addOneType ltyp ts
   sigOk <- isNewSignatureOk ts
   logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
   if sigOk
-    then return $ Just (GHC.L l (GHC.TypeSig lns typ' pns))
+    then return (GHC.L l (GHC.TypeSig lns typ' pns))
     else error $ "\nNew type signature may fail type checking: " ++ newStr ++ "\n"
   where
-    addOneType :: GHC.LHsType GHC.RdrName -> GHC.Type -> GHC.LHsType GHC.RdrName
-    addOneType et t = GHC.noLoc (GHC.HsFunTy (GHC.noLoc hst) et)
-      where
-        hst = typeToHsType t
+    addOneType :: GHC.LHsType GHC.RdrName -> GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+    addOneType et t = do
+      hst <- typeToLHsType t
+      ss1 <- uniqueSrcSpanT
+      ss2 <- uniqueSrcSpanT
+      let typ = GHC.L ss1 (GHC.HsFunTy hst et)
+      addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+      return typ
 
 addParamsToSigs np ls = error $ "addParamsToSigs: no match for:" ++ showGhc (np,ls)
 
@@ -1269,19 +1278,46 @@ isNewSignatureOk types = do
 
 -- TODO: perhaps move this to TypeUtils
 -- TODO: complete this
-typeToHsType :: GHC.Type -> GHC.HsType GHC.RdrName
-typeToHsType (GHC.TyVarTy v)   = GHC.HsTyVar (GHC.nameRdrName $ Var.varName v)
-typeToHsType (GHC.AppTy t1 t2) = GHC.HsAppTy (GHC.noLoc $ typeToHsType t1)
-                                             (GHC.noLoc $ typeToHsType t2)
+typeToLHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+typeToLHsType (GHC.TyVarTy v)   = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyVar (GHC.nameRdrName $ Var.varName v))
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
 
-typeToHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
+typeToLHsType (GHC.AppTy t1 t2) = do
+  t1' <- typeToLHsType t1
+  t2' <- typeToLHsType t2
+  ss <- uniqueSrcSpanT
+  return $ GHC.L ss (GHC.HsAppTy t1' t2')
 
-typeToHsType (GHC.FunTy t1 t2) = GHC.HsFunTy (GHC.noLoc $ typeToHsType t1)
-                                             (GHC.noLoc $ typeToHsType t2)
-typeToHsType (GHC.ForAllTy _v t) = GHC.HsForAllTy GHC.Explicit Nothing (GHC.HsQTvs [] []) (GHC.noLoc []) (GHC.noLoc $ typeToHsType t)
+typeToLHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
 
-typeToHsType (GHC.LitTy (GHC.NumTyLit i)) = GHC.HsTyLit (GHC.HsNumTy (show i) i)
-typeToHsType (GHC.LitTy (GHC.StrTyLit s)) = GHC.HsTyLit (GHC.HsStrTy "" s)
+typeToLHsType (GHC.FunTy t1 t2) = do
+  t1' <- typeToLHsType t1
+  t2' <- typeToLHsType t2
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsFunTy t1' t2')
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+  return typ
+
+typeToLHsType (GHC.ForAllTy _v t) = do
+  t' <- typeToLHsType t
+  ss1 <- uniqueSrcSpanT
+  ss2 <- uniqueSrcSpanT
+  return $ GHC.L ss1 (GHC.HsForAllTy GHC.Explicit Nothing (GHC.HsQTvs [] []) (GHC.L ss2 []) t')
+
+typeToLHsType (GHC.LitTy (GHC.NumTyLit i)) = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyLit (GHC.HsNumTy (show i) i)) :: GHC.LHsType GHC.RdrName
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
+
+typeToLHsType (GHC.LitTy (GHC.StrTyLit s)) = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyLit (GHC.HsStrTy "" s)) :: GHC.LHsType GHC.RdrName
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
 
 
 {-
@@ -1327,17 +1363,24 @@ data Type
 
 -}
 
-tyConAppToHsType :: GHC.Type -> GHC.HsType GHC.RdrName
-tyConAppToHsType (GHC.TyConApp tc _ts)
+tyConAppToHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+tyConAppToHsType (GHC.TyConApp tc _ts) = r (show $ GHC.tyConName tc)
+{-
   | GHC.isFunTyCon tc = r "isFunTyCon"
-  | GHC.isAlgTyCon tc = r "isAlgTyCon"
+  -- | GHC.isAlgTyCon tc = r "isAlgTyCon"
+  | GHC.isAlgTyCon tc = r (show $ GHC.tyConName tc)
   | GHC.isTupleTyCon tc = r "isTupleTyCon"
   -- | GHC.isSynTyCon tc = r "isSynTyCon"
   | GHC.isPrimTyCon tc = r "isPrimTyCon"
   | GHC.isPromotedDataCon tc = r "isPromotedDataTyCon"
   | GHC.isPromotedTyCon tc =  r "isPromotedTyCon"
+-}
   where
-    r str = GHC.HsTyLit (GHC.HsStrTy str $ GHC.mkFastString str)
+    r str = do
+      ss <- uniqueSrcSpanT
+      let typ = GHC.L ss (GHC.HsTyLit (GHC.HsStrTy str $ GHC.mkFastString str)) :: GHC.LHsType GHC.RdrName
+      addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,1))]
+      return typ
 
 tyConAppToHsType t@(GHC.TyConApp _tc _ts)
    = error $ "tyConAppToHsType: unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
@@ -1853,7 +1896,7 @@ doDemoting' t pn = do
                        -- rhs' <- moveDecl pns rhs False decls False
                        -- TODO: what wbout dtoks?
                        -- error "dupInPat" -- ++AZ++
-                       rhs' <- moveDecl1 rhs Nothing pns Nothing pns False
+                       rhs' <- moveDecl1 rhs Nothing pns Nothing pns [] False
                        return (GHC.PatBind pat rhs' ty fvs ticks)
                  -- dupInPat _ =mzero
                  dupInPat x = return x

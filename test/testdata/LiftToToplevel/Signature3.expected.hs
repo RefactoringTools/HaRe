@@ -8,9 +8,7 @@ foo a = (baz xx a)
     xx :: Int -> Int -> Int
     xx p1 p2 = p1 + p2
 
+baz :: (Int -> Int -> Int) -> Int ->Int
+baz xx a = xx 1 a
 
-
-
-baz:: (Int -> Int -> Int) -> Int ->Int
-baz xx a= xx 1 a
 
