@@ -2266,7 +2266,7 @@ spec = do
       let
         comp = do
          parsed <- getRefactParsed
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "a" parseDecl "nn = n2")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "a" "nn = n2")
          -- let declAnns' = setPrecedingLines declAnns newDecl 2
          parsed' <- addDecl parsed Nothing ([decl],Just declAnns) True
          putRefactParsed parsed' emptyAnns
@@ -2287,8 +2287,8 @@ spec = do
       let
         comp = do
          parsed <- getRefactParsed
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = 2")
-         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = 2")
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
          parsed' <- addDecl parsed Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) True
          putRefactParsed parsed' emptyAnns
          return (sig,parsed')
@@ -2306,7 +2306,7 @@ spec = do
       let
         comp = do
          parsed <- getRefactParsed
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "a" parseDecl "nn = nn2")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "a" "nn = nn2")
          renamed <- getRefactRenamed
          let Just (GHC.L _l n) = locToName (21, 1) renamed
          parsed' <- addDecl parsed (Just n) ([decl],Just declAnns) True
@@ -2329,8 +2329,8 @@ spec = do
          renamed <- getRefactRenamed
          let Just (GHC.L _l n) = locToName (21, 1) renamed
          parsed <- getRefactParsed
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
-         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
          parsed' <- addDecl parsed (Just n) ([sig,decl],Just $ mergeAnns sigAnns declAnns) True
          putRefactParsed parsed' emptyAnns
          return (n,parsed')
@@ -2356,7 +2356,7 @@ spec = do
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
          logm $ "test:addDecl done"
 
@@ -2386,8 +2386,8 @@ spec = do
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
-         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
 
          newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) False
 
@@ -2416,7 +2416,7 @@ spec = do
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
          newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
 
@@ -2445,7 +2445,7 @@ spec = do
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
          newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
 
@@ -2474,8 +2474,8 @@ spec = do
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
-         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "decl" parseDecl "nn = nn2")
-         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseToAnnotated df "sig"  parseDecl "nn :: Int")
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
+         (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
 
          newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) False
 

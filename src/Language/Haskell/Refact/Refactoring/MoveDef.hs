@@ -90,6 +90,7 @@ compLiftToTopLevel fileName (row,col) = do
       getModuleGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
+      -- logDataWithAnns "liftToTopLevel:parsed" parsed
 
       let (Just (modName,_)) = getModuleName parsed
       let maybePn = locToName (row, col) renamed
@@ -268,6 +269,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          nameMap <- getRefactNameMap
          declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
          logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
+         logDataWithAnns "liftToMod:(declsParent)="  declsParent
+         logDataWithAnns "liftToMod:(parent)" parent
          -- let liftedDecls = definingDeclsRdrNames nameMap [n] declsParent True True
          let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
              -- declaredPns = nub $ concatMap definedPNs liftedDecls
@@ -276,6 +279,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              mLiftedSigs = listToMaybe liftedSigs
 
          logm $ "liftToMod:(liftedDecls)=" ++ (showGhc liftedDecls)
+         -- logDataWithAnns "liftToMod:(liftedDecls)="  liftedDecls
          -- TODO: what about declarations between this
          -- one and the top level that are used in this one?
 
@@ -301,6 +305,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              -- logDataWithAnns "liftToMod.liftToToplevel':parent'" parent'
              logm $ "liftToMod:(ffff)="
              logm $ "liftToMod:(liftedDecls')=" ++ showGhc liftedDecls'
+             logDataWithAnns "liftToMod:(liftedDecls')=" liftedDecls'
 
              let -- renamed' = replaceBinds renamed (before++parent'++after)
                  -- defName  = (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))
@@ -380,7 +385,7 @@ pnsNeedRenaming dest parent _liftedDecls pns
             parsed  <- getRefactParsed
             renamed <- getRefactRenamed
             logDataWithAnns "MoveDef.pnsNeedRenaming':parsed" parsed
-            logDataWithAnns "MoveDef.pnsNeedRenaming':renamed" renamed
+            -- logDataWithAnns "MoveDef.pnsNeedRenaming':renamed" renamed
             nm <- getRefactNameMap
             (FN f,DN d) <- hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
                                                       --d: declaread variables names that may clash with pn
@@ -1168,6 +1173,7 @@ addParamsToParentAndLiftedDecl :: (GHC.Outputable t,SYB.Data t) =>
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
   =do
        logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
+       logDataWithAnns "addParamsToParentAndLiftedDecl:parent=" parent
        logm $ "addParamsToParentAndLiftedDecl:liftedDecls=" ++ (showGhc liftedDecls)
        nm <- getRefactNameMap
        let (FN ef,_) = hsFreeAndDeclaredRdr nm parent
@@ -1185,7 +1191,9 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
          then if  (any isComplexPatDecl liftedDecls)
                 then error "This pattern binding cannot be lifted, as it uses some other local bindings!"
                 else do -- first remove the decls to be lifted, so they are not disturbed
+                        -- logDataWithAnns "addParamsToParentAndLiftedDecl:parent" parent
                         (parent'',liftedDecls'',_msig) <- rmDecl pn False parent
+                        -- logDataWithAnns "addParamsToParentAndLiftedDecl:liftedDecls''" liftedDecls''
 
                         parent' <- addParamsToParent pn newParams parent''
 

@@ -10,8 +10,8 @@ liftToTopLevel' modName pn = do
          step3: remove the lifted declarations from parent and extra arguments may be introduce.
          step4. test whether there are any names need to be renamed.
        -}
-liftToMod = ['a'] -- do
 
+liftToMod = ['a'] -- do
 
 getRefactRenamed :: IO String
 getRefactRenamed = undefined

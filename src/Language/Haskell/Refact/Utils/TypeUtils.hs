@@ -1447,13 +1447,14 @@ rmDecl pn incSig t = do
          -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
   -- t'  <- everywhereMStaged SYB.Renamer (SYB.mkM inBinds) t
   -- logDataWithAnns "rmDecl:(t')" (t')
-  (t'',sig') <- if incSig
-                  then rmTypeSig pn t'
-                  else return (t', Nothing)
   storage <- getStateStorage
   let decl' = case storage of
                 StorageDeclRdr decl -> decl
                 x                   -> error $ "rmDecl: unexpected value in StateStorage:" ++ (show x)
+  setStateStorage StorageNone
+  (t'',sig') <- if incSig
+                  then rmTypeSig pn t'
+                  else return (t', Nothing)
   return (t'',decl',sig')
   where
     inModule (p :: GHC.ParsedSource)
@@ -1487,7 +1488,7 @@ rmDecl pn incSig t = do
                      -- logDataWithAnns "inLet" (GHC.L ss (GHC.HsLet localDecls' expr))
                      return $ (GHC.L ss (GHC.HsLet localDecls' expr))
                 else do
-                  liftT $ replaceDecls localDecls decls
+                  -- liftT $ replaceDecls localDecls decls
                   return x
     inLet x = return x
 
@@ -1504,6 +1505,7 @@ rmDecl pn incSig t = do
              let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
              if not $ emptyList decls2
                then do
+                 -- logDataWithAnns "doRmDeclList:(parent)" (parent)
                  let decl = ghead "doRmDeclList" decls2
                  setStateStorage (StorageDeclRdr decl)
                  decls'  <- doRmDecl decls1 decls2
@@ -1511,7 +1513,7 @@ rmDecl pn incSig t = do
                  -- logDataWithAnns "doRmDeclList:(parent')" (parent')
                  return parent'
                else do
-                 liftT $ replaceDecls parent decls
+                 -- liftT $ replaceDecls parent decls
                  return parent
 
     -- ---------------------------------
@@ -1533,7 +1535,7 @@ doRmDecl decls1 decls2
       let decls2'      = gtail "doRmDecl 1" decls2
           declToRemove = head decls2
 
-      -- logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
+      logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
       unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
       unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
 
@@ -1543,7 +1545,7 @@ doRmDecl decls1 decls2
       -- Removing first decl
       when (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
 
-      -- logDataWithAnns "doRmDecl:(decls2')" (decls2')
+      logDataWithAnns "doRmDecl:(decls2')" (decls2')
       return $ (decls1 ++ decls2')
 
 -- ---------------------------------------------------------------------
@@ -1644,7 +1646,7 @@ rmTypeSig pn t
                       -- parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
                       return parent'
             else do
-              liftT $ replaceDecls parent decls
+              -- liftT $ replaceDecls parent decls
               return parent
 
    getDone = do

@@ -34,6 +34,7 @@ module TestUtils
        , pwd
        , cd
        , parseToAnnotated
+       , parseDeclToAnnotated
        , ss2span
        ) where
 
@@ -51,6 +52,8 @@ import Data.Data
 import Exception
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Annotate
+import Language.Haskell.GHC.ExactPrint.Parsers
+import Language.Haskell.GHC.ExactPrint.Print
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Language.Haskell.GhcMod          as GM (Options(..),defaultOptions,Cradle(..),ProjectType(..),logLevel)
@@ -404,12 +407,25 @@ parseToAnnotated :: (Show a, Annotate ast)
                  => GHC.DynFlags
                  -> FilePath
                  -> (GHC.DynFlags -> FilePath -> String -> Either a (Anns, GHC.Located ast))
-                 -- -> Parser
                  -> String
                  -> (GHC.Located ast, Anns)
 parseToAnnotated df fp parser src = (ast,anns)
   where
     (anns, ast) = case (parser df fp src) of
+                            Right xs -> xs
+                            Left err -> error (show err)
+
+-- ---------------------------------------------------------------------
+
+parseDeclToAnnotated ::
+                    GHC.DynFlags
+                 -> FilePath
+                 -- -> (GHC.DynFlags -> FilePath -> String -> Either a (Anns, GHC.Located ast))
+                 -> String
+                 -> (GHC.LHsDecl GHC.RdrName, Anns)
+parseDeclToAnnotated df fp src = (ast,anns)
+  where
+    (anns, ast) = case (parseDecl df fp src) of
                             Right xs -> xs
                             Left err -> error (show err)
 
