@@ -26,7 +26,6 @@ import qualified Var                   as Var
 
 import Control.Exception
 import Control.Monad.State
-import qualified Data.Generics.Zipper as Z
 import Data.Foldable
 import Data.List
 import Data.Maybe
@@ -35,7 +34,6 @@ import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Transform
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
@@ -272,11 +270,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
          logDataWithAnns "liftToMod:(declsParent)="  declsParent
          logDataWithAnns "liftToMod:(parent)" parent
-         -- let liftedDecls = definingDeclsRdrNames nameMap [n] declsParent True True
          let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
-             -- declaredPns = nub $ concatMap definedPNs liftedDecls
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
-             -- liftedSigs  = definingSigsRdrNames nameMap [n] parent
              liftedSigs  = definingSigsRdrNames nameMap declaredPns parent
              mLiftedSigs = liftedSigs
 
@@ -287,32 +282,22 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          -- one and the top level that are used in this one?
 
          -- logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (showGhc (liftedDecls,declaredPns))
-         -- original : pns<-pnsNeedRenaming inscps mod parent liftedDecls declaredPns
-         -- pns <- pnsNeedRenaming renamed parent liftedDecls declaredPns
          pns <- pnsNeedRenaming parsed parent liftedDecls declaredPns
          logm $ "liftToMod:(pns needing renaming)=" ++ (showGhc pns)
 
-         -- (_,dd) <- hsFreeAndDeclaredPNs renamed
          let dd = getDeclaredVars $ hsBinds renamed
          logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
          if pns == []
            then do
-             -- TODO: change the order, first move the decls then add params,
-             --       else the liftedDecls get mangled while still in the parent
              logm $ "liftToMod:(pns == [])"
              (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
-             -- let liftedDecls''=if paramAdded then filter isFunOrPatBindR liftedDecls'
-             --                                 else liftedDecls'
 
-             -- logDataWithAnns "liftToMod.liftToToplevel':parent'" parent'
              logm $ "liftToMod:(ffff)="
              logm $ "liftToMod:(liftedDecls')=" ++ showGhc liftedDecls'
              logDataWithAnns "liftToMod:(liftedDecls')=" liftedDecls'
 
-             let -- renamed' = replaceBinds renamed (before++parent'++after)
-                 -- defName  = (ghead "liftToMod" (definedPNs (ghead "liftToMod2" parent')))
-                 defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
+             let defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
              logm $ "liftToMod:(defName)=" ++ (showGhc defName)
              parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
              parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] (Just liftedDecls')
@@ -331,8 +316,6 @@ moveDecl1 :: (HasDecls t,SYB.Data t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
 
-     -- TODO: make this next parameter a single value, not a list,
-     -- after module complete
   -> [GHC.Name]     -- ^ The first one is the decl to move
   -> Maybe [GHC.LHsDecl GHC.RdrName]
   -> [GHC.Name]     -- ^ The signatures to remove. May be multiple if
@@ -353,18 +336,13 @@ moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
 
   -- logm $ "moveDecl1:(funBinding)=" ++ showGhc (funBinding)
   -- TODO: rmDecl can now remove the sig at the same time.
-  (t'',sigsRemoved) <- rmTypeSigs sigNames t
+  (t'',_sigsRemoved) <- rmTypeSigs sigNames t
   -- logm $ "moveDecl1:sigsRemoved=" ++ showGhc sigsRemoved
   logm $ "moveDecl1:mliftedSigs=" ++ showGhc mliftedSigs
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
-  -- logDataWithAnns "moveDecl1:(t')" t'
-  -- sigs <- liftT $ mapM wrapSigT sigsRemoved
   sigs <- liftT $ mapM wrapSigT mliftedSigs
-  -- liftT $ mapM_ (\d -> setPrecedingLinesDeclT d 0 0) (sigs++funBinding)
-  -- r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
   r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
 
-  -- logm $ "moveDecl1:(r)=" ++ SYB.showData SYB.Parser 0 r
   return r
 
 
@@ -391,7 +369,6 @@ pnsNeedRenaming dest parent _liftedDecls pns
        = do
             logm $ "MoveDef.pnsNeedRenaming' entered"
             parsed  <- getRefactParsed
-            renamed <- getRefactRenamed
             logDataWithAnns "MoveDef.pnsNeedRenaming':parsed" parsed
             -- logDataWithAnns "MoveDef.pnsNeedRenaming':renamed" renamed
             nm <- getRefactNameMap
@@ -428,7 +405,6 @@ liftingInClientMod serverModName pns targetModule = do
        logm $ "liftingInClientMod:targetModule=" ++ (show targetModule)
        -- void $ activateModule targetModule
        getTargetGhc targetModule
-       renamed <- getRefactRenamed
        parsed <- getRefactParsed
        -- logm $ "liftingInClientMod:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        -- let clientModule = GHC.ms_mod modSummary
