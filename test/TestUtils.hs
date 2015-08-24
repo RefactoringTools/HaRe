@@ -39,7 +39,6 @@ module TestUtils
        ) where
 
 
--- import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
@@ -53,7 +52,6 @@ import Exception
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Print
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Language.Haskell.GhcMod          as GM (Options(..),defaultOptions,Cradle(..),ProjectType(..),logLevel)

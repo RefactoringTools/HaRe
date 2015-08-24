@@ -254,7 +254,7 @@ getModuleDetails modSum = do
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
--- parseSourceFileGhc :: FilePath -> RefactGhc ()
+parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
     {-
       -- currentDir <- liftIO getCurrentDirectory

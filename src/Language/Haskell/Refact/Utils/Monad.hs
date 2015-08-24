@@ -53,7 +53,7 @@ import Control.Monad.State
 --import Data.Time.Clock
 import Distribution.Helper
 import Exception
-import qualified Language.Haskell.GhcMod          as GM (LineSeparator(..),Options(..),IOish,GhcModT,runGhcModT,Cradle(..))
+import qualified Language.Haskell.GhcMod          as GM (LineSeparator(..),Options(..),IOish,GhcModT,runGhcModT)
 import qualified Language.Haskell.GhcMod.Internal as GM (GmLog,MonadIO(..),loadTargets,GHCOption,GmlT(..),GmModuleGraph(..),ModulePath(..),gmlGetSession,gmlSetSession,gmlClear,gmlHistory,gmlJournal,runGmlT',GmEnv(..),GmComponent(..),GmComponentType(..),cabalResolvedComponents,targetGhcOptions,cradle)
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
@@ -384,8 +384,8 @@ getTargetGhcOptions mfns = do
   crdl <- GM.cradle
   getOpts crdl (Set.fromList mfns)
   where
-    getOpts crdl mfns
-      = RefactGhc (GM.GmlT $ GM.targetGhcOptions crdl mfns)
+    getOpts crdl mfns'
+      = RefactGhc (GM.GmlT $ GM.targetGhcOptions crdl mfns')
 
 -- ---------------------------------------------------------------------
 

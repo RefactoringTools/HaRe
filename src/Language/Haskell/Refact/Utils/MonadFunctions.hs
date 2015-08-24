@@ -450,7 +450,7 @@ initRdrNameMap tm = r
     checkRdr :: GHC.Located GHC.RdrName -> Maybe [GHC.SrcSpan]
     checkRdr (GHC.L l (GHC.Unqual _)) = Just [l]
     checkRdr (GHC.L l (GHC.Qual _ _)) = Just [l]
-    checkRdr (GHC.L l _)= Nothing
+    checkRdr (GHC.L _ _)= Nothing
 
     checkName :: GHC.Located GHC.Name -> Maybe [GHC.Located GHC.Name]
     checkName ln = Just [ln]

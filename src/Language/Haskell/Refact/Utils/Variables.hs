@@ -2431,7 +2431,7 @@ rdrName2Name ln = do
   return (rdrName2NamePure nameMap ln)
 
 rdrName2NamePure :: NameMap -> GHC.Located GHC.RdrName -> GHC.Name
-rdrName2NamePure nameMap (GHC.L lrn (GHC.Exact n)) = n
+rdrName2NamePure _nameMap (GHC.L _ (GHC.Exact n)) = n
 rdrName2NamePure nameMap (GHC.L lrn _) =
   fromMaybe (error $ "rdrName2NamePure: no name found for" ++ showGhc lrn)
              (Map.lookup lrn nameMap)
