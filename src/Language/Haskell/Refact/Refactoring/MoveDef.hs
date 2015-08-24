@@ -114,7 +114,6 @@ compLiftOneLevel fileName (row,col) = do
       parsed  <- getRefactParsed
 
       -- logm $ "compLiftOneLevel:(fileName,row,col)="++(show (fileName,row,col))
-      -- logm $ "compLiftOneLevel:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
 
       let (Just (modName,_)) = getModuleName parsed
       let maybePn = locToName (row, col) renamed
@@ -616,8 +615,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
   targetModule <- getRefactTargetModule
   if isLocalFunOrPatName n renamed
         then do
-                (refactoredMod,_) <- applyRefac doLiftOneLevel RSAlreadyLoaded
-                (b, pns) <- liftedToTopLevel pn parsed
+                (refactoredMod,(b,pns)) <- applyRefac doLiftOneLevel RSAlreadyLoaded
+                logm $ "liftOneLevel':main refactoring done:(p,pns)=" ++ showGhc (b,pns)
+                -- (b, pns) <- liftedToTopLevel pn parsed
                 if b &&  modIsExported modName renamed
                   then do clients<-clientModsAndFiles targetModule
                           -- logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
@@ -629,7 +629,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
    where
       doLiftOneLevel = do
         parsed <- getRefactParsed
-        SYB.everywhereM (SYB.mkM liftToTop) parsed
+        parsed' <- SYB.everywhereM (SYB.mkM liftToTop) parsed
+        liftedToTopLevel pn parsed'
         where
           liftToTop :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
           liftToTop p = do
@@ -652,7 +653,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
       -- |Lift the sub-bind to the parent.
       doLift parent bind = do
-        logm $ "in doLift"
+        logm $ "in doLift:(parent,bind):" ++ showGhc (parent,bind)
 
         let
           wtop (p::GHC.ParsedSource) = do
@@ -1134,7 +1135,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
 liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
 liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
+  logm $ "liftedToTopLevel entered"
   nm <- getRefactNameMap
+  logm $ "liftedToTopLevel:got nm"
   decls <- liftT $ hsDecls parsed
   if nonEmptyList (definingDeclsRdrNames nm [pn] decls False True)
      then do

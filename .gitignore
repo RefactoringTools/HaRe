@@ -449,3 +449,6 @@ testing/addCon/Case2.hs.temp.hs
 /Bug2.hs
 /hcar/auto/HaReTheHaskellRefactorer-AH.el
 /test/testdata/MoveDef/hlint.refact
+/HaRe.cabal.lkshs
+/HaRe.cabal.lkshw
+/.travis.yaml.old2
