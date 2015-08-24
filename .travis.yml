@@ -10,8 +10,8 @@ cache:
 
 # See also https://github.com/hvr/multi-ghc-travis for more information
 env:
- # - CABALVER=1.22 GHCVER=7.10.1
- - CABALVER=head GHCVER=7.10.2
+ - CABALVER=1.22 GHCVER=7.10.2
+ # - CABALVER=head GHCVER=7.10.2
  # - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
 
 addons:
