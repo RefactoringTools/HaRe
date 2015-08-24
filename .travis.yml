@@ -2,10 +2,11 @@
 
 sudo: false # Use new caching docker based infrastructure
 
+cache: apt
 cache:
   directories:
-  - .stack
-  - .cabal
+  - $HOME/.stack
+  - $HOME/.cabal
   - /opt
 
 # See also https://github.com/hvr/multi-ghc-travis for more information
