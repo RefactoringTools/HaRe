@@ -321,6 +321,8 @@ module Language.Haskell.Refact.API
 
     , removeOffset
 
+    , declsSybTransform
+
     -- ** Typed AST traversals (added by CMB)
     -- ** Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST

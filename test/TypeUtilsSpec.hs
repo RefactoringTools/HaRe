@@ -16,7 +16,7 @@ import Data.Maybe
 
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
-import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.Binds
@@ -2509,7 +2509,7 @@ spec = do
              [sqDecl] = definingDeclsRdrNames nameMap [sq] decls False False
              [afDecl] = definingDeclsRdrNames nameMap [af] decls False False
 
-         sqSigDecl <- liftT $ wrapSigT sqSig
+         let  sqSigDecl = wrapSig sqSig
          liftT (balanceComments sqDecl afDecl)
 
          newDecl <- addDecl tlDecl Nothing ([sqSigDecl,sqDecl],Nothing) False

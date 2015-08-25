@@ -1,8 +1,9 @@
 {-# LANGUAGE CPP #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeSynonymInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleContexts #-}
 
 --------------------------------------------------------------------------------
 -- Module      : TypeUtils
@@ -107,6 +108,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     , removeOffset
 
+    , declsSybTransform
+
     -- * Typed AST traversals (added by CMB)
     -- * Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
@@ -142,7 +145,7 @@ import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Variables
 
-import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -1526,6 +1529,30 @@ rmDecl pn incSig t = do
 
 -- ---------------------------------------------------------------------
 
+-- declsSybTransform :: (SYB.Typeable a, SYB.Typeable t)
+--              => (GHC.Located a -> Maybe r) -> t -> Maybe r
+declsSybTransform :: (SYB.Typeable a)
+  => (forall b. HasDecls b => b -> RefactGhc b)
+  -> a -> RefactGhc a
+declsSybTransform transform = mt
+  where
+    mt = SYB.mkM inMatch `SYB.extM` inPatDecl `SYB.extM` inModule
+
+    inModule :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
+    inModule (modu :: GHC.ParsedSource)
+       = transform modu
+
+    inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+    inMatch x@(GHC.L _ (GHC.Match _ _ _ (GHC.GRHSs _ _localDecls)))
+       = transform x
+
+    inPatDecl ::GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+    inPatDecl x@(GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _)))
+       = transform x
+    inPatDecl x = return x
+
+ ---------------------------------------------------------------------
+
 -- |Utility function to remove a decl from the middle of a list, assuming the
 -- list has already been split into a (possibly empty) front before the decl,
 -- and a back where the head is the decl to be removed.
@@ -1633,7 +1660,7 @@ rmTypeSig pn t
                       parent' <- liftT $ replaceDecls parent (decls1++[newSig]++tail decls2)
                       return parent'
                   else do
-                      [oldSig] <- liftT $ decl2SigT sig
+                      let [oldSig] = decl2Sig sig
                       setStateStorage (StorageSigRdr oldSig)
                       {-
                       unless (null $ tail decls2) $ do

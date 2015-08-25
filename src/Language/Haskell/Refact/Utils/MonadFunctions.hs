@@ -90,7 +90,6 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
--- import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -304,9 +303,15 @@ refactRunTransform transform = do
     logm $ intercalate "\n" logLines
   return a
 
-liftT :: Transform a -> RefactGhc a
-liftT = refactRunTransform
+-- liftT :: Transform a -> RefactGhc a
+-- liftT = refactRunTransform
 
+-- ---------------------------------------------------------------------
+
+instance HasTransform RefactGhc where
+  liftT = refactRunTransform
+
+-- ---------------------------------------------------------------------
 
 putUnique :: Int -> RefactGhc ()
 putUnique u = do

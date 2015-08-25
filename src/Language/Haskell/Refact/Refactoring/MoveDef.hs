@@ -34,7 +34,7 @@ import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
@@ -252,12 +252,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
        liftToMod = do
          renamed <- getRefactRenamed
          parsed <- getRefactParsed
-         -- let declsr = hsBinds renamed
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
-         logm $ "liftToMod:(parent)=" ++ (showGhc parent)
-         -- logDataWithAnns "liftToMod:(parent)" parent
-         -- error ("liftToMod:(before,parent,after)=" ++ (showGhc (before,parent,after))) -- ++AZ++
          {- ++AZ++ : hsBinds does not return class or instance definitions
          when (isClassDecl $ ghead "liftToMod" parent)
                $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
@@ -267,20 +263,14 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          nameMap <- getRefactNameMap
          declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
          logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
-         logDataWithAnns "liftToMod:(declsParent)="  declsParent
-         logDataWithAnns "liftToMod:(parent)" parent
          let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
              liftedSigs  = definingSigsRdrNames nameMap declaredPns parent
              mLiftedSigs = liftedSigs
 
-         logm $ "liftToMod:(liftedDecls)=" ++ (showGhc liftedDecls)
-         logm $ "liftToMod:(liftedSigs)="  ++ (showGhc liftedSigs)
-         -- logDataWithAnns "liftToMod:(liftedDecls)="  liftedDecls
          -- TODO: what about declarations between this
          -- one and the top level that are used in this one?
 
-         -- logm $ "liftToMod:(liftedDecls,declaredPns)=" ++ (showGhc (liftedDecls,declaredPns))
          pns <- pnsNeedRenaming parsed parent liftedDecls declaredPns
          logm $ "liftToMod:(pns needing renaming)=" ++ (showGhc pns)
 
@@ -289,15 +279,9 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
          if pns == []
            then do
-             logm $ "liftToMod:(pns == [])"
              (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
 
-             logm $ "liftToMod:(ffff)="
-             logm $ "liftToMod:(liftedDecls')=" ++ showGhc liftedDecls'
-             logDataWithAnns "liftToMod:(liftedDecls')=" liftedDecls'
-
              let defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
-             logm $ "liftToMod:(defName)=" ++ (showGhc defName)
              parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
              parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] (Just liftedDecls')
                                                             declaredPns mLiftedSigs' True
@@ -339,7 +323,7 @@ moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
   -- logm $ "moveDecl1:sigsRemoved=" ++ showGhc sigsRemoved
   logm $ "moveDecl1:mliftedSigs=" ++ showGhc mliftedSigs
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
-  sigs <- liftT $ mapM wrapSigT mliftedSigs
+  let sigs = map wrapSig mliftedSigs
   r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
 
   return r
@@ -622,12 +606,55 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                   then do clients<-clientModsAndFiles targetModule
                           -- logm $ "liftOneLevel':(clients,declPns)=" ++ (showGhc (clients,declPns))
                           refactoredClients <- mapM (liftingInClientMod modName pns) clients
-                          return (refactoredMod:(concat refactoredClients))
+                          return (refactoredMod:concat refactoredClients)
                   else do return [refactoredMod]
         else error "\nThe identifer is not a function/pattern name!"
 
    where
       doLiftOneLevel = do
+        parsed <- getRefactParsed
+        parsed' <- SYB.everywhereM (declsSybTransform doTheLift) parsed
+        putRefactParsed parsed' emptyAnns
+        liftedToTopLevel pn parsed'
+
+      -- doTheLift :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+      doTheLift :: forall b. HasDecls b => b -> RefactGhc b
+      doTheLift top = do
+         declsp <- liftT $ hsDecls top
+         (before,parent,after) <- divideDecls declsp pn
+         if null parent
+            then return top
+            else do
+              declsParent <- liftT $ hsDecls (ghead "doTheLift" parent)
+              logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
+              nameMap <- getRefactNameMap
+              let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
+                  declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
+                  liftedSigs  = definingSigsRdrNames nameMap declaredPns parent
+                  mLiftedSigs = liftedSigs
+
+              pns <- pnsNeedRenaming top parent liftedDecls declaredPns
+              logm $ "liftToMod:(pns needing renaming)=" ++ (showGhc pns)
+
+              renamed <- getRefactRenamed
+              let dd = getDeclaredVars $ hsBinds renamed
+              logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
+
+              if pns == []
+                then do
+                  (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
+
+                  let defName  = (ghead "doTheLift" (definedNamesRdr nameMap (ghead "doTheLift" parent')))
+                  top' <- liftT $ replaceDecls top (before++parent'++after)
+                  top2 <- moveDecl1 top' (Just defName) [GHC.unLoc pn] (Just liftedDecls')
+                                                                 declaredPns mLiftedSigs' True
+                  return top2
+
+                else askRenamingMsg pns "lifting"
+              return top
+
+     -- --------------------------------------------
+      doLiftOneLevel' = do
         parsed <- getRefactParsed
         parsed' <- SYB.everywhereM (SYB.mkM liftToTop) parsed
         liftedToTopLevel pn parsed'
@@ -2004,7 +2031,7 @@ foldParams pns (GHC.Match mfn pats mt rhs) _decls demotedDecls dsig dtoks
                      -- return (HsMatch loc1 name pats rhs (ds++demotedDecls))  -- no parameter folding
                      -- logm $ "MoveDef.foldParams about to addDecl:dtoks=" ++ (show dtoks)
                      -- drawTokenTree "" -- ++AZ++ debug
-                     sigs <- liftT $ mapM wrapSigT dsig
+                     let sigs = map wrapSig dsig
                      rhs' <- addDecl rhs Nothing (sigs++[demotedDecls],Nothing) False
                      logm $ "MoveDef.foldParams addDecl done 2"
                      return (GHC.Match mfn pats mt rhs')

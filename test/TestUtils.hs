@@ -244,8 +244,8 @@ testOptions = GM.defaultOptions { GM.logLevel = GM.GmError }
 -- ---------------------------------------------------------------------
 
 testCradle :: GM.Cradle
-testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing "./dist"
--- testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing
+-- testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing "./dist"
+testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing
 {-
 -- | The environment where this library is used.
 data Cradle = Cradle {
