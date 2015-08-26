@@ -308,7 +308,7 @@ moveDecl1 :: (HasDecls t,SYB.Data t)
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
   logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
-  -- logm $ "moveDecl1:(topLevel,t)=" ++ SYB.showData SYB.Parser 0 (topLevel,t)
+  logm $ "moveDecl1:(topLevel,t)=" ++ SYB.showData SYB.Parser 0 (topLevel,t)
   nameMap <- getRefactNameMap
 
   -- TODO: work with all of ns, not just the first
@@ -613,13 +613,35 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
    where
       doLiftOneLevel = do
         parsed <- getRefactParsed
-        parsed' <- SYB.everywhereM (declsSybTransform doTheLift) parsed
+        parsed' <- SYB.everywhereM (declsSybTransform findAndLift) parsed
         putRefactParsed parsed' emptyAnns
         liftedToTopLevel pn parsed'
 
-      -- doTheLift :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
-      doTheLift :: forall b. HasDecls b => b -> RefactGhc b
-      doTheLift top = do
+      -- -------------------------------
+
+      findAndLift :: forall b. HasDecls b => b -> RefactGhc b
+      findAndLift p = do
+        nm <- getRefactNameMap
+        ans <- liftT getAnnsT
+        declsp <- liftT $ hsDecls p
+        let
+          doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
+            where
+              (declsbs,_,_) = runTransform ans (hsDecls bs) -- ++AZ++:TODO: replace with lifT when reworking
+
+          candidateBinds = map snd
+                         $ filter (\(l,_bs) -> nonEmptyList l)
+                         $ map doOne
+                         $ declsp
+        case candidateBinds of
+          [] -> return p
+          [b] -> doLift p [b]
+          bs -> error $ "MoveDef.doLiftOneLevel:multiple containing binds:" ++ showGhc bs
+
+      -- -------------------------------
+
+      doTheLift :: forall b. HasDecls b => b -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc b
+      doTheLift top ds = do
          declsp <- liftT $ hsDecls top
          (before,parent,after) <- divideDecls declsp pn
          if null parent
@@ -680,7 +702,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
       -- |Lift the sub-bind to the parent.
       doLift parent bind = do
-        logm $ "in doLift:(parent,bind):" ++ showGhc (parent,bind)
+        -- logm $ "in doLift:(parent,bind):" ++ showGhc (parent,bind)
 
         let
           wtop (p::GHC.ParsedSource) = do
@@ -733,7 +755,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                          (parent',liftedDecls',mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
                                                               parent liftedDecls []
                          --True means the new decl will be at the same level with its parant.
-                         toMove <- refactReplaceDecls dest (before++parent'++after)
+                         toMove <- liftT $ replaceDecls dest (before++parent'++after)
                          dest' <- moveDecl1 toMove
                                     (Just (ghead "worker" (definedNamesRdr nm (ghead "worker" parent'))))
                                     [n] (Just liftedDecls') declaredPns mLiftedSigs' toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move

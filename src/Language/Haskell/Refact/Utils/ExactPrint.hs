@@ -152,8 +152,8 @@ addAnnKeywords ans conName ks =
 -- ---------------------------------------------------------------------
 
 replaceAnnKey :: (SYB.Data old,SYB.Data new)
-  => Anns -> GHC.Located old -> GHC.Located new -> Anns
-replaceAnnKey ans old new =
+  => GHC.Located old -> GHC.Located new -> Anns -> Anns
+replaceAnnKey old new ans =
   case Map.lookup (mkAnnKey old) anns of
     Nothing -> (const anns ) ans
     Just v ->  (const anns') ans

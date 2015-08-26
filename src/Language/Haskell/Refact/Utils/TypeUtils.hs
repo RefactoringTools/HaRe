@@ -1019,15 +1019,16 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
       -> RefactGhc t -- ^updated AST
   appendDecl parent' pn' newDeclSig
     = do
+         logm $ "addDecl.appendDecl:(pn')=" ++ showGhc pn'
          liftT $ setDeclSpacing newDeclSig 2 0
          nameMap <- getRefactNameMap
-         decls <- refactRunTransform (hsDecls parent')
+         decls <- liftT $ hsDecls parent'
          let
             (before,after) = break (definesDeclRdr nameMap pn') decls -- Need to handle the case that 'after' is empty?
 
          let decls1 = before ++ [ghead "appendDecl14" after]
              decls2 = gtail "appendDecl15" after
-         refactReplaceDecls parent' (decls1++newDeclSig++decls2)
+         liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
 
 
   -- ^Add a definition to the beginning of the definition declaration
@@ -1038,7 +1039,7 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
   addTopLevelDecl newDeclSig parent'
     = do decls <- liftT (hsDecls parent')
          liftT $ setDeclSpacing newDeclSig 2 0
-         refactReplaceDecls parent' (newDeclSig++decls)
+         liftT $ replaceDecls parent' (newDeclSig++decls)
 
 
   addLocalDecl :: (HasDecls t)
@@ -1857,9 +1858,8 @@ renamePN' oldPN newName useQual t = do
           -- A RdrName Can have a number of constructors, which are used to
           -- index the annotations associated with it. Make sure the annotation
           -- lines up.
-          an <- getAnnsT
           let new = (GHC.L l nn)
-          putAnnsT $ replaceAnnKey an old new
+          modifyAnnsT (replaceAnnKey old new)
 
           return new
     rename _ x = return x
@@ -1902,9 +1902,8 @@ renamePN' oldPN newName useQual t = do
           -- logTr $ "renamePN:renameLIE.IEVar at :" ++ (showGhc l)
           let new = newNameCalc useQual' n
 
-          an <- getAnnsT
           let newn = (GHC.L ln new)
-          putAnnsT $ replaceAnnKey an old newn
+          modifyAnnsT (replaceAnnKey old newn)
 
           return (GHC.L l (GHC.IEVar (GHC.L ln new)))
 
@@ -1914,9 +1913,8 @@ renamePN' oldPN newName useQual t = do
           -- logTr $ "renamePN:renameLIE.IEThingAbs at :" ++ (showGhc l)
           let new = newNameCalc useQual' n
 
-          an <- getAnnsT
           let newn = (GHC.L ln new)
-          putAnnsT $ replaceAnnKey an old newn
+          modifyAnnsT (replaceAnnKey old newn)
 
           return (GHC.L l (GHC.IEThingAbs (GHC.L ln new)))
 
@@ -1926,9 +1924,8 @@ renamePN' oldPN newName useQual t = do
           -- logTr $ "renamePN:renameLIE.IEThingAll at :" ++ (showGhc l)
           let new = newNameCalc useQual' n
 
-          an <- getAnnsT
           let newn = (GHC.L ln new)
-          putAnnsT $ replaceAnnKey an old newn
+          modifyAnnsT (replaceAnnKey old newn)
 
           return (GHC.L l (GHC.IEThingAll (GHC.L ln new)))
 
@@ -1941,9 +1938,8 @@ renamePN' oldPN newName useQual t = do
              logTr $ "renamePN:renameLIE.IEThingWith at :" ++ (showGhc l)
              let new = newNameCalc useQual' n
 
-             an <- getAnnsT
              let newn = (GHC.L ln new)
-             putAnnsT $ replaceAnnKey an old newn
+             modifyAnnsT (replaceAnnKey old newn)
 
              return (GHC.L ln new)
            else return old
@@ -1987,9 +1983,8 @@ renamePN' oldPN newName useQual t = do
                     -- A RdrName Can have a number of constructors, which are used to
                     -- index the annotations associated with it. Make sure the annotation
                     -- lines up.
-                    an <- getAnnsT
                     let new = (GHC.L lmn newNameUnqual)
-                    putAnnsT $ replaceAnnKey an old new
+                    modifyAnnsT (replaceAnnKey old new)
 
                     return (GHC.L lm (GHC.Match (Just (new,f)) pats typ' grhss))
                   Nothing -> return lmatch

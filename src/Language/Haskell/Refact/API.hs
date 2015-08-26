@@ -78,7 +78,6 @@ module Language.Haskell.Refact.API
 
        -- * New ghc-exactprint interfacing
        , replaceRdrName
-       , refactReplaceDecls
        , refactRunTransform
        , liftT
 

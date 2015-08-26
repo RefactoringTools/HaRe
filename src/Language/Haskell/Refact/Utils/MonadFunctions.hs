@@ -43,7 +43,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
 
        -- * New ghc-exactprint interfacing
        , replaceRdrName
-       , refactReplaceDecls
        , refactRunTransform
        , liftT
 
@@ -254,7 +253,7 @@ replaceRdrName (GHC.L l newName) = do
         | l == ln = do
            an <- get
            let new = (GHC.L l newName)
-           put $ replaceAnnKey an old new
+           put $ replaceAnnKey old new an
            return new
       replaceRdr x = return x
 
@@ -285,10 +284,11 @@ replaceRdrName (GHC.L l newName) = do
   return ()
 
 -- ---------------------------------------------------------------------
-
+{-
 refactReplaceDecls :: (HasDecls a) => a -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc a
 refactReplaceDecls t decls = do
   liftT (replaceDecls t decls)
+-}
 
 -- |Run a transformation in the ghc-exactprint Transform monad, updating the
 -- current annotations and unique SrcSpan value.

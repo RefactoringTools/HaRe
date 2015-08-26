@@ -15,7 +15,8 @@ of the GHC library problematic.
 
 module Language.Haskell.Refact.Utils.GhcUtils (
     -- * SYB versions
-      everywhereMStaged'
+      everywhereM'
+    , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
     , onelayerStaged
@@ -71,6 +72,13 @@ everywhereMStaged' stage f x
   | otherwise = do x' <- f x
                    gmapM (everywhereMStaged' stage f) x'
 
+-- | Monadic variation on everywhere'
+everywhereM' :: Monad m => SYB.GenericM m -> SYB.GenericM m
+
+-- Top-down order is also reflected in order of do-actions
+everywhereM' f x
+  = do x' <- f x
+       gmapM (everywhereM' f) x'
 
 -- ---------------------------------------------------------------------
 
