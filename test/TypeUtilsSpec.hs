@@ -2128,6 +2128,27 @@ spec = do
       (sourceFromState s) `shouldBe` "module Demote.WhereIn3 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq :: Int -> Int -> Int\n\n{- foo bar -}\nanotherFun 0 y = sq y\n     where  sq x = x^2\n"
 
 
+    -- -----------------------------------------------------------------
+
+    it "removes a sub decl liftOneLevel D1" $ do
+      (t, toks, tgt) <- ct $ parsedFileGhc "./LiftOneLevel/D1.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let Just (GHC.L _ n) = locToName (8, 6) renamed
+      let
+        comp = do
+         (parsed',_removedDecl,_removedSig1) <- rmDecl n False parsed
+         putRefactParsed parsed' emptyAnns
+
+         return parsed'
+      (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      -- putStrLn $ showAnnDataFromState s
+      (showGhcQual n) `shouldBe` "sq"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module LiftOneLevel.D1 where\n\n{-lift 'sq' to top level. This refactoring\naffects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n  where\n     sq x = x ^ pow\n     pow =2\n\nsumSquares [] = 0\n\nmain = sumSquares [1..4]\n"
+      (sourceFromState s) `shouldBe` "module LiftOneLevel.D1 where\n\n{-lift 'sq' to top level. This refactoring\naffects module 'D1' and 'C1' -}\n\nsumSquares (x:xs) = sq x + sumSquares xs\n  where\n     pow =2\n\nsumSquares [] = 0\n\nmain = sumSquares [1..4]\n"
+
+
   -- ---------------------------------------------
 
   describe "rmTypeSig" $ do

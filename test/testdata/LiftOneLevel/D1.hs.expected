@@ -9,7 +9,6 @@ sumSquares (x:xs) = (sq pow) x + sumSquares xs
 
 sumSquares [] = 0
 
-
-sq pow x= x ^ pow
+sq pow x = x ^ pow
 
 main = sumSquares [1..4]

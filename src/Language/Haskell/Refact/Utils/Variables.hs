@@ -572,7 +572,8 @@ hsFreeAndDeclaredNameStrings t = do
   return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 
-hsFreeAndDeclaredPNs :: (SYB.Data t,GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
+-- hsFreeAndDeclaredPNs :: (SYB.Data t,GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
+hsFreeAndDeclaredPNs :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
   (FN f,DN d) <- hsFreeAndDeclaredGhc t
@@ -587,7 +588,8 @@ hsFreeAndDeclaredPNs t = do
 -- TODO: use GHC.NameSet instead of lists for FreeNames/DeclaredNames
 -- NOTE: The GHC fvs fields only carry non-GHC values, as they are
 -- used in the renaming process
-hsFreeAndDeclaredGhc :: (SYB.Data t,GHC.Outputable t)
+-- hsFreeAndDeclaredGhc :: (SYB.Data t,GHC.Outputable t)
+hsFreeAndDeclaredGhc :: (SYB.Data t)
                      => t -> RefactGhc (FreeNames,DeclaredNames)
 hsFreeAndDeclaredGhc t = do
   -- logm $ "hsFreeAndDeclaredGhc:t=" ++ showGhc t

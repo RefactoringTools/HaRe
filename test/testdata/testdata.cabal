@@ -82,3 +82,28 @@ Executable ltta2
   Other-Modules : LiftToToplevel.C2
                   LiftToToplevel.D2
   Build-Depends:          base >= 4.0  && < 4.9
+
+-- ---------------------------------------------------------------------
+
+Executable lola1
+
+  Main-Is: LiftOneLevel/A1.hs
+  Other-Modules : LiftOneLevel.C1
+                  LiftOneLevel.D1
+  Build-Depends:          base >= 4.0  && < 4.9
+
+
+Executable lola2
+
+  Main-Is: LiftOneLevel/A2.hs
+  Other-Modules : LiftOneLevel.C2
+                  LiftOneLevel.D2
+  Build-Depends:          base >= 4.0  && < 4.9
+
+
+Executable lola3
+
+  Main-Is: LiftOneLevel/A3.hs
+  Other-Modules : LiftOneLevel.C3
+                  LiftOneLevel.D3
+  Build-Depends:          base >= 4.0  && < 4.9
