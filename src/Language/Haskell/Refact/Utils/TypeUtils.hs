@@ -1539,6 +1539,7 @@ declsSybTransform :: (SYB.Typeable a)
 declsSybTransform transform = mt
   where
     mt = SYB.mkM inMatch `SYB.extM` inPatDecl `SYB.extM` inModule
+                         `SYB.extM` inHsLet
 
     inModule :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
     inModule (modu :: GHC.ParsedSource)
@@ -1552,6 +1553,11 @@ declsSybTransform transform = mt
     inPatDecl x@(GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _)))
        = transform x
     inPatDecl x = return x
+
+    inHsLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+    inHsLet x@(GHC.L _ (GHC.HsLet{}))
+       = transform x
+    inHsLet x = return x
 
  ---------------------------------------------------------------------
 

@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Refactoring.MoveDef
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+import qualified Language.Haskell.Refact.Utils.GhcUtils as SYB
 
 import qualified Exception             as GHC
 import qualified FastString            as GHC
@@ -629,6 +630,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
         nm <- getRefactNameMap
         ans <- liftT getAnnsT
         declsp <- liftT $ hsDecls p
+        logm $ "findAndLift:declsp=" ++ showGhc declsp
         let
           doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
             where
@@ -650,6 +652,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
       doTheLift :: forall b. HasDecls b => b -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc b
       doTheLift dest ds = do
+        logm $ "doTheLift:ds=" ++ showGhc ds
         done <- getRefactDone
         if done then return dest
           else do
@@ -696,7 +699,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
       doLiftOneLevel' = do
         parsed <- getRefactParsed
+        clearRefactDone
         parsed' <- SYB.everywhereM (SYB.mkM liftToTop) parsed
+        putRefactParsed parsed' emptyAnns
         liftedToTopLevel pn parsed'
         where
           liftToTop :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
@@ -715,17 +720,23 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                              $ declsp
             case candidateBinds of
               [] -> return p
-              [b] -> doLift p [b]
+              -- [b] -> doLift p [b]
+              [b] -> doLift p declsp
+              -- [b] -> doTheLift p declsp
               bs -> error $ "MoveDef.doLiftOneLevel:multiple containing binds:" ++ showGhc bs
 
       -- |Lift the sub-bind to the parent.
       doLift parent bind = do
-        -- logm $ "in doLift:(parent,bind):" ++ showGhc (parent,bind)
+        logm $ "in doLift:(parent,bind):" ++ showGhc (parent,bind)
 
         let
           wtop (p::GHC.ParsedSource) = do
             (_, dd) <- hsFreeAndDeclaredPNs p
             worker p bind pn dd True
+
+          wmatch (m@(GHC.L _ (GHC.Match _ _ _ (GHC.GRHSs _ lb))) :: (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) ) = do
+            (_, dd) <- hsFreeAndDeclaredPNs m
+            worker m bind pn dd True
 
           wgrhs (grhss::GHC.GRHSs GHC.RdrName  (GHC.LHsExpr GHC.RdrName)) = do
              (_,dd) <- (hsFreeAndDeclaredPNs grhss)
@@ -747,7 +758,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              decls <- liftT $ hsDecls ds
              worker1 vb decls pn dd False
 -}
-        parent' <- SYB.everywhereM (SYB.mkM wtop
+        parent' <- SYB.everywhereM' (SYB.mkM wtop
+                                    `SYB.extM` wmatch
                                     -- `SYB.extM` wgrhs
                                     -- `SYB.extM` wlet
                                     -- `SYB.extM` wvalbinds
@@ -767,26 +779,30 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
       worker dest ds pnn dd toToplevel
            =do
                logm $ "MoveDef.worker: ds=" ++ (showGhc ds)
-               (before,parent,after) <- divideDecls ds pnn -- parent is misnomer, it is the decl to be moved
-               nm <- getRefactNameMap
-               let liftedDecls = definingDeclsRdrNames nm [n] parent True True
-                   declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
-               -- (_, dd) <- hsFreeAndDeclaredPNs dest
-               pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
-               logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
-               if pns==[]
-                 then do
-                         (parent',liftedDecls',mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
-                                                              parent liftedDecls []
-                         --True means the new decl will be at the same level with its parant.
-                         toMove <- liftT $ replaceDecls dest (before++parent'++after)
-                         dest' <- moveDecl1 toMove
-                                    (Just (ghead "worker" (definedNamesRdr nm (ghead "worker" parent'))))
-                                    [n] (Just liftedDecls') declaredPns mLiftedSigs' toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
-                         return dest'
-                         --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
-                         --return (before++parent'++liftedDecls''++after)
-                 else askRenamingMsg pns "lifting"
+               done <- getRefactDone
+               if done then return dest
+                 else do
+                   setRefactDone
+                   (before,parent,after) <- divideDecls ds pnn -- parent is misnomer, it is the decl to be moved
+                   nm <- getRefactNameMap
+                   let liftedDecls = definingDeclsRdrNames nm [n] parent True True
+                       declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+                   -- (_, dd) <- hsFreeAndDeclaredPNs dest
+                   pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
+                   logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
+                   if pns==[]
+                     then do
+                             (parent',liftedDecls',mLiftedSigs')<-addParamsToParentAndLiftedDecl n dd
+                                                                  parent liftedDecls []
+                             --True means the new decl will be at the same level with its parant.
+                             toMove <- liftT $ replaceDecls dest (before++parent'++after)
+                             dest' <- moveDecl1 toMove
+                                        (Just (ghead "worker" (definedNamesRdr nm (ghead "worker" parent'))))
+                                        [n] (Just liftedDecls') declaredPns mLiftedSigs' toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                             return dest'
+                             --parent'<-doMoving declaredPns (ghead "worker" parent) True  paramAdded parent'
+                             --return (before++parent'++liftedDecls''++after)
+                     else askRenamingMsg pns "lifting"
 
       worker1 :: (HasDecls t,GHC.Outputable t)
          => t -- ^The destination of the lift operation
