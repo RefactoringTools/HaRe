@@ -34,6 +34,7 @@ import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
@@ -636,51 +637,54 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                          $ filter (\(l,_bs) -> nonEmptyList l)
                          $ map doOne
                          $ declsp
-        case candidateBinds of
+        p' <- case candidateBinds of
           [] -> return p
-          -- [b] -> doLift p [b]
-          [b] -> doLift p declsp
-          -- [b] -> doTheLift p [b]
+          -- [b] -> doLift p declsp
+          [b] -> doTheLift p declsp
           bs -> error $ "MoveDef.doLiftOneLevel:multiple containing binds:" ++ showGhc bs
+        -- logDataWithAnns "findAndLift:p'" p'
+        return p'
 
       -- -------------------------------
 
       doTheLift :: forall b. HasDecls b => b -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc b
       doTheLift dest ds = do
-         declsp <- liftT $ hsDecls dest
-         -- (before,parent,after) <- divideDecls declsp pn
-         (before,parent,after) <- divideDecls ds pn -- ++AZ++: Needed? always pass in what we need, before,after should be []
-         if null parent
-            then return dest
-            else do
-              declsParent <- liftT $ hsDecls (ghead "doTheLift" parent)
-              logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
-              nm <- getRefactNameMap
-              let liftedDecls = definingDeclsRdrNames nm [n] parent True True
-                  declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
-                  liftedSigs  = definingSigsRdrNames nm declaredPns parent
-                  mLiftedSigs = liftedSigs
-              (_, dd) <- hsFreeAndDeclaredPNs dest
+        logm $ "MoveDef.doTheLift: ds=" ++ (showGhc ds)
+        (before,parent,after) <- divideDecls ds pn -- ++AZ++: Needed? always pass in what we need, before,after should be []
+        if null parent
+           then return dest
+           else do
+             nm <- getRefactNameMap
+             let liftedDecls = definingDeclsRdrNames nm [n] parent True True
+                 declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+                 liftedSigs  = definingSigsRdrNames nm declaredPns parent
+                 mLiftedSigs = liftedSigs
+             (_, dd) <- hsFreeAndDeclaredPNs dest
 
-              pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
-              logm $ "liftToMod:(pns needing renaming)=" ++ (showGhc pns)
+             pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
+             logm $ "doTheLift:(pns needing renaming)=" ++ (showGhc pns)
 
-              if pns == []
-                then do
-                  -- renamed <- getRefactRenamed
-                  -- let dd = getDeclaredVars $ hsBinds renamed
-                  -- logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
+             if pns == []
+               then do
+                 -- renamed <- getRefactRenamed
+                 -- let dd = getDeclaredVars $ hsBinds renamed
+                 -- logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
-                  (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
+                 (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
+                 -- logm $ "doTheLift:(before,parent,after)=" ++ showGhc (before,parent,after)
+                 -- logm $ "doTheLift:(parent')=" ++ showGhc parent'
+                 toMove <- liftT $ replaceDecls dest (before++parent'++after)
+                 -- logm $ "doTheLift:(toMove)=" ++ SYB.showData SYB.Parser 0 toMove
 
-                  let defName  = (ghead "doTheLift" (definedNamesRdr nm (ghead "doTheLift" parent')))
-                  -- dest' <- liftT $ replaceDecls dest (before++parent'++after)
-                  dest2 <- moveDecl1 dest (Just defName) [GHC.unLoc pn] (Just liftedDecls')
-                                                                 declaredPns mLiftedSigs' True
-                  return dest2
+                 let defName  = (ghead "doTheLift" (definedNamesRdr nm (ghead "doTheLift" parent')))
+                 -- dest' <- liftT $ replaceDecls dest (before++parent'++after)
+                 -- dest2 <- moveDecl1 dest (Just defName) [GHC.unLoc pn] (Just liftedDecls')
+                 dest2 <- moveDecl1 toMove (Just defName) [n] (Just liftedDecls')
+                                                                declaredPns mLiftedSigs' True
+                 -- logDataWithAnns "doTheLift:dest2" dest2
+                 return dest2
 
-                else askRenamingMsg pns "lifting"
-              return dest
+               else askRenamingMsg pns "lifting"
 
      -- --------------------------------------------
 
@@ -714,13 +718,16 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
         let
           wtop (p::GHC.ParsedSource) = do
-            worker p bind pn True
-{-
+            (_, dd) <- hsFreeAndDeclaredPNs p
+            worker p bind pn dd True
+
           wgrhs (grhss::GHC.GRHSs GHC.RdrName  (GHC.LHsExpr GHC.RdrName)) = do
              (_,dd) <- (hsFreeAndDeclaredPNs grhss)
-             decls <- liftT $ hsDecls ds
-             worker1 grhss decls pn dd False
+             -- decls <- liftT $ hsDecls ds
+             worker grhss bind pn dd False
+             -- worker grhss bind pn dd False
 
+{-
           wlet :: GHC.HsExpr GHC.RdrName -> RefactGhc (GHC.HsExpr GHC.RdrName)
           wlet l@(GHC.HsLet dsl _e) = do
             (_,dd) <- hsFreeAndDeclaredPNs dsl
@@ -743,21 +750,22 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
         return parent'
 
       -- TODO: merge worker and worker1
-      worker :: (HasDecls t,GHC.Outputable t)
+      worker :: (HasDecls t)
          => t -- ^The destination of the lift operation
          -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
                                       -- lifted
          -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
+         -> [GHC.Name] -- ^Declared variables in the destination
          -> Bool -- ^True if lifting to the top level
          -> RefactGhc t
-      worker dest ds pnn toToplevel
+      worker dest ds pnn dd toToplevel
            =do
                logm $ "MoveDef.worker: ds=" ++ (showGhc ds)
                (before,parent,after) <- divideDecls ds pnn -- parent is misnomer, it is the decl to be moved
                nm <- getRefactNameMap
                let liftedDecls = definingDeclsRdrNames nm [n] parent True True
                    declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
-               (_, dd) <- hsFreeAndDeclaredPNs dest
+               -- (_, dd) <- hsFreeAndDeclaredPNs dest
                pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
                logm $ "MoveDef.worker: pns=" ++ (showGhc pns)
                if pns==[]
@@ -792,12 +800,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              4. Do the move
            -}
 
-           =do (_before,decl,_after) <- divideDecls ds pnn
+           =do
+               (before,parent,after) <- divideDecls ds pnn
                nm <- getRefactNameMap
-               let liftedDecls = definingDeclsRdrNames nm  [n] decl True  True
+               let liftedDecls = definingDeclsRdrNames nm  [n] parent True  True
                    declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
 
-               pns <- pnsNeedRenaming dest decl liftedDecls declaredPns
+               pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
                logm $ "MoveDef.worker1: pns=" ++ (showGhc pns)
                if pns==[]
                  then do
@@ -993,24 +1002,24 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
 liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
 liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
-  logm $ "liftedToTopLevel entered"
-  logDataWithAnns "liftedToTopLevel:parsed" parsed
+  -- logm $ "liftedToTopLevel entered"
+  -- logDataWithAnns "liftedToTopLevel:parsed" parsed
   nm <- getRefactNameMap
-  logm $ "liftedToTopLevel:got nm"
+  -- logm $ "liftedToTopLevel:got nm"
   decls <- liftT $ hsDecls parsed
   let topDecs = definingDeclsRdrNames nm [pn] decls False False
-  logm $ "liftedToTopLevel:(pn,topDecs)=" ++ showGhc (pn,topDecs)
+  -- logm $ "liftedToTopLevel:(pn,topDecs)=" ++ showGhc (pn,topDecs)
   -- ++AZ++ :TODO: we are ot updating the nameMap to reflect moved decls
   if nonEmptyList topDecs
      then do
-       logm $ "liftedToTopLevel:nonemptylist"
+       -- logm $ "liftedToTopLevel:nonemptylist"
        (_, parent,_) <- divideDecls decls pnt
-       logm $ "liftedToTopLevel:parent=" ++ showGhc parent
+       -- logm $ "liftedToTopLevel:parent=" ++ showGhc parent
        -- declsp <- liftT $ hsDecls parent
        let declsp = parent
        let liftedDecls = definingDeclsRdrNames nm [pn] declsp False False
            declaredPns  = nub $ concatMap (definedNamesRdr nm) liftedDecls
-       logm $ "liftedToTopLevel:declaredPns=" ++ showGhc declaredPns
+       -- logm $ "liftedToTopLevel:declaredPns=" ++ showGhc declaredPns
        return (True, declaredPns)
      else return (False, [])
 

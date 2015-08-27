@@ -1047,8 +1047,6 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
                -> RefactGhc t
   addLocalDecl parent' newDeclSig
     = do
-         -- logDataWithAnns "addDecl.addLocalDecl" (newDeclSig,parent')
-         -- logDataWithAnns "addDecl.addLocalDecl" parent'
          decls <- liftT (hsDecls parent')
          case decls of
            [] -> liftT $ setDeclSpacing newDeclSig 1 4
