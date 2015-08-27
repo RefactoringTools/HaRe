@@ -1003,8 +1003,9 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
   if isJust pn
     then appendDecl parent (gfromJust "addDecl" pn) declSig
     else if topLevel
-           then addTopLevelDecl declSig parent
-           else addLocalDecl parent declSig
+           -- then addTopLevelDecl parent declSig
+           then addLocalDecl    parent declSig
+           else addLocalDecl    parent declSig
  where
   setDeclSpacing newDeclSig n c = do
     -- First clear any previous indentation
@@ -1034,9 +1035,9 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
   -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there are any.
   addTopLevelDecl :: (HasDecls t)
-       => [GHC.LHsDecl GHC.RdrName]
-       -> t -> RefactGhc t
-  addTopLevelDecl newDeclSig parent'
+       => t -> [GHC.LHsDecl GHC.RdrName]
+       -> RefactGhc t
+  addTopLevelDecl parent' newDeclSig
     = do decls <- liftT (hsDecls parent')
          liftT $ setDeclSpacing newDeclSig 2 0
          liftT $ replaceDecls parent' (newDeclSig++decls)
@@ -1049,11 +1050,13 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
     = do
          decls <- liftT (hsDecls parent')
          case decls of
-           [] -> liftT $ setDeclSpacing newDeclSig 1 4
+           -- [] -> liftT $ setDeclSpacing newDeclSig 1 4
+           [] -> liftT $ setDeclSpacing newDeclSig 2 0
            ds -> do
              DP (r,c) <- liftT (getEntryDPT (head ds))
              liftT $ setDeclSpacing newDeclSig r c
-             liftT $ setPrecedingLinesT (head ds) 1 0
+             -- liftT $ setPrecedingLinesT (head ds) 1 0
+             liftT $ setPrecedingLinesT (head ds) 2 0
          r <- liftT $ replaceDecls parent' (newDeclSig++decls)
          return r
 

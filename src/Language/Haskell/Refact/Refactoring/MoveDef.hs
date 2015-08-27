@@ -354,7 +354,7 @@ pnsNeedRenaming dest parent _liftedDecls pns
        = do
             logm $ "MoveDef.pnsNeedRenaming' entered"
             parsed  <- getRefactParsed
-            logDataWithAnns "MoveDef.pnsNeedRenaming':parsed" parsed
+            -- logDataWithAnns "MoveDef.pnsNeedRenaming':parsed" parsed
             -- logDataWithAnns "MoveDef.pnsNeedRenaming':renamed" renamed
             nm <- getRefactNameMap
             (FN f,DN d) <- hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
@@ -617,6 +617,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
    where
       doLiftOneLevel = do
         parsed <- getRefactParsed
+        clearRefactDone
         parsed' <- SYB.everywhereM (declsSybTransform findAndLift) parsed
         putRefactParsed parsed' emptyAnns
         liftedToTopLevel pn parsed'
@@ -649,42 +650,47 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
       doTheLift :: forall b. HasDecls b => b -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc b
       doTheLift dest ds = do
-        logm $ "MoveDef.doTheLift: ds=" ++ (showGhc ds)
-        (before,parent,after) <- divideDecls ds pn -- ++AZ++: Needed? always pass in what we need, before,after should be []
-        if null parent
-           then return dest
-           else do
-             nm <- getRefactNameMap
-             let liftedDecls = definingDeclsRdrNames nm [n] parent True True
-                 declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
-                 liftedSigs  = definingSigsRdrNames nm declaredPns parent
-                 mLiftedSigs = liftedSigs
-             (_, dd) <- hsFreeAndDeclaredPNs dest
+        done <- getRefactDone
+        if done then return dest
+          else do
+            logm $ "MoveDef.doTheLift: ds=" ++ (showGhc ds)
+            (before,parent,after) <- divideDecls ds pn -- ++AZ++: Needed? always pass in what we need, before,after should be []
+            if null parent
+               then return dest
+               else do
+                 setRefactDone
+                 nm <- getRefactNameMap
+                 let liftedDecls = definingDeclsRdrNames nm [n] parent True True
+                     declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+                     liftedSigs  = definingSigsRdrNames nm declaredPns parent
+                     mLiftedSigs = liftedSigs
+                 -- (_, dd) <- hsFreeAndDeclaredPNs dest
+                 let (_, DN dd) = hsFreeAndDeclaredRdr nm dest
 
-             pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
-             logm $ "doTheLift:(pns needing renaming)=" ++ (showGhc pns)
+                 pns <- pnsNeedRenaming dest parent liftedDecls declaredPns
+                 logm $ "doTheLift:(pns needing renaming)=" ++ (showGhc pns)
 
-             if pns == []
-               then do
-                 -- renamed <- getRefactRenamed
-                 -- let dd = getDeclaredVars $ hsBinds renamed
-                 -- logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
+                 if pns == []
+                   then do
+                     -- renamed <- getRefactRenamed
+                     -- let dd = getDeclaredVars $ hsBinds renamed
+                     -- logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
-                 (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
-                 -- logm $ "doTheLift:(before,parent,after)=" ++ showGhc (before,parent,after)
-                 -- logm $ "doTheLift:(parent')=" ++ showGhc parent'
-                 toMove <- liftT $ replaceDecls dest (before++parent'++after)
-                 -- logm $ "doTheLift:(toMove)=" ++ SYB.showData SYB.Parser 0 toMove
+                     (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
+                     -- logm $ "doTheLift:(before,parent,after)=" ++ showGhc (before,parent,after)
+                     -- logm $ "doTheLift:(parent')=" ++ showGhc parent'
+                     toMove <- liftT $ replaceDecls dest (before++parent'++after)
+                     -- logm $ "doTheLift:(toMove)=" ++ SYB.showData SYB.Parser 0 toMove
 
-                 let defName  = (ghead "doTheLift" (definedNamesRdr nm (ghead "doTheLift" parent')))
-                 -- dest' <- liftT $ replaceDecls dest (before++parent'++after)
-                 -- dest2 <- moveDecl1 dest (Just defName) [GHC.unLoc pn] (Just liftedDecls')
-                 dest2 <- moveDecl1 toMove (Just defName) [n] (Just liftedDecls')
-                                                                declaredPns mLiftedSigs' True
-                 -- logDataWithAnns "doTheLift:dest2" dest2
-                 return dest2
+                     let defName  = (ghead "doTheLift" (definedNamesRdr nm (ghead "doTheLift" parent')))
+                     -- dest' <- liftT $ replaceDecls dest (before++parent'++after)
+                     -- dest2 <- moveDecl1 dest (Just defName) [GHC.unLoc pn] (Just liftedDecls')
+                     dest2 <- moveDecl1 toMove (Just defName) [n] (Just liftedDecls')
+                                                                    declaredPns mLiftedSigs' True
+                     -- logDataWithAnns "doTheLift:dest2" dest2
+                     return dest2
 
-               else askRenamingMsg pns "lifting"
+                   else askRenamingMsg pns "lifting"
 
      -- --------------------------------------------
 
@@ -1035,7 +1041,7 @@ addParamsToParentAndLiftedDecl :: (GHC.Outputable t,SYB.Data t) =>
 addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
   =do
        logm $ "addParamsToParentAndLiftedDecl:parent=" ++ (showGhc parent)
-       logDataWithAnns "addParamsToParentAndLiftedDecl:parent=" parent
+       -- logDataWithAnns "addParamsToParentAndLiftedDecl:parent=" parent
        logm $ "addParamsToParentAndLiftedDecl:liftedDecls=" ++ (showGhc liftedDecls)
        nm <- getRefactNameMap
        let (FN ef,_) = hsFreeAndDeclaredRdr nm parent
