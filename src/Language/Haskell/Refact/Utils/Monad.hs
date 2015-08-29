@@ -57,7 +57,6 @@ import qualified Language.Haskell.GhcMod          as GM (LineSeparator(..),Optio
 import qualified Language.Haskell.GhcMod.Internal as GM (GmLog,MonadIO(..),loadTargets,GHCOption,GmlT(..),GmModuleGraph(..),ModulePath(..),gmlGetSession,gmlSetSession,gmlClear,gmlHistory,gmlJournal,runGmlT',GmEnv(..),GmComponent(..),GmComponentType(..),cabalResolvedComponents,targetGhcOptions,cradle)
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 import System.Directory
 import System.Log.Logger

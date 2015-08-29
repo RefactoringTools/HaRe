@@ -650,6 +650,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
       -- -------------------------------
 
+      -- This does the lift, where ds are the decls belonging to dest, and the
+      -- decl(s) to be lifted are subdecls of something in ds.
+      -- So the decl(s) are lifted from one level below ds to ds
       doTheLift :: forall b. HasDecls b => b -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc b
       doTheLift dest ds = do
         logm $ "doTheLift:ds=" ++ showGhc ds
