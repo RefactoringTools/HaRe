@@ -324,10 +324,11 @@ moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
   -- logm $ "moveDecl1:(funBinding)=" ++ showGhc (funBinding)
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',_sigsRemoved) <- rmTypeSigs sigNames t
+  logm $ "moveDecl1:after rmTypeSigs:t''" ++ SYB.showData SYB.Parser 0 t''
   -- logm $ "moveDecl1:sigsRemoved=" ++ showGhc sigsRemoved
   logm $ "moveDecl1:mliftedSigs=" ++ showGhc mliftedSigs
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
-  -- logm $ "moveDecl1:after rmDecl:t'" ++ SYB.showData SYB.Parser 0 t'
+  logm $ "moveDecl1:after rmDecl:t'" ++ SYB.showData SYB.Parser 0 t'
   let sigs = map wrapSig mliftedSigs
   r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
 
@@ -861,7 +862,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 (Nothing
                                 `SYB.mkQ`  (liftToModQ    nm ans)
                                 `SYB.extQ` (liftToMatchQ' nm ans)
-                                `SYB.extQ` (liftToLet'    nm ans)
+                                -- `SYB.extQ` (liftToLet'    nm ans)
                                 ) (Z.toZipper parsed)
              let parsed' = Z.fromZipper zp
              putRefactParsed parsed' emptyAnns
@@ -870,15 +871,16 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
            where
              isValBinds :: GHC.HsValBinds GHC.RdrName -> Bool
              isValBinds _ = True
-             -- isValBinds _ = error $ "isValBinds hit"
 
-             isGRHSs :: GHC.GRHSs GHC.Name (GHC.LHsExpr GHC.RdrName) -> Bool
+             isMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> Bool
+             isMatch _ = True
+
+             isGRHSs :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> Bool
              isGRHSs _ = True
-             -- isGRHSs _ = error "isGRHSs hit"
 
-             isHsLet :: GHC.HsExpr GHC.Name -> Bool
-             isHsLet (GHC.HsLet _ _) = True
-             -- isHsLet (GHC.HsLet _ _) = error "isHsLet hit"
+             isHsLet :: GHC.LHsExpr GHC.RdrName -> Bool
+             isHsLet (GHC.L _ (GHC.HsLet _ _)) = True
+             -- isHsLet (GHC.L _ (GHC.HsLet _ _)) = error "isHsLet"
              isHsLet _               = False
 
              liftToModQ nm ans (p :: GHC.ParsedSource)
@@ -917,12 +919,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              liftToMatchQ' :: (SYB.Data a)
                            => NameMap -> Anns
-                           -> GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+                           -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
                            -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
-             liftToMatchQ' nm ans (m@(GHC.Match _ _pats _mtyp g@(GHC.GRHSs rhs ds))::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+             liftToMatchQ' nm ans (m@(GHC.L _ (GHC.Match _ _pats _mtyp g@(GHC.GRHSs rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
                  | (nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans  ds) False False))
                     -- = Just (doLiftZ g   (getHsDecls ans  ds))
                     = Just (doLiftZ m (getHsDecls ans  ds))
+                    -- = error $ "liftToMatchQ' hit:" ++ SYB.showData SYB.Parser 0 m
                  | (nonEmptyList (definingDeclsRdrNames nm [n] (getRhsDecls ans rhs) False False))
                     -- = Just (doLiftZ rhs (getRhsDecls ans rhs))
                     = Just (doLiftZ m (getRhsDecls ans rhs))
@@ -930,11 +933,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              liftToLet' :: SYB.Data a
                         => NameMap -> Anns
-                        -> GHC.HsExpr GHC.RdrName -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
-             liftToLet' nm ans ll@(GHC.HsLet ds _e)
+                        -> GHC.LHsExpr GHC.RdrName -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToLet' nm ans ll@(GHC.L _ (GHC.HsLet ds _e))
                | nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans ds) False  False)
                  -- = Just (doLiftZ ds (getHsDecls ans ds))
-                 = Just (doLiftZ ll (getHsDecls ans ds))
+                 -- = Just (doLiftZ ll (getHsDecls ans ds))
+                 = Just (doLiftZ ll (getHsDecls ans ll))
+                 -- = error "liftToLet' hit"
                | otherwise = Nothing
              liftToLet' _ _ _ = Nothing
 
@@ -946,11 +951,12 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                   do
                     logm $ "doLiftZ entered"
                     logDataWithAnns "doLiftZ:ds" ds
+                    logDataWithAnns "doLiftZ:decls" decls
 
                     let zu = case (Z.up z) of
                               -- Just zz -> fromMaybe (error $ "MoveDef.liftToLet.1" ++ SYB.showData SYB.Parser 0 (Z.fromZipper z))
                               Just zz -> fromMaybe (error $ "MoveDef.liftToLet.1" ++ SYB.showData SYB.Parser 0 decls)
-                                  $ upUntil (False `SYB.mkQ` isGRHSs
+                                  $ upUntil (False `SYB.mkQ` isMatch
                                                    `SYB.extQ` isHsLet
                                                    -- `SYB.extQ` isValBinds
                                                    )
@@ -964,6 +970,17 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         -- decls <- liftT $ hsDecls ds
                         (_,dd) <- (hsFreeAndDeclaredPNs ren)
                         worker ren decls pn dd True
+
+
+                      wmatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+                             -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+                      wmatch (m@(GHC.L _ (GHC.Match mln pats _typ grhss@(GHC.GRHSs grhs lb)))) = do
+                         logm $ "wmatch entered"
+                         (_,dd) <- (hsFreeAndDeclaredPNs grhss)
+
+                         decls <- liftT $ hsDecls m
+                         worker m decls pn dd False
+                         -- worker m ds pn dd False
 
                       wgrhs (grhss::GHC.GRHSs GHC.RdrName  (GHC.LHsExpr GHC.RdrName)) = do
                          (_,dd) <- (hsFreeAndDeclaredPNs grhss)
@@ -984,7 +1001,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                       --    worker vb decls pn dd False
 
                     ds' <- Z.transM (SYB.mkM wtop
-                                     `SYB.extM` wgrhs
+                                     -- `SYB.extM` wgrhs
+                                     `SYB.extM` wmatch
                                      `SYB.extM` wlet
                                      -- `SYB.extM` wvalbinds
                                     ) zu
@@ -1002,12 +1020,14 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                 -> RefactGhc t
              worker dest ds pnn dd toToplevel
                   =do
+                      -- logm $ "MoveDef.worker: dest" ++ (showGhc dest)
                       logm $ "MoveDef.worker: ds=" ++ (showGhc ds)
                       done <- getRefactDone
                       if done then return dest
                         else do
                           setRefactDone
                           (before,parent,after) <- divideDecls ds pnn -- parent is misnomer, it is the decl to be moved
+                          logm $ "MoveDef.worker:(before,parent,after)" ++ showGhc (before,parent,after)
                           nm <- getRefactNameMap
                           let liftedDecls = definingDeclsRdrNames nm [n] parent True True
                               declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
