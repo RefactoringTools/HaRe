@@ -443,7 +443,7 @@ instance (GHC.DataId name,Data name)
   hsValBinds ms = unionBinds $ map (\m -> hsValBinds $ GHC.unLoc m) ms
 
   replaceValBinds [] _        = error "empty match list in replaceValBinds [GHC.LMatch GHC.Name]"
-  replaceValBinds ms newBinds = (replaceValBinds (ghead "replaceValBinds" ms) newBinds):(tail ms)
+  replaceValBinds ms newBinds = (replaceValBinds (ghead "replaceValBinds" ms) newBinds):(gtail "replaceValBinds" ms)
 
   hsTyDecls _ = []
 

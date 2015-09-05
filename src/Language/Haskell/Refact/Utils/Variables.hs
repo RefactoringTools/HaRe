@@ -1359,7 +1359,7 @@ definingDeclsRdrNames' :: (SYB.Data t)
 definingDeclsRdrNames' nameMap pns ds = defining ds
   where
    defining decl
-     = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
+     = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines' `SYB.extQ` definesBind) decl
      where
       defines' :: (GHC.LHsDecl GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
       defines' decl'@(GHC.L _ (GHC.ValD (GHC.FunBind _ _ _ _ _ _)))
@@ -1369,6 +1369,9 @@ definingDeclsRdrNames' nameMap pns ds = defining ds
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
       defines' _ = []
+
+      definesBind :: (GHC.LHsBind GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
+      definesBind (GHC.L l b) = defines' (GHC.L l (GHC.ValD b))
 
 -- ---------------------------------------------------------------------
 

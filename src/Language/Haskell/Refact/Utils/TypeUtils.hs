@@ -523,7 +523,7 @@ isConId :: String -> Bool
 isConId mid = isId mid && isUpper (ghead "isConId" mid)
 
 -- | Return True if a string is a lexically valid operator name.
-isOperator :: String->Bool
+isOperator :: String -> Bool
 isOperator mid = mid /= [] && isOpSym (ghead "isOperator" mid) &&
                 isLegalOpTail (tail mid) && not (isReservedOp mid)
    where
@@ -996,6 +996,7 @@ addDecl:: (HasDecls t)
         -> RefactGhc t
 
 addDecl parent pn (declSig, mDeclAnns) topLevel = do
+  logm $ "addDecl:declSig=" ++ showGhc declSig
   case mDeclAnns of
     Nothing -> return ()
     Just declAnns -> -- addRefactAnns declAnns
@@ -1009,9 +1010,9 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
  where
   setDeclSpacing newDeclSig n c = do
     -- First clear any previous indentation
-    mapM_ (\d -> setPrecedingLinesDeclT d 0 0) newDeclSig
-    setPrecedingLinesT (head newDeclSig) n c
-    mapM_ (\d -> setPrecedingLinesT d 1 0) (tail newDeclSig)
+    mapM_ (\d -> setPrecedingLinesDeclT d 1 0) newDeclSig
+    setPrecedingLinesT (ghead "addDecl" newDeclSig) n c
+    -- mapM_ (\d -> setPrecedingLinesT d 1 0) (gtail "addDecl" newDeclSig)
 
   appendDecl :: (HasDecls t)
       => t        -- ^Original AST
@@ -1666,7 +1667,7 @@ rmTypeSig pn t
                       let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
                       setStateStorage (StorageSigRdr oldSig)
 
-                      parent' <- liftT $ replaceDecls parent (decls1++[newSig]++tail decls2)
+                      parent' <- liftT $ replaceDecls parent (decls1++[newSig]++gtail "doRmTypeSig" decls2)
                       return parent'
                   else do
                       let [oldSig] = decl2Sig sig
@@ -2273,7 +2274,7 @@ renamePNworker oldPN newName useQual t = do
                 case mln of
                   Just (GHC.L lmn _,_) -> worker False lmn Nothing
                   Nothing -> return ()
-          mapM_ w $ tail matches
+          mapM_ w $ gtail "renameFunBind" matches
           logm $ "renamePNWorker.renameFunBind.renameFunBind.renameFunBind:matches done"
           return (GHC.L l (GHC.FunBind (GHC.L ln newName) fi (GHC.MG matches a typ o) co fvs tick))
     renameFunBind x = return x
