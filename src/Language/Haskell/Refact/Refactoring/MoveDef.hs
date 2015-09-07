@@ -723,18 +723,15 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                               Just zz -> fromMaybe (error $ "MoveDef.liftToLet.1" ++ SYB.showData SYB.Parser 0 decls)
                                   $ upUntil (False `SYB.mkQ` isMatch
                                                    `SYB.extQ` isHsLet
-                                                   -- `SYB.extQ` isValBinds
                                                    )
                                      zz
                               Nothing -> z
 
                     let
-                      -- wtop (ren::GHC.RenamedSource) = do
-                      --   worker ren (hsBinds ds) pn True
                       wtop (ren::GHC.ParsedSource) = do
-                        -- decls <- liftT $ hsDecls ds
                         (_,dd) <- (hsFreeAndDeclaredPNs ren)
                         worker ren decls pn dd True
+                        -- workerTop ren decls pn dd True
 
 
                       wmatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
@@ -745,17 +742,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                          let (_,DN dd) = hsFreeAndDeclaredRdr nm grhss
 
                          decls <- liftT $ hsDecls m
-                         -- worker m decls pn dd False
                          workerTop m decls pn dd False
-                         -- worker m ds pn dd False
 
                       wlet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
                       wlet l@(GHC.L _ (GHC.HsLet dsl _e)) = do
                          logm $ "wlet entered "
                          nm <- getRefactNameMap
                          let (_,DN dd) = hsFreeAndDeclaredRdr nm dsl
-                         -- decls <- liftT $ hsDecls ds
-                         -- dsl' <- worker l decls pn dd False
                          dsl' <- workerTop l decls pn dd False
                          return dsl'
                       wlet x = return x
@@ -825,8 +818,6 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              -- ----------------------------------------
 
-
-             -- TODO: merge worker and worker1
              worker :: (HasDecls t)
                 => t -- ^The destination of the lift operation
                 -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
