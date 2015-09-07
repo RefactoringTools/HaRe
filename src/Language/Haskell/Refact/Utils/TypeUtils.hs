@@ -1026,11 +1026,13 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
          nameMap <- getRefactNameMap
          decls <- liftT $ hsDecls parent'
          let
-            (before,after) = break (definesDeclRdr nameMap pn') decls -- Need to handle the case that 'after' is empty?
+            (before,after) = break (definesDeclRdr nameMap pn') decls
 
          logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
-         let decls1 = before ++ [ghead "appendDecl14" after]
-             decls2 = gtail "appendDecl15" after
+         let (decls1,decls2) = case after of
+               [] -> (before,[])
+               as -> (before ++ [ghead "appendDecl14" after],
+                      gtail "appendDecl15" after)
          liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
 
 

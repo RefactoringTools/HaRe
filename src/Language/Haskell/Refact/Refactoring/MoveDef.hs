@@ -1005,7 +1005,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                          nm <- getRefactNameMap
                          let (_,DN dd) = hsFreeAndDeclaredRdr nm dsl
                          -- decls <- liftT $ hsDecls ds
-                         dsl' <- worker l decls pn dd False
+                         -- dsl' <- worker l decls pn dd False
+                         dsl' <- workerTop l decls pn dd False
                          return dsl'
                       wlet x = return x
 
@@ -1064,7 +1065,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                     --True means the new decl will be at the same level with its parant.
                                     -- toMove <- liftT $ replaceDecls dest (before++parent'++after)
                                     let toMove = parent'
-                                    let mAfter = case ds of
+                                    pdecls <- liftT $ hsDecls toMove
+                                    let mAfter = case pdecls of
+                                    -- let mAfter = case ds of
                                           [] -> Nothing
                                           _ -> (Just (ghead "worker" (definedNamesRdr nm (glast "workerTop" ds))))
                                     dest' <- moveDecl1 toMove
