@@ -1782,7 +1782,7 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
           worker nm (match@(GHC.L _ (GHC.FunBind ln _ (GHC.MG _matches _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
             | isJust (find (== rdrName2NamePure nm ln) pns')
             = do
-                 match'  <- foldM (flip (autoRenameLocalVar True)) match clashedNames
+                 match'  <- foldM (flip autoRenameLocalVar) match clashedNames
                  match'' <- foldM replaceExpWithUpdToks match' subst
                  rmParamsInDemotedDecls (map fst subst) match''
 

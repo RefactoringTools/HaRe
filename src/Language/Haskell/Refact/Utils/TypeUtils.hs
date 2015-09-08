@@ -2326,12 +2326,11 @@ renamePNworker oldPN newName useQual t = do
 -- is True, the token stream will be modified, otherwise only the AST is modified.
 
 autoRenameLocalVar:: (HasDecls t)
-                    =>Bool          -- ^ True means modfiying the token stream as well.
-                     ->GHC.Name     -- ^ The identifier.
-                     ->t            -- ^ The syntax phrase.
+                     => GHC.Name    -- ^ The identifier.
+                     -> t           -- ^ The syntax phrase.
                      -> RefactGhc t -- ^ The result.
-autoRenameLocalVar modifyToks pn t = do
-  logm $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (showGhc (modifyToks,pn))
+autoRenameLocalVar pn t = do
+  logm $ "autoRenameLocalVar: (pn)=" ++ (showGhc (pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
   nm <- getRefactNameMap
   decls <- liftT $ hsDecls t

@@ -3686,11 +3686,15 @@ This function is not used and has been removed
           -- (t, toks) <- parseSourceFileTest "./Demote/WhereIn4.hs"
           -- putParsedModule t toks
           renamed <- getRefactRenamed
+          parsed <- getRefactParsed
+          nm <- getRefactNameMap
+          tlDecls <- liftT $ hsDecls parsed
 
           let Just (GHC.L _ tl)   = locToName (11,1) renamed
           let Just (GHC.L _ name) = locToName (11,21) renamed
-          let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
-          decls' <- autoRenameLocalVar False name decls
+          -- let decls = (definingDeclsRdrNames nm [tl] (hsBinds renamed) False False)
+          let [decls] = (definingDeclsRdrNames nm [tl] tlDecls False True)
+          decls' <- autoRenameLocalVar name decls
 
           return (decls',decls,tl,name)
 
@@ -3708,14 +3712,15 @@ This function is not used and has been removed
       (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
       let
         comp = do
-          -- (t, toks) <- parseSourceFileTest "./Demote/WhereIn4.hs"
-          -- putParsedModule t toks
           renamed <- getRefactRenamed
+          parsed <- getRefactParsed
+          nm <- getRefactNameMap
+          tlDecls <- liftT $ hsDecls parsed
 
           let Just (GHC.L _ tl)   = locToName (11,1) renamed
           let Just (GHC.L _ name) = locToName (11,21) renamed
-          let decls = (definingDeclsNames [tl] (hsBinds renamed) False False)
-          decls' <- autoRenameLocalVar True name decls
+          let [decls] = definingDeclsRdrNames nm [tl] tlDecls False True
+          decls' <- autoRenameLocalVar name decls
 
           return (decls',decls,tl,name)
 
