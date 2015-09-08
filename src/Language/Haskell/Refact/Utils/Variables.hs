@@ -18,7 +18,7 @@ module Language.Haskell.Refact.Utils.Variables
   , isClassName
   , isInstanceName
   -- , hsPNs
-  , isDeclaredIn
+  , isDeclaredIn,isDeclaredInRdr
   , FreeNames(..),DeclaredNames(..)
   , hsFreeAndDeclaredPNsOld
   , hsFreeAndDeclaredRdr
@@ -28,8 +28,8 @@ module Language.Haskell.Refact.Utils.Variables
   , getDeclaredTypes
   , getDeclaredTypesRdr
   , getFvs, getFreeVars, getDeclaredVars
-  , hsVisiblePNs, hsVisiblePNsRdr ,hsVisibleNames
-  , hsFDsFromInsideRdr
+  , hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames, hsVisibleNamesRdr
+  , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr
   , hsFDsFromInside, hsFDNamesFromInside
   , hsVisibleDs, hsVisibleDsRdr
   , rdrName2Name, rdrName2NamePure
@@ -270,6 +270,9 @@ hsPNs t = (nub.ghead "hsPNs") res
 -- ++AZ++ see if we can get away with one only..
 isDeclaredIn :: (HsValBinds t GHC.Name) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
+
+isDeclaredInRdr :: NameMap -> GHC.Name -> [GHC.LHsDecl GHC.RdrName] -> Bool
+isDeclaredInRdr nm name decls = nonEmptyList $ definingDeclsRdrNames nm [name] decls False True
 
 -- ---------------------------------------------------------------------
 -- | Collect the free and declared variables (in the GHC.Name format)
@@ -1600,7 +1603,7 @@ hsNamess t = nub $ concat res
 hsNamessRdr :: (SYB.Data t) => t -> [GHC.Located GHC.RdrName]
 hsNamessRdr t = nub $ fromMaybe [] r
   where
-     r = (SYB.everythingStaged SYB.Renamer mappend mempty (inName) t)
+     r = (SYB.everythingStaged SYB.Parser mappend mempty (inName) t)
 
      checker :: GHC.Located GHC.RdrName -> Maybe [GHC.Located GHC.RdrName]
      checker x = Just [x]
@@ -1663,6 +1666,16 @@ hsVisibleNames:: (FindEntity t1,HsValBinds t2 GHC.Name,GHC.Outputable t1)
   => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
     d <- hsVisiblePNs e t
+    return ((nub . map showGhc) d)
+
+--------------------------------------------------------------------------------
+-- | Same as `hsVisiblePNs' except that the returned identifiers are
+-- in String format.
+hsVisibleNamesRdr:: (FindEntity t1,SYB.Data t2,GHC.Outputable t1)
+  => t1 -> t2 -> RefactGhc [String]
+hsVisibleNamesRdr e t = do
+    nm <- getRefactNameMap
+    d <- hsVisiblePNsRdr nm e t
     return ((nub . map showGhc) d)
 
 ------------------------------------------------------------------------
@@ -2417,6 +2430,15 @@ hsFDsFromInside t = do
 hsFDNamesFromInside::(SYB.Data t) => t -> RefactGhc ([String],[String])
 hsFDNamesFromInside t = do
   (f,d) <- hsFDsFromInside t
+  return
+    ((nub.map showGhc) f, (nub.map showGhc) d)
+
+-- | The same as `hsFDsFromInside` except that the returned variables
+-- are in the String format
+hsFDNamesFromInsideRdr ::(SYB.Data t) => t -> RefactGhc ([String],[String])
+hsFDNamesFromInsideRdr t = do
+  nm <- getRefactNameMap
+  (FN f,DN d) <- hsFDsFromInsideRdr nm t
   return
     ((nub.map showGhc) f, (nub.map showGhc) d)
 

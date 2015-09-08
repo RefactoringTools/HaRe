@@ -237,7 +237,7 @@ module Language.Haskell.Refact.API
     , isInstanceName
     ,hsPNs -- ,hsDataConstrs,hsTypeConstrsAndClasses, hsTypeVbls
     {- ,hsClassMembers -} , hsBinds, replaceBinds, HsValBinds(..)
-    ,isDeclaredIn
+    ,isDeclaredIn,isDeclaredInRdr
     ,FreeNames(..),DeclaredNames(..)
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredRdr
@@ -247,9 +247,11 @@ module Language.Haskell.Refact.API
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
     ,hsVisiblePNs, hsVisiblePNsRdr  {- , hsVisiblePNsOld -}, hsVisibleNames
-    ,hsFDsFromInsideRdr
+    ,hsVisibleNamesRdr
+    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr
     ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
+    ,rdrName2Name, rdrName2NamePure
 
     -- *** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
@@ -259,7 +261,7 @@ module Language.Haskell.Refact.API
     ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     ,findNameInRdr
     ,findPNT,findPN,findAllNameOccurences
-    ,findPNs, findEntity, findEntity'
+    ,findPNs, findNamesRdr, findEntity, findEntity'
     ,sameOccurrence
     , findIdForName
     , getTypeForName

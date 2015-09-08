@@ -707,7 +707,14 @@ instance UsedByRhs (GHC.HsModule GHC.RdrName) where
 
 instance (UsedByRhs a) => UsedByRhs (GHC.Located a) where
   usedByRhsRdr nm (GHC.L _ d) pns = usedByRhsRdr nm d pns
+  -- usedByRhs _ _ = assert False undefined
+  usedByRhs _ la = error $ "usedByRhs:Located a=" ++ SYB.showData SYB.Parser 0 la
+
+-- -------------------------------------
+
+instance UsedByRhs [GHC.LHsDecl GHC.RdrName] where
   usedByRhs _ _ = assert False undefined
+  usedByRhsRdr nm ds pns = or $ map (\d -> usedByRhsRdr nm d pns) ds
 
 -- -------------------------------------
 
@@ -789,13 +796,9 @@ instance UsedByRhs GHC.DocDecl where
   usedByRhs _ _ = assert False undefined
   usedByRhsRdr = assert False undefined
 
-instance UsedByRhs (GHC.HsBind GHC.RdrName) where
-  usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
-
 instance UsedByRhs (GHC.Sig GHC.RdrName) where
-  usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
+  usedByRhsRdr _ _ _ = False
+  usedByRhs _ = assert False undefined
 
 -- -------------------------------------
 
@@ -835,6 +838,15 @@ instance UsedByRhs (GHC.HsBind GHC.Name) where
   usedByRhs (GHC.AbsBinds _ _ _ _ _)       _pns = False
   usedByRhs (GHC.PatSynBind _)             _pns = error "To implement: usedByRhs PaySynBind"
   usedByRhsRdr _ _ = assert False undefined
+
+-- -------------------------------------
+
+instance UsedByRhs (GHC.HsBind GHC.RdrName) where
+  usedByRhs _ _ = assert False undefined
+  usedByRhsRdr nm (GHC.FunBind _ _ matches _ _ _) pns = findNamesRdr nm pns matches
+  usedByRhsRdr nm (GHC.PatBind _ rhs _ _ _)       pns = findNamesRdr nm pns rhs
+  usedByRhsRdr nm (GHC.VarBind _ rhs _)           pns = findNamesRdr nm pns rhs
+  usedByRhsRdr nm (GHC.AbsBinds _ _ _ _ _)       _pns = False
 
 -- -------------------------------------
 
@@ -1579,10 +1591,11 @@ doRmDecl decls1 decls2
       unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
 
       -- decl in the middle of a list
-      when   (not (null decls1) && not (null decls2')) $ do liftT $ transferEntryDPT (last decls1) (head decls2')
+      -- when   (not (null decls1) && not (null decls2')) $ do liftT $ transferEntryDPT (last decls1) (head decls2')
 
       -- Removing first decl
-      when (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+      -- when (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+      when (not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
 
       -- logDataWithAnns "doRmDecl:(decls2')" (decls2')
       return $ (decls1 ++ decls2')
@@ -2312,7 +2325,7 @@ renamePNworker oldPN newName useQual t = do
 -- if so, rename the identifier by creating a new name automatically. If the Bool parameter
 -- is True, the token stream will be modified, otherwise only the AST is modified.
 
-autoRenameLocalVar:: (HsValBinds t GHC.Name)
+autoRenameLocalVar:: (HasDecls t)
                     =>Bool          -- ^ True means modfiying the token stream as well.
                      ->GHC.Name     -- ^ The identifier.
                      ->t            -- ^ The syntax phrase.
@@ -2320,19 +2333,22 @@ autoRenameLocalVar:: (HsValBinds t GHC.Name)
 autoRenameLocalVar modifyToks pn t = do
   logm $ "autoRenameLocalVar: (modifyToks,pn)=" ++ (showGhc (modifyToks,pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
-  if isDeclaredIn pn t
-         then do t' <- worker t
+  nm <- getRefactNameMap
+  decls <- liftT $ hsDecls t
+  if isDeclaredInRdr nm pn decls
+         then do t' <- worker nm t
                  return t'
          else do return t
 
       where
-         worker tt =do (f,d) <- hsFDNamesFromInside tt
-                       ds <- hsVisibleNames pn (hsValBinds tt)
-                       let newNameStr=mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
+         worker :: (SYB.Data t) => NameMap -> t -> RefactGhc t
+         worker nm tt
+                   =do (f,d) <- hsFDNamesFromInsideRdr tt
+                       ds <- hsVisibleNamesRdr pn tt
+                       let newNameStr = mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                        newName <- mkNewGhcName Nothing newNameStr
-                       if modifyToks
-                         then renamePN pn newName False tt
-                         else renamePN pn newName False tt
+                       -- let newName = mkRdrName newNameStr
+                       renamePN' pn newName False tt
 
 -- ---------------------------------------------------------------------
 
@@ -2439,7 +2455,27 @@ findPNs pns
 
 -- ---------------------------------------------------------------------
 
+-- | Return True if any of the specified PNames ocuur in the given syntax phrase.
 findNamesRdr :: (SYB.Data t) => NameMap -> [GHC.Name] -> t -> Bool
+findNamesRdr nm pns t =
+  isJust $ SYB.something (inName) t
+    where
+      -- r = (SYB.everythingStaged SYB.Parser mappend mempty (inName) t)
+
+      checker :: GHC.Located GHC.RdrName -> Maybe Bool
+      checker ln
+         | elem (GHC.nameUnique (rdrName2NamePure nm ln)) uns = Just True
+      checker _ = Nothing
+
+      inName :: (SYB.Typeable a) => a -> Maybe Bool
+      inName = nameSybQuery checker
+
+      uns = map GHC.nameUnique pns
+
+      -- worker (ln :: GHC.Located GHC.RdrName)
+      --    | elem (GHC.nameUnique (rdrName2NamePure nm ln)) uns = Just True
+      -- worker _ = Nothing
+{-
 findNamesRdr nm pns t =
  isJust $ SYB.something (Nothing `SYB.mkQ` worker) t
    where
@@ -2448,11 +2484,12 @@ findNamesRdr nm pns t =
       worker (ln :: GHC.Located GHC.RdrName)
          | elem (GHC.nameUnique (rdrName2NamePure nm ln)) uns = Just True
       worker _ = Nothing
+-}
+
+-- ---------------------------------------------------------------------
 
 -- | Return the type checked `GHC.Id` corresponding to the given
 -- `GHC.Name`
-
--- ---------------------------------------------------------------------
 
 -- TODO: there has to be a simpler way, using the appropriate GHC internals
 findIdForName :: GHC.Name -> RefactGhc (Maybe GHC.Id)

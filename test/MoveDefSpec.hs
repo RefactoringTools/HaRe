@@ -539,8 +539,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
      (show res) `shouldBe` "Just \"\\nInvalid cursor position!\""
 
     it "will not demote if nowhere to go" $ do
-     -- res <- catchException (doDemote ["./test/testdata/MoveDef/Md1.hs","8","1"])
      res <- catchException (demote defaultTestSettings testOptions "./test/testdata/MoveDef/Md1.hs" (8,1))
+     -- res <- demote logTestSettings testOptions "./test/testdata/MoveDef/Md1.hs" (8,1)
      (show res) `shouldBe` "Just \"\\n Nowhere to demote this function!\\n\""
 
     -- -----------------------------------------------------------------
