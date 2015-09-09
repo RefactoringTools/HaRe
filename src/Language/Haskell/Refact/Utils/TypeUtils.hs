@@ -969,27 +969,6 @@ rmPreludeImports = filter isPrelude where
 -}
 
 -- ---------------------------------------------------------------------
-{-
--- |Make a new set of tokens, originating at (0,0), for a given
--- declaration and optional signature.
--- NOTE: This function returns tokens originating at (0,0), to be
--- stitched in at the right place by TokenUtils
-makeNewToks :: (GHC.LHsBind GHC.Name, [GHC.LSig GHC.Name], Maybe [PosToken])
-              -> RefactGhc [PosToken]
-makeNewToks (decl, maybeSig, declToks) = do
-   let
-     declStr = case declToks of
-                Just ts -> "\n" ++ (unlines $ dropWhile (\l -> l == "") $ lines $ GHC.showRichTokenStream $ reAlignMarked ts)
-                Nothing -> "\n"++(prettyprint decl)++"\n\n"
-     sigStr  = case declToks of
-                Just _ts -> ""
-                Nothing -> "\n" ++ (intercalate "\n" $ map prettyprint maybeSig)
-   -- logm $ "makeNewToks:declStr=[" ++ declStr ++ "]"
-   let newToks = tokenise ((0,0),(0,0)) 0 True (sigStr ++ declStr)
-   return newToks
--}
-
--- ---------------------------------------------------------------------
 
 -- | Adding a declaration to the declaration list of the given syntax
 -- phrase. If the second argument is Nothing, then the declaration
@@ -1005,6 +984,7 @@ addDecl:: (HasDecls t)
              -- with optional Annotations.
         -> Bool              -- ^ True means the declaration is a
                              -- toplevel declaration.
+        -- ++TODO:AZ get rid of the topLevel Bool, no longer used
         -> RefactGhc t
 
 addDecl parent pn (declSig, mDeclAnns) topLevel = do

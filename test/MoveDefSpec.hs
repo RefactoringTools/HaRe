@@ -648,7 +648,6 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes PatBindIn1 19 1" $ do
-     -- r <- doDemote ["./test/testdata/Demote/PatBindIn1.hs","19","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/Demote/PatBindIn1.hs" (19,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/PatBindIn1.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/PatBindIn1.refactored.hs"
@@ -698,8 +697,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "fails D2 5 1" $ do
-     res <- catchException (demote (testSettingsMainfile "./test/testdata/Demote/A2.hs") testOptions "./test/testdata/Demote/D2.hs" (5,1))
-     -- res <- catchException (demote logTestSettings testOptions (Just "./test/testdata/Demote/A2.hs") "./test/testdata/Demote/D2.hs" (5,1))
+     res <- catchException (ct $ demote defaultTestSettings testOptions "./Demote/D2.hs" (5,1))
+     -- res <- catchException (ct $ demote logTestSettings testOptions "./Demote/D2.hs" (5,1))
      (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in the client module 'main:Demote.A2'!\""
 
     -- -----------------------------------------------------------------

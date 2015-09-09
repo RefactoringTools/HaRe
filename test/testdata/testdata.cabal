@@ -86,7 +86,6 @@ Executable ltta2
 -- ---------------------------------------------------------------------
 
 Executable lola1
-
   Main-Is: LiftOneLevel/A1.hs
   Other-Modules : LiftOneLevel.C1
                   LiftOneLevel.D1
@@ -94,7 +93,6 @@ Executable lola1
 
 
 Executable lola2
-
   Main-Is: LiftOneLevel/A2.hs
   Other-Modules : LiftOneLevel.C2
                   LiftOneLevel.D2
@@ -102,8 +100,22 @@ Executable lola2
 
 
 Executable lola3
-
   Main-Is: LiftOneLevel/A3.hs
   Other-Modules : LiftOneLevel.C3
                   LiftOneLevel.D3
+  Build-Depends:          base >= 4.0  && < 4.9
+
+-- ---------------------------------------------------------------------
+
+Executable demotea1
+  Main-Is: Demote/A1.hs
+  Other-Modules : Demote.C1
+                  Demote.D1
+  Build-Depends:          base >= 4.0  && < 4.9
+
+
+Executable demotea2
+  Main-Is: Demote/A2.hs
+  Other-Modules : Demote.C2
+                  Demote.D2
   Build-Depends:          base >= 4.0  && < 4.9

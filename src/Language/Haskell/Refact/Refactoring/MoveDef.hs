@@ -1292,18 +1292,23 @@ demote' ::
   -> RefactGhc [ApplyRefacResult]
 demote' modName (GHC.L _ pn) = do
   renamed <- getRefactRenamed
+  parsed <- getRefactParsed
   targetModule <- getRefactTargetModule
   if isFunOrPatName pn renamed
     then do
        isTl <- isTopLevelPN pn
        if isTl && isExplicitlyExported pn renamed
           then error "This definition can not be demoted, as it is explicitly exported by the current module!"
-          else do -- (mod',((toks',m),_))<-doDemoting pn fileName mod toks
-                  (refactoredMod,_) <- applyRefac (doDemoting pn) RSAlreadyLoaded
-                  -- isTl <- isTopLevelPN pn
+          else do
+                  (refactoredMod,declaredPns) <- applyRefac (doDemoting pn) RSAlreadyLoaded
                   if isTl && modIsExported modName renamed
-                    then do let demotedDecls'= definingDeclsNames [pn] (hsBinds renamed) True False
-                                declaredPns  = nub $ concatMap definedPNs demotedDecls'
+                    then do
+                            logm $ "demote':isTl && isExported"
+                            -- nm <- getRefactNameMap
+                            -- decls <- liftT $ hsDecls parsed
+                            -- let demotedDecls'= definingDeclsRdrNames nm [pn] decls True False
+                            --     declaredPnsRdr  = nub $ concatMap definedPNsRdr demotedDecls'
+                            --     declaredPns = map (rdrName2NamePure nm) declaredPnsRdr
                             clients <- clientModsAndFiles targetModule
                             logm $ "demote':clients=" ++ (showGhc clients)
                             refactoredClients <-mapM (demotingInClientMod declaredPns) clients
@@ -1321,7 +1326,7 @@ demotingInClientMod ::
   [GHC.Name] -> TargetModule
   -> RefactGhc ApplyRefacResult
 demotingInClientMod pns targetModule = do
-  -- void $ activateModule targetModule
+  logm $ "demotingInClientMod:(pns,targetModule)=" ++ showGhc (pns,targetModule)
   getTargetGhc targetModule
   modu <- getRefactModule
   (refactoredMod,_) <- applyRefac (doDemotingInClientMod pns modu) RSAlreadyLoaded
@@ -1330,6 +1335,7 @@ demotingInClientMod pns targetModule = do
 
 doDemotingInClientMod :: [GHC.Name] -> GHC.Module -> RefactGhc ()
 doDemotingInClientMod pns modName = do
+  logm $ "doDemotingInClientMod:(pns,modName)=" ++ showGhc (pns,modName)
   renamed@(_g,imps,exps,_docs) <- getRefactRenamed
   if any (\pn->findPN pn (hsBinds renamed) || findPN pn (exps)) pns
      then error $ "This definition can not be demoted, as it is used in the client module '"++(showGhc modName)++"'!"
@@ -1341,7 +1347,7 @@ doDemotingInClientMod pns modName = do
 
 -- ---------------------------------------------------------------------
 
-doDemoting :: GHC.Name -> RefactGhc ()
+doDemoting :: GHC.Name -> RefactGhc [GHC.Name]
 doDemoting  pn = do
 
   clearRefactDone -- Only do this action once
@@ -1363,7 +1369,12 @@ doDemoting  pn = do
   -- ren <- getRefactRenamed
   -- error ("doDemoting:ren=" ++ (showGhc ren))
   -- showLinesDebug "doDemoting done"
-  return ()
+  nm <- getRefactNameMap
+  decls <- liftT $ hsDecls parsed
+  let demotedDecls'= definingDeclsRdrNames nm [pn] decls True False
+      declaredPnsRdr  = nub $ concatMap definedPNsRdr demotedDecls'
+      declaredPns = map (rdrName2NamePure nm) declaredPnsRdr
+  return declaredPns
     where
        --1. demote from top level
        -- demoteInMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
@@ -1442,7 +1453,6 @@ doDemoting  pn = do
        demoteInStmt x@(letStmt@(GHC.LetStmt binds)::GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
          decls <- liftT $ hsDecls binds
          nm <- getRefactNameMap
-         -- was | definingDecls [pn] ds False False /=[]
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
            then do
               logm "MoveDef:demoteInStmt" -- ++AZ++
@@ -1452,6 +1462,7 @@ doDemoting  pn = do
                 else return letStmt
               return letStmt'
            else return x
+       demoteInStmt x = return x
 
        -- TODO: the rest of these cases below
 {-

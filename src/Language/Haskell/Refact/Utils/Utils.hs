@@ -556,6 +556,7 @@ writeRefactoredFiles verbosity files
 clientModsAndFiles :: GM.ModulePath -> RefactGhc [TargetModule]
 clientModsAndFiles m = do
   mgs <- cabalModuleGraphs
+  -- logm $ "clientModsAndFiles:mgs=" ++ show mgs
   -- mgs is [Map ModulePath (Set ModulePath)]
   --  where eack key imports the corresponding set.
   -- There are no cycles

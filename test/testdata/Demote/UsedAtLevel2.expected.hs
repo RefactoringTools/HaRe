@@ -12,6 +12,8 @@ foo = do
                = concatMap used t2
                 where
 
+                  usedInMatch _ _ = []
+
                   used :: LHsBind Name -> [Int]
                   used (L _ (FunBind _n _ (MatchGroup matches _) _ _ _))
                      = usedInMatch pns matches
@@ -19,8 +21,6 @@ foo = do
                   used (L _ (PatBind _pat _rhs _ _ _))
                     = [1::Int]
                   used  _ = []
-
-                  usedInMatch _ _ = []
 
           duplicateDecls = undefined
 
