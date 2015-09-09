@@ -1775,18 +1775,29 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
                           -> [GHC.LHsDecl GHC.RdrName] -- ^Binds of original top level entity, including src and dst
                           -> RefactGhc [GHC.LHsDecl GHC.RdrName]
        foldInDemotedDecls  pns' clashedNames subst decls = do
+          logm $ "foldInDemotedDecls:(pns',clashedNames,subst)=" ++ showGhc (pns',clashedNames,subst)
+          logm $ "foldInDemotedDecls:decls=" ++ SYB.showData SYB.Parser 0 decls
           nm <- getRefactNameMap
-          SYB.everywhereMStaged SYB.Renamer (SYB.mkM (worker nm)) decls
+          SYB.everywhereMStaged SYB.Parser (SYB.mkM (worker nm) `SYB.extM` (workerBind nm)) decls
           where
           -- worker (match@(HsMatch loc1 (PNT pname _ _) pats rhs ds)::HsMatchP)
           worker nm (match@(GHC.L _ (GHC.FunBind ln _ (GHC.MG _matches _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
-            | isJust (find (== rdrName2NamePure nm ln) pns')
             = do
-                 match'  <- foldM (flip autoRenameLocalVar) match clashedNames
-                 match'' <- foldM replaceExpWithUpdToks match' subst
-                 rmParamsInDemotedDecls (map fst subst) match''
-
+                logm $ "foldInDemotedDecls:rdrName2NamePure nm ln=" ++ show (rdrName2NamePure nm ln)
+                if isJust (find (== rdrName2NamePure nm ln) pns')
+                  then do
+                    logm $ "foldInDemotedDecls:found match"
+                    match'  <- foldM (flip autoRenameLocalVar) match clashedNames
+                    match'' <- foldM replaceExpWithUpdToks match' subst
+                    rmParamsInDemotedDecls (map fst subst) match''
+                  else return match
           worker _ x = return x
+
+          workerBind nm ((GHC.L l (GHC.ValD d)) :: GHC.LHsDecl GHC.RdrName)
+            = do
+                (GHC.L _ d') <- worker nm (GHC.L l d)
+                return (GHC.L l (GHC.ValD d'))
+          workerBind _ x = return x
 
       ------Get all of the paramaters supplied to pn ---------------------------
             {- eg. sumSquares x1 y1 x2 y2 = rt x1 y1 + rt x2 y2
@@ -1805,9 +1816,11 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
             let p = getOneParam nm pn rhs1
             -- putStrLn (show p)
             logm $ "allParams:p=" ++ showGhc p
-            if (nonEmptyList p) then do rhs' <- rmOneParam pn rhs1
-                                        allParams pn rhs' (initial++[p])
-                     else return initial
+            if (nonEmptyList p)
+              then do rhs' <- rmOneParam pn rhs1
+                      logDataWithAnns "allParams:rhs'=" rhs'
+                      allParams pn rhs' (initial++[p])
+              else return initial
         where
            getOneParam :: (SYB.Data t) => NameMap -> GHC.Name -> t -> [GHC.HsExpr GHC.RdrName]
            getOneParam nm pn1
@@ -1819,6 +1832,7 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
                   worker (GHC.HsApp e1 e2)
                    |(expToNameRdr nm e1 == Just pn1) = [GHC.unLoc e2]
                   worker _ = []
+
            rmOneParam :: (SYB.Data t) => GHC.Name -> t -> RefactGhc t
            rmOneParam pn1 t
               -- This genuinely needs to be done once only. Damn.
@@ -1826,7 +1840,7 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
              = do
                 -- _ <- clearRefactDone
                 nm <- getRefactNameMap
-                everywhereMStaged' SYB.Renamer (SYB.mkM (worker nm)) t
+                everywhereMStaged' SYB.Parser (SYB.mkM (worker nm)) t
                 where
                   {-
                   worker :: GHC.HsExpr GHC.Name -> RefactGhc (GHC.LHsExpr GHC.Name)
@@ -1838,8 +1852,8 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
                       False -> return e
                   worker x = return x
                   -}
-                  worker nm (GHC.HsApp e1 _e2 ) -- The param being removed is e2
-                    |expToNameRdr nm e1 == Just pn1 = return (GHC.unLoc e1)
+                  worker nm (GHC.L _ (GHC.HsApp e1 _e2 )) -- The param being removed is e2
+                    |expToNameRdr nm e1 == Just pn1 = return e1
                   worker _ x = return x
 {-
               AST output
@@ -1900,13 +1914,14 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
        rmParamsInDemotedDecls ps bind
          -- = error $ "rmParamsInDemotedDecls: (ps,bind)=" ++ (showGhc (ps,bind)) -- ++AZ++
          -- =applyTP (once_tdTP (failTP `adhocTP` worker))
-         = SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) bind
+         = SYB.everywhereMStaged SYB.Parser (SYB.mkM worker) bind
             -- where worker ((HsMatch loc1 name pats rhs ds)::HsMatchP)
-            where worker :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name) -> RefactGhc (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
+            where worker :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
                   worker (GHC.Match mfn pats2 typ rhs1)
                     = do
-                         let pats'=filter (\x->not ((patToPNT x /= Nothing) &&
-                                          elem (gfromJust "rmParamsInDemotedDecls" $ patToPNT x) ps)) pats2
+                         nm <- getRefactNameMap
+                         let pats'=filter (\x->not ((patToNameRdr nm x /= Nothing) &&
+                                          elem (gfromJust "rmParamsInDemotedDecls" $ patToNameRdr nm x) ps)) pats2
 {-
                          let (startPos,endPos) = getBiggestStartEndLoc pats2
                          if (emptyList pats')

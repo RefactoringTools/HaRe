@@ -578,8 +578,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn3 14 1" $ do
-     -- r <- doDemote ["./test/testdata/Demote/WhereIn3.hs","14","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/Demote/WhereIn3.hs" (14,1)
+     -- r <- demote logTestSettings testOptions "./test/testdata/Demote/WhereIn3.hs" (14,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/WhereIn3.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/WhereIn3.refactored.hs"
                           "./test/testdata/Demote/WhereIn3.hs.expected"
