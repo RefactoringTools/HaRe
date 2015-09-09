@@ -465,12 +465,6 @@ instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
                = do
-                    -- drawTokenTree "update Located HsExpr starting" -- ++AZ++
-                    -- _ <- updateToks oldExp newExp prettyprint False
-                    -- drawTokenTree "update Located HsExpr done" -- ++AZ++
-
-                -- error "update: updated tokens" -- ++AZ++ debug
-                    -- TODO: make sure to call syncAST
                     return newExp
           | otherwise = return e
 
@@ -482,8 +476,6 @@ instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
                 = do
-                     -- _ <- updateToks oldPat newPat prettyprint False
-                     -- TODO: make sure to call syncAST
                      return newPat
             | otherwise = return p
 
@@ -495,8 +487,6 @@ instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
           inTyp (t'::GHC.LHsType n)
             | sameOccurrence t' oldTy
                 = do
-                     -- _ <- updateToks oldTy newTy prettyprint False
-                     -- TODO: make sure to call syncAST
                      return newTy
             | otherwise = return t'
 
@@ -508,8 +498,6 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, GHC.DataId n
             inBind (t'::GHC.LHsBindLR n1 n2)
               | sameOccurrence t' oldBind
                   = do
-                       -- _ <- updateToks oldBind newBind prettyprint False
-                       -- TODO: make sure to call syncAST
                        return newBind
               | otherwise = return t'
 

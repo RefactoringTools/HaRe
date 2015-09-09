@@ -1926,22 +1926,12 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
          -- = error $ "rmParamsInDemotedDecls: (ps,bind)=" ++ (showGhc (ps,bind)) -- ++AZ++
          -- =applyTP (once_tdTP (failTP `adhocTP` worker))
          = SYB.everywhereMStaged SYB.Parser (SYB.mkM worker) bind
-            -- where worker ((HsMatch loc1 name pats rhs ds)::HsMatchP)
             where worker :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
                   worker (GHC.Match mfn pats2 typ rhs1)
                     = do
                          nm <- getRefactNameMap
                          let pats'=filter (\x->not ((patToNameRdr nm x /= Nothing) &&
                                           elem (gfromJust "rmParamsInDemotedDecls" $ patToNameRdr nm x) ps)) pats2
-{-
-                         let (startPos,endPos) = getBiggestStartEndLoc pats2
-                         if (emptyList pats')
-                           then removeToksForPos (startPos,endPos)
-                           else -- updateToksWithPos (startPos,endPos) pats' prettyprint False
-                                updateToksWithPos (startPos,endPos) pats' pprPat False
--}
-                         -- pats'' <- update pats pats' pats
-
                          return (GHC.Match mfn pats' typ rhs1)
 
        pprPat pat = intercalate " " $ map (\p -> (prettyprint p )) pat
@@ -1959,10 +1949,14 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
                    -- was | findPN pn e1 && (elem (GHC.unLoc e2) es)
                    -- | findPN pn e1 && (elem (showGhc (GHC.unLoc e2)) (map (showGhc) es))
                    | findNamesRdr nm [pn] e1 && (elem (showGhc (GHC.unLoc e2)) (map (showGhc) es))
-                      = update expr e1 expr
+                      = do
+                       liftT $ transferEntryDPT expr e1
+                       return e1
                   worker nm (expr@(GHC.L _ (GHC.HsPar e1)))
                     |Just pn==expToNameRdr nm e1
-                       = update expr e1 expr
+                       = do
+                         liftT $ transferEntryDPT expr e1
+                         return e1
                   worker _ x =return x
 
 
@@ -1971,7 +1965,6 @@ foldParams pns match@(GHC.L l (GHC.Match mfn pats mt rhs)) _decls demotedDecls d
                        -> RefactGhc [GHC.Name]
        getClashedNames nm oldNames newNames match
          = do  (_f,DN d) <- hsFDsFromInsideRdr nm match
-               -- ds' <- mapM (flip hsVisiblePNs match) oldNames
                ds' <- mapM (flip (hsVisiblePNsRdr nm) match) oldNames
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub

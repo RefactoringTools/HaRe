@@ -608,8 +608,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn6 13 1" $ do
-     -- r <- doDemote ["./test/testdata/Demote/WhereIn6.hs","13","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/Demote/WhereIn6.hs" (13,1)
+     -- r <- demote logTestSettings testOptions "./test/testdata/Demote/WhereIn6.hs" (13,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/WhereIn6.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/WhereIn6.refactored.hs"
                           "./test/testdata/Demote/WhereIn6.hs.expected"
@@ -618,8 +618,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn7 13 1" $ do
-     -- r <- doDemote ["./test/testdata/Demote/WhereIn7.hs","13","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/Demote/WhereIn7.hs" (13,1)
+     -- r <- demote logTestSettings testOptions "./test/testdata/Demote/WhereIn7.hs" (13,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/WhereIn7.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/WhereIn7.refactored.hs"
                           "./test/testdata/Demote/WhereIn7.hs.expected"
@@ -628,8 +628,8 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes CaseIn1 16 1" $ do
-     -- r <- doDemote ["./test/testdata/Demote/CaseIn1.hs","16","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/Demote/CaseIn1.hs" (16,1)
+     -- r <- demote logTestSettings testOptions "./test/testdata/Demote/CaseIn1.hs" (16,1)
      (show r) `shouldBe` "[\"./test/testdata/Demote/CaseIn1.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/CaseIn1.refactored.hs"
                           "./test/testdata/Demote/CaseIn1.hs.expected"
@@ -699,7 +699,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     it "fails D2 5 1" $ do
      res <- catchException (ct $ demote defaultTestSettings testOptions "./Demote/D2.hs" (5,1))
      -- res <- catchException (ct $ demote logTestSettings testOptions "./Demote/D2.hs" (5,1))
-     (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in the client module 'main:Demote.A2'!\""
+     (show res) `shouldBe` "Just \"This definition can not be demoted, as it is used in the client module 'Demote.A2'!\""
 
     -- -----------------------------------------------------------------
 

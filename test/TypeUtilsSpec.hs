@@ -2258,6 +2258,25 @@ spec = do
       (showGhcQual os) `shouldBe` "Just sq :: Int -> Int"
 
     -- -----------------------------------------------------------------
+
+    it "removes a type signature within multi signatures 3" $ do
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn7.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let Just (GHC.L _ n) = locToName (12, 1) renamed
+      let
+        comp = do
+         (parsed',removedSig) <- rmTypeSig n parsed
+         putRefactParsed parsed' emptyAnns
+         return (parsed',removedSig)
+      -- ((_nb,os),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      ((_nb,os),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- putStrLn $ "anntree\n" ++ showAnnDataFromState s
+      (showGhcQual n) `shouldBe` "WhereIn7.sq"
+      (sourceFromState s) `shouldBe` "module WhereIn7 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--This example also aims to test the split of type signature.\n\nsumSquares x y = sq x + sq y\n\nanotherFun :: Int -> Int\nsq 0 = 0\nsq z = z^pow\n   where  pow=2\n\nanotherFun x = x^2\n "
+      (showGhcQual os) `shouldBe` "Just sq :: Int -> Int"
+
+    -- -----------------------------------------------------------------
 {-
     it "removes a type signature for a pattern in a bind" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/PatBindIn1.hs"
