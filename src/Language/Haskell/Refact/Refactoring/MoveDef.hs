@@ -1515,7 +1515,9 @@ doDemoting' t pn = do
                          (ds,removedDecl,_sigRemoved) <- rmDecl pn False t
                          (t',demotedSigs)             <- rmTypeSigs declaredPns ds
 
-                         logDataWithAnns "MoveDef.doDemoting':after rmDecl:ds" ds
+                         logDataWithAnns "MoveDef.doDemoting':after rmTypeSigs:demotedSigs=" demotedSigs
+                         -- logm $ "MoveDef.doDemoting':after rmTypeSigs:demotedSigs=" ++ showGhc demotedSigs
+                         -- logDataWithAnns "MoveDef.doDemoting':after rmDecl:ds" ds
                          -- logDataWithAnns "MoveDef.doDemoting':before rm*:t" t
                          -- logDataWithAnns "MoveDef.doDemoting':after rmTypeSigs:t'" t'
 

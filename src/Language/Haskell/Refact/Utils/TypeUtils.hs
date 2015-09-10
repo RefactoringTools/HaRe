@@ -1655,11 +1655,15 @@ rmTypeSig pn t
                       let newNames = filter (\rn -> rdrName2NamePure nameMap rn /= pn) names
                           newSig = GHC.L sspan (GHC.SigD (GHC.TypeSig newNames typ p))
 
+                      liftT $ removeTrailingCommaT (glast "doRmTypeSig" newNames)
+
                       let pnt = ghead "rmTypeSig" (filter (\rn -> rdrName2NamePure nameMap rn == pn) names)
+                      liftT $ removeTrailingCommaT pnt
 
                       -- Construct the old signature, by keeping the
                       -- signature part but discarding the other names
                       let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
+                      
                       setStateStorage (StorageSigRdr oldSig)
 
                       parent' <- liftT $ replaceDecls parent (decls1++[newSig]++gtail "doRmTypeSig" decls2)
