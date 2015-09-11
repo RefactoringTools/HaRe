@@ -843,10 +843,11 @@ instance UsedByRhs (GHC.HsBind GHC.Name) where
 
 instance UsedByRhs (GHC.HsBind GHC.RdrName) where
   usedByRhs _ _ = assert False undefined
-  usedByRhsRdr nm (GHC.FunBind _ _ matches _ _ _) pns = findNamesRdr nm pns matches
-  usedByRhsRdr nm (GHC.PatBind _ rhs _ _ _)       pns = findNamesRdr nm pns rhs
-  usedByRhsRdr nm (GHC.VarBind _ rhs _)           pns = findNamesRdr nm pns rhs
-  usedByRhsRdr nm (GHC.AbsBinds _ _ _ _ _)       _pns = False
+  usedByRhsRdr nm  (GHC.FunBind _ _ matches _ _ _)        pns = findNamesRdr nm pns matches
+  usedByRhsRdr nm  (GHC.PatBind _ rhs _ _ _)              pns = findNamesRdr nm pns rhs
+  usedByRhsRdr nm  (GHC.PatSynBind (GHC.PSB _ _ _ rhs _)) pns = findNamesRdr nm pns rhs
+  usedByRhsRdr nm  (GHC.VarBind _ rhs _)                  pns = findNamesRdr nm pns rhs
+  usedByRhsRdr _nm (GHC.AbsBinds _ _ _ _ _)              _pns = False
 
 -- -------------------------------------
 
@@ -1023,11 +1024,12 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
          logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
          let (decls1,decls2) = case after of
                [] -> (before,[])
-               as -> (before ++ [ghead "appendDecl14" after],
+               _  -> (before ++ [ghead "appendDecl14" after],
                       gtail "appendDecl15" after)
          liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
 
 
+{-
   -- ^Add a definition to the beginning of the definition declaration
   -- list, but after the data type declarations if there are any.
   addTopLevelDecl :: (HasDecls t)
@@ -1037,7 +1039,7 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
     = do decls <- liftT (hsDecls parent')
          liftT $ setDeclSpacing newDeclSig 2 0
          liftT $ replaceDecls parent' (newDeclSig++decls)
-
+-}
 
   addLocalDecl :: (HasDecls t)
                => t -> [GHC.LHsDecl GHC.RdrName]
@@ -2322,18 +2324,17 @@ autoRenameLocalVar pn t = do
   nm <- getRefactNameMap
   decls <- liftT $ hsDecls t
   if isDeclaredInRdr nm pn decls
-         then do t' <- worker nm t
+         then do t' <- worker t
                  return t'
          else do return t
 
       where
-         worker :: (SYB.Data t) => NameMap -> t -> RefactGhc t
-         worker nm tt
+         worker :: (SYB.Data t) => t -> RefactGhc t
+         worker tt
                    =do (f,d) <- hsFDNamesFromInsideRdr tt
                        ds <- hsVisibleNamesRdr pn tt
                        let newNameStr = mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                        newName <- mkNewGhcName Nothing newNameStr
-                       -- let newName = mkRdrName newNameStr
                        renamePN' pn newName False tt
 
 -- ---------------------------------------------------------------------
