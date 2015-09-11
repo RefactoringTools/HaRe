@@ -1662,8 +1662,11 @@ rmTypeSig pn t
 
                       -- Construct the old signature, by keeping the
                       -- signature part but discarding the other names
-                      let oldSig = (GHC.L sspan (GHC.TypeSig [pnt] typ p))
-                      
+                      newSpan <- liftT uniqueSrcSpanT
+                      let oldSig = (GHC.L newSpan (GHC.TypeSig [pnt] typ p))
+                      -- ++AZ++ : could just use new SrcSpan and copy top level annotation
+                      -- oldSig' <- liftT $ doCloneT oldSig
+                      liftT $ modifyAnnsT (copyAnn sig oldSig)
                       setStateStorage (StorageSigRdr oldSig)
 
                       parent' <- liftT $ replaceDecls parent (decls1++[newSig]++gtail "doRmTypeSig" decls2)

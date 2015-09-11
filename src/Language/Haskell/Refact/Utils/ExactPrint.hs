@@ -15,6 +15,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , extractAnnsEP
   , replace
   , replaceAnnKey
+  , copyAnn
   , mkKey
   -- , setColRec
   , getOriginalPos
@@ -154,15 +155,24 @@ addAnnKeywords ans conName ks =
 replaceAnnKey :: (SYB.Data old,SYB.Data new)
   => GHC.Located old -> GHC.Located new -> Anns -> Anns
 replaceAnnKey old new ans =
-  case Map.lookup (mkAnnKey old) anns of
-    Nothing -> (const anns ) ans
-    Just v ->  (const anns') ans
+  case Map.lookup (mkAnnKeyU old) ans of
+    Nothing -> ans
+    Just v ->  anns'
       where
-        anns1 = Map.delete (mkAnnKey old) anns
-        anns' = Map.insert (mkAnnKey new) v anns1
-  where
-    anns = ans
+        anns1 = Map.delete (mkAnnKeyU old) ans
+        anns' = Map.insert (mkAnnKeyU new) v anns1
 
+
+-- ---------------------------------------------------------------------
+
+copyAnn :: (SYB.Data old,SYB.Data new)
+  => GHC.Located old -> GHC.Located new -> Anns -> Anns
+copyAnn old new ans =
+  case Map.lookup (mkAnnKeyU old) ans of
+    Nothing -> ans
+    Just v ->  anns'
+      where
+        anns' = Map.insert (mkAnnKeyU new) v ans
 
 -- ---------------------------------------------------------------------
 -- |Update the DeltaPos for the given annotation keys

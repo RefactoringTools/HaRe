@@ -54,7 +54,7 @@ import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import qualified Language.Haskell.GhcMod          as GM (Options(..),defaultOptions,Cradle(..),ProjectType(..))
+import qualified Language.Haskell.GhcMod          as GM (Options(..),defaultOptions,Cradle(..),Project(..))
 import qualified Language.Haskell.GhcMod.Internal as GM (GmLogLevel(..))
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
