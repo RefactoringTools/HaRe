@@ -716,7 +716,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         nm <- getRefactNameMap
                         let (_,DN dd) = (hsFreeAndDeclaredRdr nm ren)
                         worker ren decls pn dd True
-                        -- workerTop ren decls pn dd True
+                        -- workerTop ren decls dd True
 
 
                       wmatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
@@ -727,14 +727,14 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                          let (_,DN dd) = hsFreeAndDeclaredRdr nm grhss
 
                          decls' <- liftT $ hsDecls m
-                         workerTop m decls' pn dd False
+                         workerTop m decls' dd False
 
                       wlet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
                       wlet l@(GHC.L _ (GHC.HsLet dsl _e)) = do
                          logm $ "wlet entered "
                          nm <- getRefactNameMap
                          let (_,DN dd) = hsFreeAndDeclaredRdr nm dsl
-                         dsl' <- workerTop l decls pn dd False
+                         dsl' <- workerTop l decls dd False
                          return dsl'
                       wlet x = return x
 
@@ -753,11 +753,10 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                 => t -- ^The destination of the lift operation
                 -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
                                              -- lifted
-                -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
                 -> [GHC.Name] -- ^Declared variables in the destination
                 -> Bool -- ^True if lifting to the top level
                 -> RefactGhc t
-             workerTop dest ds pnn dd toToplevel
+             workerTop dest ds dd toToplevel
                   =do
                       -- ds <- liftT $ hsDecls dest
                       -- logm $ "MoveDef.worker: dest" ++ (showGhc dest)
@@ -1431,7 +1430,7 @@ doDemoting  pn = do
 
        --6.The demoted definition is a local decl in a Let statement.
        -- demoteInStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
-       demoteInStmt x@(letStmt@(GHC.LetStmt binds)::GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+       demoteInStmt (letStmt@(GHC.L l (GHC.LetStmt binds))::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
          decls <- liftT $ hsDecls binds
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
@@ -1442,7 +1441,7 @@ doDemoting  pn = do
                 then doDemoting' letStmt pn
                 else return letStmt
               return letStmt'
-           else return x
+           else return letStmt
        demoteInStmt x = return x
 
        -- TODO: the rest of these cases below

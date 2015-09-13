@@ -44,6 +44,7 @@ module Language.Haskell.Refact.API
 
        -- , update
        -- , fileNameToModName
+       , nameSybQuery
        , fileNameFromModSummary
        , getModuleName
        , clientModsAndFiles

@@ -45,7 +45,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
-    ,isQualifiedPN, isFunOrPatName, isTypeSig
+    ,isQualifiedPN, isFunOrPatName, isTypeSig, isTypeSigDecl
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,isSimplePatDecl
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
     ,usedWithoutQualR,isUsedInRhs
@@ -596,9 +596,14 @@ isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
 
 
 -- | Return True if a declaration is a type signature declaration.
-isTypeSig :: GHC.Located (GHC.Sig a) -> Bool
+isTypeSig :: GHC.LSig a -> Bool
 isTypeSig (GHC.L _ (GHC.TypeSig _ _ _)) = True
 isTypeSig _ = False
+
+-- | Return True if a declaration is a type signature declaration.
+isTypeSigDecl :: GHC.LHsDecl a -> Bool
+isTypeSigDecl (GHC.L _ (GHC.SigD (GHC.TypeSig _ _ _))) = True
+isTypeSigDecl _ = False
 
 -- | Return True if a declaration is a function definition.
 isFunBindP::HsDeclP -> Bool
@@ -1415,15 +1420,29 @@ duplicateDecl ::
   ->RefactGhc [GHC.LHsDecl GHC.RdrName]  -- ^ The result
 duplicateDecl decls n newFunName
  = do
+     logm $ "duplicateDecl entered:(decls,n,newFunName)=" ++ showGhc (decls,n,newFunName)
      -- decls <- liftT $ hsDecls t
      nm <- getRefactNameMap
      let
        declsToDup = definingDeclsRdrNames nm [n] decls True False
        funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
-       typeSig    = definingSigsRdrNames nm [n] decls
-     funBinding'' <- renamePN n newFunName False funBinding
+       typeSig    = map wrapSig $ definingSigsRdrNames nm [n] decls
+     funBinding'' <- renamePN' n newFunName False funBinding
+     typeSig'' <- renamePN' n newFunName False typeSig
+     logm $ "duplicateDecl:funBinding''=" ++ showGhc funBinding''
 
-     return funBinding''
+     funBinding3 <- mapM (\f@(GHC.L _ fb) -> do
+                             newSpan <- liftT uniqueSrcSpanT
+                             let fb' = GHC.L newSpan fb
+                             liftT $ modifyAnnsT (copyAnn f fb')
+                             return fb'
+                             ) (typeSig'' ++ funBinding'')
+     when (not $ null funBinding3) $ do
+                             liftT $ setEntryDPT (head funBinding3) (DP (2,0))
+                             liftT $ mapM_ (\d -> setEntryDPT d (DP (1,0))) (tail funBinding3)
+     let (decls1,decls2) = break (definesDeclRdr nm n) decls
+         (declsToDup,declsRest) = break (not . definesDeclRdr nm n) decls2
+     return $ decls1 ++ declsToDup ++ funBinding3 ++ declsRest
 
 -- ---------------------------------------------------------------------
 
@@ -1577,7 +1596,9 @@ doRmDecl decls1 decls2
 
       -- Removing first decl
       -- when (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
-      when (not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+      when (not (null decls2') && null decls1) $ do liftT $ transferEntryDPT declToRemove (head decls2')
+      when (not (null decls2') && not (null decls1) && not (isTypeSigDecl (last decls1)))
+        $ do liftT $ transferEntryDPT declToRemove (head decls2')
 
       -- logDataWithAnns "doRmDecl:(decls2')" (decls2')
       return $ (decls1 ++ decls2')
