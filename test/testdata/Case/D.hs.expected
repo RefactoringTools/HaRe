@@ -4,11 +4,11 @@ module C where
 
 foo x = case (odd x) of
           True  -> do
-            -- This is an odd result
-            bob x 1
+              -- This is an odd result
+              bob x 1
           False -> do
-            -- This is an even result
-            bob x 2
+              -- This is an even result
+              bob x 2
 
 bob x y = x + y
 
