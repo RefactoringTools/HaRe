@@ -54,7 +54,7 @@ import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import qualified Language.Haskell.GhcMod          as GM (Options(..),defaultOptions,Cradle(..),Project(..))
+import qualified Language.Haskell.GhcMod as GM (Options(..),defaultOptions,GmLogLevel(..),OutputOpts(..),LineSeparator(..),OutputStyle(..),Cradle(..),Project(..))
 import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
@@ -238,8 +238,16 @@ runRefactGhcStateLog comp fileName logOn  = do
 -- ---------------------------------------------------------------------
 
 testOptions :: GM.Options
--- testOptions = GM.defaultOptions { GM.logLevel = GM.GmError }
-testOptions = GM.defaultOptions
+-- testOptions = GM.defaultOptions { GM.ooptLogLevel = GM.GmError }
+testOptions = GM.defaultOptions {
+    GM.optOutput     = GM.OutputOpts {
+      GM.ooptLogLevel       = GM.GmError
+    , GM.ooptStyle          = GM.PlainStyle
+    , GM.ooptLineSeparator  = GM.LineSeparator "\0"
+    , GM.ooptLinePrefix     = Nothing
+    }
+
+    }
 
 -- ---------------------------------------------------------------------
 

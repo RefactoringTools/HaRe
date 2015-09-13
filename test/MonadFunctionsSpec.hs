@@ -27,7 +27,7 @@ spec :: Spec
 spec = do
   describe "need tests" $ do
     it "for these functions" $ do
-      "a" `shouldBe` "b"
+      pendingWith "need to write these"
 
     -- ---------------------------------
 
