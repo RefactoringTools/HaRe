@@ -10,6 +10,11 @@ import qualified GHC
 import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
+import Data.Generics.Schemes
+
+import Language.Haskell.GHC.ExactPrint.Types
+
+
 -- TODO: replace args with specific parameters
 swapArgs :: RefactSettings -> GM.Options -> [String] -> IO [FilePath]
 swapArgs settings opts args
@@ -47,58 +52,72 @@ comp fileName (row, col) = do
        -- putStrLn "Completd"
 
 
-doSwap ::
- (GHC.Located GHC.Name) -> RefactGhc () -- m GHC.ParsedSource
-doSwap name = do
-    -- inscopes <- getRefactInscopes
-    renamed  <- getRefactRenamed
-    -- parsed   <- getRefactParsed
-    reallyDoSwap name renamed
-
-reallyDoSwap :: (GHC.Located GHC.Name) -> GHC.RenamedSource -> RefactGhc ()
-reallyDoSwap (GHC.L _s n1) renamed = do
-    renamed' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM inMod `SYB.extM` inExp `SYB.extM` inType) renamed -- this needs to be bottom up +++ CMB +++
-    putRefactRenamed renamed'
+doSwap :: (GHC.Located GHC.Name) -> RefactGhc ()
+doSwap (GHC.L _s n1) = do
+    parsed <- getRefactParsed
+    logm $ "doSwap:parsed=" ++ SYB.showData SYB.Parser 0 parsed
+    nm <- getRefactNameMap
+    parsed' <- everywhereM (SYB.mkM (inMod nm)
+                           `SYB.extM` (inExp nm)
+                           `SYB.extM` (inType nm)
+                           `SYB.extM` (inTypeDecl nm)
+                           ) parsed
+    -- this needs to be bottom up +++ CMB +++
+    putRefactParsed parsed' emptyAnns
     return ()
 
     where
          -- 1. The definition is at top level...
-         inMod (_func@(GHC.FunBind (GHC.L x n2) infixity (GHC.MG matches p m1 m2) a locals tick)::(GHC.HsBindLR GHC.Name GHC.Name ))
-            | GHC.nameUnique n1 == GHC.nameUnique n2
-                    = do logm ("inMatch>" ++ SYB.showData SYB.Parser 0 (GHC.L x n2) ++ "<")
+         inMod nm ((GHC.FunBind ln2 infixity (GHC.MG matches p m1 m2) a locals tick)::GHC.HsBind GHC.RdrName)
+            | GHC.nameUnique n1 == GHC.nameUnique (rdrName2NamePure nm ln2)
+                    = do logm ("inMatch>" ++ SYB.showData SYB.Parser 0 ln2 ++ "<")
                          newMatches <- updateMatches matches
-                         return (GHC.FunBind (GHC.L x n2) infixity (GHC.MG newMatches p m1 m2) a locals tick)
-         inMod func = return func
+                         return (GHC.FunBind ln2 infixity (GHC.MG newMatches p m1 m2) a locals tick)
+         inMod _ func = return func
 
          -- 2. All call sites of the function...
-         inExp expr@((GHC.L _x (GHC.HsApp (GHC.L _y (GHC.HsApp e e1)) e2))::GHC.Located (GHC.HsExpr GHC.Name))
-            | GHC.nameUnique (expToName e) == GHC.nameUnique n1
+         inExp nm expr@((GHC.L _x (GHC.HsApp (GHC.L _y (GHC.HsApp e e1)) e2))::GHC.LHsExpr GHC.RdrName)
+            -- | GHC.nameUnique (expToNameRdr nm e) == GHC.nameUnique n1
+            | cond
                    =  update e2 e1 =<< update e1 e2 expr
-         inExp e = return e
+            where
+              cond = case (expToNameRdr nm e) of
+                Nothing -> False
+                Just n2 -> GHC.nameUnique n2 == GHC.nameUnique n1
+         inExp _ e = return e
 
          -- 3. Type signature...
-         inType (GHC.L x (GHC.TypeSig [GHC.L x2 name] types pns)::GHC.LSig GHC.Name)
-           | GHC.nameUnique name == GHC.nameUnique n1
-                = do let (t1:t2:ts) = tyFunToList types
+         inType nm (GHC.L x (GHC.TypeSig [lname] types pns)::GHC.LSig GHC.RdrName)
+           | GHC.nameUnique (rdrName2NamePure nm lname) == GHC.nameUnique n1
+                = do
+                     logm $ "doSwap.inType"
+                     let (t1:t2:ts) = tyFunToList types
                      t1' <- update t1 t2 t1
                      t2' <- update t2 t1 t2
-                     return (GHC.L x (GHC.TypeSig [GHC.L x2 name] (tyListToFun (t1':t2':ts)) pns))
+                     return (GHC.L x (GHC.TypeSig [lname] (tyListToFun (t1':t2':ts)) pns))
 
-         inType (GHC.L _x (GHC.TypeSig (n:ns) _types _)::GHC.LSig GHC.Name)
-           | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n') -> GHC.nameUnique n') (n:ns))
-            = error "Error in swapping arguments in type signature: signauture bound to muliple entities!"
+         inType nm (GHC.L _x (GHC.TypeSig (n:ns) _types _)::GHC.LSig GHC.RdrName)
+           -- | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n') -> GHC.nameUnique n') (n:ns))
+           | GHC.nameUnique n1 `elem` (map (\n' -> GHC.nameUnique (rdrName2NamePure nm n')) (n:ns))
+            = error "Error in swapping arguments in type signature: signature bound to muliple entities!"
 
-         inType ty = return ty
+         inType _ ty = return ty
+
+         inTypeDecl nm (GHC.L l (GHC.SigD s)) = do
+           (GHC.L _ s') <- inType nm (GHC.L l s)
+           return (GHC.L l (GHC.SigD s'))
+         inTypeDecl _ x = return x
 
          tyFunToList (GHC.L _ (GHC.HsForAllTy _ _ _ _ (GHC.L _ (GHC.HsFunTy t1 t2)))) = t1 : (tyFunToList t2)
          tyFunToList (GHC.L _ (GHC.HsFunTy t1 t2)) = t1 : (tyFunToList t2)
          tyFunToList t = [t]
 
+         tyListToFun []   = error "SwapArgs.tyListToFun" -- Keep the exhaustiveness checker happy
          tyListToFun [t1] = t1
          tyListToFun (t1:ts) = GHC.noLoc (GHC.HsFunTy t1 (tyListToFun ts))
 
          updateMatches [] = return []
-         updateMatches ((GHC.L x (GHC.Match mfn pats nothing rhs)::GHC.Located (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))):matches)
+         updateMatches ((GHC.L x (GHC.Match mfn pats nothing rhs)::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)):matches)
            = case pats of
                (p1:p2:ps) -> do p1' <- update p1 p2 p1
                                 p2' <- update p2 p1 p2

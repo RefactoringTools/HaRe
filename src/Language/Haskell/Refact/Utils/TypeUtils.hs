@@ -1441,8 +1441,8 @@ duplicateDecl decls n newFunName
                              liftT $ setEntryDPT (head funBinding3) (DP (2,0))
                              liftT $ mapM_ (\d -> setEntryDPT d (DP (1,0))) (tail funBinding3)
      let (decls1,decls2) = break (definesDeclRdr nm n) decls
-         (declsToDup,declsRest) = break (not . definesDeclRdr nm n) decls2
-     return $ decls1 ++ declsToDup ++ funBinding3 ++ declsRest
+         (declsToDup',declsRest) = break (not . definesDeclRdr nm n) decls2
+     return $ decls1 ++ declsToDup' ++ funBinding3 ++ declsRest
 
 -- ---------------------------------------------------------------------
 

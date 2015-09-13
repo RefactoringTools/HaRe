@@ -464,8 +464,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
        where
         inExp (e::GHC.Located (GHC.HsExpr n))
           | sameOccurrence e oldExp
-               = do
-                    return newExp
+               = return newExp
           | otherwise = return e
 
 instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
@@ -475,8 +474,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
         where
           inPat (p::GHC.LPat n)
             | sameOccurrence p oldPat
-                = do
-                     return newPat
+                = return newPat
             | otherwise = return p
 
 instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
@@ -486,8 +484,7 @@ instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
         where
           inTyp (t'::GHC.LHsType n)
             | sameOccurrence t' oldTy
-                = do
-                     return newTy
+                = return newTy
             | otherwise = return t'
 
 instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, GHC.DataId n1, GHC.DataId n2)
@@ -497,8 +494,7 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, GHC.DataId n
           where
             inBind (t'::GHC.LHsBindLR n1 n2)
               | sameOccurrence t' oldBind
-                  = do
-                       return newBind
+                  = return newBind
               | otherwise = return t'
 
 
