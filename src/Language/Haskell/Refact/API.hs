@@ -316,6 +316,7 @@ module Language.Haskell.Refact.API
     -- ,simplifyDecl
 
     -- *** Others
+    , divideDecls
     , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
@@ -330,7 +331,6 @@ module Language.Haskell.Refact.API
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
     -- ** Debug stuff
-    , getDeclAndToks, getSigAndToks
     -- , getToksForDecl, removeToksOffset -- ++AZ++ remove this after debuggging
     , getParsedForRenamedLPat
     , getParsedForRenamedName
