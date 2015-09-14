@@ -1,5 +1,7 @@
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 
@@ -61,7 +63,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , parseDeclWithAnns
 
        -- * Utility
-       , nameSybQuery
+       , nameSybTransform, nameSybQuery
        , fileNameFromModSummary
 
        , logDataWithAnns
@@ -468,6 +470,52 @@ initRdrNameMap tm = r
     r1 = Map.fromList $ map (\l -> (l,Map.lookup l nameMap)) rdrNames
     -- r = Map.map (fromMaybe (error "initRdrNameMap:no val")) r1
     r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
+
+-- ---------------------------------------------------------------------
+
+nameSybTransform :: (Monad m,SYB.Typeable t)
+             => (GHC.Located GHC.RdrName -> m (GHC.Located GHC.RdrName)) -> t -> m t
+nameSybTransform changer = q
+  where
+    q = SYB.mkM  worker
+        `SYB.extM` workerBind
+        `SYB.extM` workerExpr
+        `SYB.extM` workerLIE
+        `SYB.extM` workerHsTyVarBndr
+        `SYB.extM` workerLHsType
+
+    worker (pnt :: (GHC.Located GHC.RdrName))
+      = changer pnt
+
+    workerBind (GHC.L l (GHC.VarPat name))
+      = do
+        (GHC.L _ n) <- changer (GHC.L l name)
+        return (GHC.L l (GHC.VarPat n))
+    workerBind x = return x
+
+    workerExpr ((GHC.L l (GHC.HsVar name)))
+      = do
+          (GHC.L _ n) <- changer (GHC.L l name)
+          return (GHC.L l (GHC.HsVar n))
+    workerExpr x = return x
+
+    workerLIE ((GHC.L l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE GHC.RdrName))
+      = do
+          (GHC.L _ n) <- changer (GHC.L ln name)
+          return (GHC.L l (GHC.IEVar (GHC.L ln n)))
+    workerLIE x = return x
+
+    workerHsTyVarBndr (GHC.L l (GHC.UserTyVar name))
+      = do
+          (GHC.L _ n) <- changer (GHC.L l name)
+          return (GHC.L l (GHC.UserTyVar n))
+    workerHsTyVarBndr x = return x
+
+    workerLHsType (GHC.L l (GHC.HsTyVar name))
+      = do
+          (GHC.L _ n) <- changer (GHC.L l name)
+          return (GHC.L l (GHC.HsTyVar n))
+    workerLHsType x = return x
 
 -- ---------------------------------------------------------------------
 

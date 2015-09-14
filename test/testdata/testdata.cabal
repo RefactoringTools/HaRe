@@ -119,3 +119,10 @@ Executable demotea2
   Other-Modules : Demote.C2
                   Demote.D2
   Build-Depends:          base >= 4.0  && < 4.9
+
+-- ---------------------------------------------------------------------
+
+Executable qualified
+  Main-Is: TypeUtils/Qualified.hs
+  Other-Modules : TypeUtils.C
+  Build-Depends:          base >= 4.0  && < 4.9

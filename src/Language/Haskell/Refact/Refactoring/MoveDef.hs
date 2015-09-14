@@ -1962,17 +1962,3 @@ isLocalFunOrPatName pn scope
  = isLocalPN pn && isFunOrPatName pn scope
 
 -- ---------------------------------------------------------------------
-
--- |Divide a declaration list into three parts (before, parent, after)
--- according to the PNT, where 'parent' is the first decl containing
--- the PNT, 'before' are those decls before 'parent' and 'after' are
--- those decls after 'parent'.
-
-divideDecls :: SYB.Data t =>
-  [t] -> GHC.Located GHC.Name -> RefactGhc ([t], [t], [t])
-divideDecls ds (GHC.L _ pnt) = do
-  nm <- getRefactNameMap
-  let (before,after) = break (\x -> findNameInRdr nm pnt x) ds
-  return $ if (not $ emptyList after)
-         then (before, [ghead "divideDecls" after], gtail "divideDecls" after)
-         else (ds,[],[])

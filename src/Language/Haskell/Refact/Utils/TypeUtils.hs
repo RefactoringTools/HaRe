@@ -101,6 +101,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
 
     -- ** Others
+    , divideDecls
     , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
@@ -115,7 +116,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
     -- * Debug stuff
-    , getDeclAndToks, getSigAndToks
+    -- , getDeclAndToks, getSigAndToks
     -- , getToksForDecl, removeToksOffset -- ++AZ++ remove this after debuggging
     , getParsedForRenamedLPat
     , getParsedForRenamedName
@@ -1445,6 +1446,21 @@ duplicateDecl decls n newFunName
      return $ decls1 ++ declsToDup' ++ funBinding3 ++ declsRest
 
 -- ---------------------------------------------------------------------
+-- |Divide a declaration list into three parts (before, parent, after)
+-- according to the PNT, where 'parent' is the first decl containing
+-- the PNT, 'before' are those decls before 'parent' and 'after' are
+-- those decls after 'parent'.
+
+divideDecls :: SYB.Data t =>
+  [t] -> GHC.Located GHC.Name -> RefactGhc ([t], [t], [t])
+divideDecls ds (GHC.L _ pnt) = do
+  nm <- getRefactNameMap
+  let (before,after) = break (\x -> findNameInRdr nm pnt x) ds
+  return $ if (not $ emptyList after)
+         then (before, [ghead "divideDecls" after], gtail "divideDecls" after)
+         else (ds,[],[])
+
+-- ---------------------------------------------------------------------
 
 -- | Remove the declaration (and the type signature is the second
 -- parameter is True) that defines the given identifier from the
@@ -1816,32 +1832,32 @@ rmQualifier:: (SYB.Data t)
              =>[GHC.Name]       -- ^ The identifiers.
                ->t           -- ^ The syntax phrase.
                ->RefactGhc t -- ^ The result.
-rmQualifier pns t =
-  -- error "undefined rmQualifier"
-  SYB.everywhereMStaged SYB.Renamer (SYB.mkM rename) t
+rmQualifier pns t = do
+  nm <- getRefactNameMap
+  SYB.everywhereM (nameSybTransform (rename nm)) t
     where
-     rename ((GHC.L l pn)::GHC.Located GHC.Name)
-       | elem pn pns
-       = do do -- toks <- fetchToks
-               -- let toks' = replaceToks toks (row,col) (row,col) [mkToken Varid (row,col) s]
-               let (rs,_) = break (=='.') $ reverse $ showGhc pn -- ++TODO: replace this with the appropriate formulation
-                   s = reverse rs
-               {- TODO: reinstate token update if required
-               let (row,col) = getGhcLoc l
-               let toks' = replaceToks toks (row,col) (row,col) [mkToken (GHC.ITvarid (GHC.mkFastString s)) (row,col) s]
-               putToks toks' modified
-               -}
-               return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
-     rename x = return  x
+     rename nm (ln@(GHC.L l pn)::GHC.Located GHC.RdrName)
+       | elem (rdrName2NamePure nm ln) pns
+       = do do
+               -- let (rs,_) = break (=='.') $ reverse $ showGhc pn -- ++TODO: replace this with the appropriate formulation
+               --     s = reverse rs
+               -- return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
+              case pn of
+                GHC.Qual _ nm -> return (GHC.L l (GHC.Unqual nm))
+                nm            -> return ln
+     rename _ x = return  x
 
 -- ---------------------------------------------------------------------
 
 -- | Replace all occurences of a top level GHC.Name with a qualified version.
 qualifyToplevelName :: GHC.Name -> RefactGhc ()
 qualifyToplevelName n = do
-    renamed <- getRefactRenamed
+    -- renamed <- getRefactRenamed
+    parsed <- getRefactParsed
     -- logm $ "qualifyToplevelName:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed)
-    _ <- renamePN n n True renamed
+    -- _ <- renamePN n n True renamed
+    parsed' <- renamePN' n n True parsed
+    putRefactParsed parsed' emptyAnns
     return ()
 
 -- ---------------------------------------------------------------------
@@ -2605,7 +2621,7 @@ getToksForDecl decl toks
         in dropWhile (\t -> tokenPos t < startPos {- was || isNewLn t -}) toks1
 -}
 -- ---------------------------------------------------------------------
-
+{-
 -- TODO: this is currently only used in a test
 -- Get the toks for a declaration, and adjust its offset to 0.
 getDeclAndToks :: (HsValBinds t GHC.Name)
@@ -2618,9 +2634,9 @@ getDeclAndToks pn _incSig _toks t =
 
   -- in (decls, removeToksOffset declToks)
   in (decls, [])
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- TODO: this is currently only used in a test
 -- | Get the signature and tokens for a declaration
 getSigAndToks :: (SYB.Data t) => GHC.Name -> t -> [PosToken]
@@ -2630,7 +2646,7 @@ getSigAndToks pn t _toks
       Nothing -> Nothing
       -- Just sig -> Just (sig, removeToksOffset $ getToksForDecl sig toks)
       Just sig -> Just (sig, [])
-
+-}
 
 -- ---------------------------------------------------------------------
 

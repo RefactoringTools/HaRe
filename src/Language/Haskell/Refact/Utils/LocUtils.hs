@@ -88,7 +88,7 @@ ghcSpanStartEnd sspan = (getGhcLoc sspan,getGhcLocEnd sspan)
 
 getStartEndLoc :: (SYB.Data t) => t -> (SimpPos,SimpPos)
 getStartEndLoc t =
-  -- error $ "getStartEndLoc:" ++ (SYB.showData SYB.Renamer 0 t)
+  -- error $ "getStartEndLoc:" ++ (SYB.showData SYB.Parser 0 t)
   let
     ss = getSrcSpan t
   in
@@ -134,6 +134,7 @@ getSrcSpan t = res t
     res = SYB.somethingStaged SYB.Renamer Nothing
             (Nothing
                     `SYB.mkQ`  bind
+                    `SYB.extQ` decl
                     `SYB.extQ` sig
                     `SYB.extQ` pnt
                     `SYB.extQ` literalInExp
@@ -142,25 +143,28 @@ getSrcSpan t = res t
                     `SYB.extQ` ty
             )
 
-    bind :: GHC.GenLocated GHC.SrcSpan (GHC.HsBind GHC.Name) -> Maybe GHC.SrcSpan
+    bind :: GHC.GenLocated GHC.SrcSpan (GHC.HsBind GHC.RdrName) -> Maybe GHC.SrcSpan
     bind (GHC.L l _)              = Just l
 
-    sig :: (GHC.LSig GHC.Name) -> Maybe GHC.SrcSpan
+    decl :: GHC.GenLocated GHC.SrcSpan (GHC.HsDecl GHC.RdrName) -> Maybe GHC.SrcSpan
+    decl (GHC.L l _)              = Just l
+
+    sig :: (GHC.LSig GHC.RdrName) -> Maybe GHC.SrcSpan
     sig (GHC.L l _)              = Just l
 
-    ty :: (GHC.LHsType GHC.Name) -> Maybe GHC.SrcSpan
+    ty :: (GHC.LHsType GHC.RdrName) -> Maybe GHC.SrcSpan
     ty (GHC.L l _) = Just l
 
-    pnt :: GHC.GenLocated GHC.SrcSpan GHC.Name -> Maybe GHC.SrcSpan
+    pnt :: GHC.GenLocated GHC.SrcSpan GHC.RdrName -> Maybe GHC.SrcSpan
     pnt (GHC.L l _)              = Just l
 
-    literalInExp :: GHC.LHsExpr GHC.Name -> Maybe GHC.SrcSpan
+    literalInExp :: GHC.LHsExpr GHC.RdrName -> Maybe GHC.SrcSpan
     literalInExp (GHC.L l _) = Just l
 
-    literalInPat :: GHC.LPat GHC.Name -> Maybe GHC.SrcSpan
+    literalInPat :: GHC.LPat GHC.RdrName -> Maybe GHC.SrcSpan
     literalInPat (GHC.L l _) = Just l
 
-    importDecl :: GHC.LImportDecl GHC.Name -> Maybe GHC.SrcSpan
+    importDecl :: GHC.LImportDecl GHC.RdrName -> Maybe GHC.SrcSpan
     importDecl (GHC.L l _) = Just l
 
 -- ---------------------------------------------------------------------
