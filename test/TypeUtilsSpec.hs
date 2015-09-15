@@ -3659,7 +3659,7 @@ This function is not used and has been removed
 
   describe "rmQualifier" $ do
     it "removes the qualifiers from a list of identifiers in a given syntax phrase" $ do
-      (t, _toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/Qualified.hs"
+      (_t, _toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/Qualified.hs"
       let
         comp = do
           getModuleGhc "./TypeUtils/Qualified.hs"
@@ -3719,35 +3719,6 @@ This function is not used and has been removed
   -- ---------------------------------------
 
   describe "autoRenameLocalVar" $ do
-    it "renames an identifier if it is used, no token update" $ do
-      (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
-      let
-        comp = do
-          -- (t, toks) <- parseSourceFileTest "./Demote/WhereIn4.hs"
-          -- putParsedModule t toks
-          renamed <- getRefactRenamed
-          parsed <- getRefactParsed
-          nm <- getRefactNameMap
-          tlDecls <- liftT $ hsDecls parsed
-
-          let Just (GHC.L _ tl)   = locToName (11,1) renamed
-          let Just (GHC.L _ name) = locToName (11,21) renamed
-          -- let decls = (definingDeclsRdrNames nm [tl] (hsBinds renamed) False False)
-          let [decls] = (definingDeclsRdrNames nm [tl] tlDecls False True)
-          decls' <- autoRenameLocalVar name decls
-
-          return (decls',decls,tl,name)
-
-      -- ((r,d,n1,n2),s) <- ct $ runRefactGhcState comp
-      ((r,d,n1,n2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (showGhcQual n1) `shouldBe` "Demote.WhereIn4.sumSquares"
-      (showGhcQual n2) `shouldBe` "p"
-      (showGhcQual d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
-      (showGhcQual r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
-      (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
-
-    -- ---------------------------------
-
     it "renames an identifier if it is used and updates tokens" $ do
       (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
       let
@@ -3764,13 +3735,13 @@ This function is not used and has been removed
 
           return (decls',decls,tl,name)
 
-      -- ((r,d,n1,n2),s) <- ct $ runRefactGhcState comp
       ((r,d,n1,n2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((r,d,n1,n2),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n1) `shouldBe` "Demote.WhereIn4.sumSquares"
       (showGhcQual n2) `shouldBe` "p"
-      (showGhcQual d) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p x GHC.Num.+ Demote.WhereIn4.sq p y\n   where\n       p = 2]"
-      (showGhcQual r) `shouldBe` "[Demote.WhereIn4.sumSquares x y\n   = Demote.WhereIn4.sq p_1 x GHC.Num.+ Demote.WhereIn4.sq p_1 y\n   where\n       p_1 = 2]"
-      (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
+      (showGhcQual d) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
+      (showGhcQual r) `shouldBe` "sumSquares x y\n  = sq p_1 x + sq p_1 y\n  where\n      p_1 = 2"
+      (exactPrintFromState s r) `shouldBe` "\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2"
 
   -- ---------------------------------------
 
@@ -3804,10 +3775,11 @@ This function is not used and has been removed
          -- n1   <- mkNewGhcName Nothing "n1"
          -- n2   <- mkNewGhcName Nothing "n2"
          res  <- addImportDecl parsed2 listModName Nothing False False False Nothing False []
+         putRefactParsed res emptyAnns
 
          return (res,renamed2)
       ((_r,_r2),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1\nimport Data.List\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
+      (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1\nimport Data.List\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
     -- ---------------------------------
 
@@ -3823,11 +3795,12 @@ This function is not used and has been removed
 
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl parsed listModName Nothing False False False Nothing False []
+         putRefactParsed res emptyAnns
 
          return (res,renamed1)
       -- ((_r,t,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
       ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (sourceFromState s) `shouldBe` "module Simplest where\n import Data.List\n\n simple x = x\n "
+      (sourceFromState s) `shouldBe` "module Simplest where\nimport Data.List\n\n\nsimple x = x\n"
 
     -- ---------------------------------
 
@@ -3843,10 +3816,11 @@ This function is not used and has been removed
 
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl parsed listModName Nothing False False False Nothing False []
+         putRefactParsed res emptyAnns
 
          return (res,renamed1)
       ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (sourceFromState s) `shouldBe` "module JustImports where\n\n import Data.Maybe\n import Data.List"
+      (sourceFromState s) `shouldBe` "module JustImports where\n\nimport Data.Maybe\nimport Data.List\n"
 
     -- ---------------------------------
 
@@ -3864,11 +3838,12 @@ This function is not used and has been removed
 
          let listModName  = GHC.mkModuleName "Data.List"
          res  <- addImportDecl parsed listModName Nothing False False False Nothing False []
+         putRefactParsed res emptyAnns
 
          return (res,renamed1)
       ((_r,_r2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
-      (sourceFromState s) `shouldBe` "module Empty where\nimport Data.List"
+      (sourceFromState s) `shouldBe` "module Empty where\nimport Data.List\n\n"
 
 
   -- ---------------------------------------

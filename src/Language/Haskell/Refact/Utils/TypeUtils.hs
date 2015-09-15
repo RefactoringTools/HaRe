@@ -933,7 +933,9 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
        let imp = GHC.hsmodImports p
        impDecl <- mkImpDecl
        newSpan <- liftT uniqueSrcSpanT
-       return (GHC.L l p { GHC.hsmodImports = (imp++[(GHC.L newSpan impDecl)])})
+       let newImp = GHC.L newSpan impDecl
+       liftT $ addSimpleAnnT newImp (DP (1,0)) [((G GHC.AnnImport),DP (0,0))]
+       return (GHC.L l p { GHC.hsmodImports = (imp++[newImp])})
   where
 
      alias' = case alias of
@@ -947,9 +949,11 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
        let lNewEnts = GHC.L newSpan2 newEnts
        -- logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
        liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+       let lmodname = GHC.L newSpan1 modName
+       liftT $ addSimpleAnnT lmodname (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
        return $ GHC.ImportDecl
                         { GHC.ideclSourceSrc = Nothing
-                        , GHC.ideclName      = GHC.L newSpan1 modName
+                        , GHC.ideclName      = lmodname
                         , GHC.ideclPkgQual   = pkgQual
                         , GHC.ideclSource    = source
                         , GHC.ideclSafe      = safe
