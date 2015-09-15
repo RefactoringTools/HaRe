@@ -131,7 +131,7 @@ nonEmptyList _  = True
 getSrcSpan::(SYB.Data t) => t -> Maybe GHC.SrcSpan
 getSrcSpan t = res t
   where
-    res = SYB.somethingStaged SYB.Renamer Nothing
+    res = SYB.somethingStaged SYB.Parser Nothing
             (Nothing
                     `SYB.mkQ`  bind
                     `SYB.extQ` decl

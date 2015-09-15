@@ -4,18 +4,13 @@ import           Test.Hspec
 
 import           TestUtils
 
-import qualified GHC        as GHC
+import Language.Haskell.GHC.ExactPrint
 
-import Data.Maybe
-
--- import Language.Haskell.GHC.ExactPrint.Utils
--- import Language.Haskell.GHC.ExactPrint.Types
-
-import Language.Haskell.Refact.Utils.Binds
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
+import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
 
 -- ---------------------------------------------------------------------
 
@@ -31,22 +26,31 @@ spec = do
 
   describe "getSrcSpan" $ do
     it "Finds the top SrcSpan" $ do
-      (t, _toks,_) <- parsedFileDd1Ghc
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let declsr = hsBinds renamed
-          ss = getSrcSpan declsr
-      (showGhcQual declsr) `shouldBe` "[DupDef.Dd1.dd q\n   = do { let ss = 5;\n          GHC.Base.return (ss GHC.Num.+ q) },\n DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z,\n DupDef.Dd1.ff y\n   = y GHC.Num.+ zz\n   where\n       zz = 1,\n DupDef.Dd1.tup@(DupDef.Dd1.h, DupDef.Dd1.t)\n   = GHC.List.head GHC.Base.$ GHC.List.zip [1 .. 10] [3 .. ff]\n   where\n       ff :: GHC.Types.Int\n       ff = 15,\n DupDef.Dd1.d = 9, DupDef.Dd1.c = 7,\n DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
-      (showGhcQual ss) `shouldBe` "Just DupDef/Dd1.hs:(30,1)-(32,17)"
+      (t, _toks,tgt) <- parsedFileDd1Ghc
+      let
+        comp = do
+         parsed <- getRefactParsed
+         decls <- liftT $ hsDecls parsed
+         let ss = getSrcSpan decls
+         return (decls,ss)
+      ((d,ss'),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (showGhcQual d) `shouldBe` "[toplevel :: Integer -> Integer, toplevel x = c * x,\n c, d :: Integer, c = 7, d = 9, tup :: (Int, Int), h :: Int,\n t :: Int,\n tup@(h, t)\n   = head $ zip [1 .. 10] [3 .. ff]\n   where\n       ff :: Int\n       ff = 15,\n data D = A | B String | C,\n ff y\n   = y + zz\n   where\n       zz = 1,\n l z = let ll = 34 in ll + z,\n dd q\n   = do { let ss = 5;\n          return (ss + q) }]"
+      (showGhcQual ss') `shouldBe` "Just DupDef/Dd1.hs:3:1-30"
 
     -- -------------------------------
+
     it "Finds the SrcSpan for a top level decl" $ do
-      (t, _toks,_) <- parsedFileDemoteGhc
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let declsr = hsBinds renamed
-          decl = head $ drop 2 declsr
-          ss = getSrcSpan decl
-      (showGhcQual decl) `shouldBe` "MoveDef.Demote.toplevel x = MoveDef.Demote.c GHC.Num.* x"
-      (showGhcQual ss) `shouldBe` "Just MoveDef/Demote.hs:4:1-18"
+      (t, _toks,tgt) <- parsedFileDemoteGhc
+      let
+        comp = do
+         parsed <- getRefactParsed
+         decls <- liftT $ hsDecls parsed
+         let decl = head $ drop 2 decls
+             ss = getSrcSpan decl
+         return (decl,ss)
+      ((d,ss'),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      (showGhcQual d) `shouldBe` "c = 7"
+      (showGhcQual ss') `shouldBe` "Just MoveDef/Demote.hs:7:1-5"
 
 -- ---------------------------------------------------------------------
 

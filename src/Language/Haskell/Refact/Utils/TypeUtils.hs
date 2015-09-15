@@ -135,7 +135,6 @@ import Data.List
 import Data.Maybe
 import Exception
 
-import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -1188,7 +1187,11 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
             newEnts <- mkNewEntList pns
             let lNewEnts = GHC.L newSpan (ents++newEnts)
             logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
-            liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+            if isHide
+              then
+                liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+              else
+                liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
             when (not (null ents)) $ do liftT (addTrailingCommaT (last ents))
             return (replaceHiding imp  (Just (isHide, lNewEnts)))
 
@@ -1847,8 +1850,8 @@ rmQualifier pns t = do
                --     s = reverse rs
                -- return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
               case pn of
-                GHC.Qual _ nm -> return (GHC.L l (GHC.Unqual nm))
-                nm            -> return ln
+                GHC.Qual _ n -> return (GHC.L l (GHC.Unqual n))
+                _            -> return ln
      rename _ x = return  x
 
 -- ---------------------------------------------------------------------
@@ -1865,6 +1868,9 @@ qualifyToplevelName n = do
     return ()
 
 -- ---------------------------------------------------------------------
+
+data HowToQual = Qualify | NoQualify | PreserveQualify
+               deriving (Show,Eq)
 
 -- | Rename each occurrences of the identifier in the given syntax
 -- phrase with the new name.
@@ -1896,19 +1902,25 @@ renamePN' oldPN newName useQual t = do
         Just n -> GHC.nameUnique n == GHC.nameUnique oldPN
 
     -- Decision process for new names
-    newNameCalc :: Bool -> GHC.RdrName -> GHC.RdrName
+    newNameCalcBool :: Bool -> GHC.RdrName -> GHC.RdrName
+    newNameCalcBool True  n = newNameCalc Qualify   n
+    newNameCalcBool False n = newNameCalc NoQualify n
+
+    newNameCalc :: HowToQual -> GHC.RdrName -> GHC.RdrName
     newNameCalc uq old = newNameCalc' uq (GHC.isQual_maybe old)
       where
-        newNameCalc' :: Bool -> (Maybe (GHC.ModuleName,GHC.OccName)) -> GHC.RdrName
-        newNameCalc' True (Just (mn,_)) = GHC.Qual mn (GHC.occName newName)
-        newNameCalc' uq' _ =  if uq' then newNameQual else newNameUnqual
+        newNameCalc' :: HowToQual -> (Maybe (GHC.ModuleName,GHC.OccName)) -> GHC.RdrName
+        newNameCalc' Qualify         (Just (mn,_)) = GHC.Qual mn (GHC.occName newName)
+        newNameCalc' PreserveQualify (Just (mn,_)) = GHC.Qual mn (GHC.occName newName)
+        newNameCalc' NoQualify       (Just (_n,_)) = GHC.Unqual  (GHC.occName newName)
+        newNameCalc' uq' _ =  if uq' == Qualify then newNameQual else newNameUnqual
 
     rename :: Bool -> GHC.Located GHC.RdrName -> Transform (GHC.Located GHC.RdrName)
     rename useQual' old@(GHC.L l n)
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:rename at :" ++ showGhc l
-          let nn = newNameCalc useQual' n
+          let nn = newNameCalcBool useQual' n
           -- A RdrName Can have a number of constructors, which are used to
           -- index the annotations associated with it. Make sure the annotation
           -- lines up.
@@ -1923,7 +1935,12 @@ renamePN' oldPN newName useQual t = do
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameVar at :" ++ (showGhc l)
-          let nn = newNameCalc useQual' n
+          -- logTr $ "renamePN:renameVar useQual' :" ++ (show useQual')
+          -- logTr $ "renamePN:renameVar ln :" ++ SYB.showData SYB.Parser 0 (GHC.L l (GHC.HsVar n))
+          let
+            nn = if useQual'
+                   then newNameCalcBool useQual'        n
+                   else newNameCalc     PreserveQualify n
           return (GHC.L l (GHC.HsVar nn))
     renameVar _ x = return x
 
@@ -1933,7 +1950,7 @@ renamePN' oldPN newName useQual t = do
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameTyVar at :" ++ (showGhc l)
-          let nn = newNameCalc useQual' n
+          let nn = newNameCalcBool useQual' n
           return (GHC.L l (GHC.HsTyVar nn))
     renameTyVar _ x = return x
 
@@ -1943,7 +1960,7 @@ renamePN' oldPN newName useQual t = do
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameHsTyVarBndr at :" ++ (showGhc l)
-          let nn = newNameCalc useQual' n
+          let nn = newNameCalcBool useQual' n
           return (GHC.L l (GHC.UserTyVar nn))
     renameHsTyVarBndr _ x = return x
 
@@ -1954,7 +1971,7 @@ renamePN' oldPN newName useQual t = do
      | cond (GHC.L ln n)
      = do
           -- logTr $ "renamePN:renameLIE.IEVar at :" ++ (showGhc l)
-          let new = newNameCalc useQual' n
+          let new = newNameCalcBool useQual' n
 
           let newn = (GHC.L ln new)
           modifyAnnsT (replaceAnnKey old newn)
@@ -1965,7 +1982,7 @@ renamePN' oldPN newName useQual t = do
      | cond (GHC.L l n)
      = do
           -- logTr $ "renamePN:renameLIE.IEThingAbs at :" ++ (showGhc l)
-          let new = newNameCalc useQual' n
+          let new = newNameCalcBool useQual' n
 
           let newn = (GHC.L ln new)
           modifyAnnsT (replaceAnnKey old newn)
@@ -1976,7 +1993,7 @@ renamePN' oldPN newName useQual t = do
      | cond (GHC.L ln n)
      = do
           -- logTr $ "renamePN:renameLIE.IEThingAll at :" ++ (showGhc l)
-          let new = newNameCalc useQual' n
+          let new = newNameCalcBool useQual' n
 
           let newn = (GHC.L ln new)
           modifyAnnsT (replaceAnnKey old newn)
@@ -1990,7 +2007,7 @@ renamePN' oldPN newName useQual t = do
          old' <- if (cond (GHC.L ln n))
            then do
              logTr $ "renamePN:renameLIE.IEThingWith at :" ++ (showGhc l)
-             let new = newNameCalc useQual' n
+             let new = newNameCalcBool useQual' n
 
              let newn = (GHC.L ln new)
              modifyAnnsT (replaceAnnKey old newn)
@@ -2015,7 +2032,7 @@ renamePN' oldPN newName useQual t = do
      | cond (GHC.L l n)
      = do
           logTr $ "renamePNworker:renameLPat at :" ++ (showGhc l)
-          let nn = newNameCalc useQual' n
+          let nn = newNameCalcBool useQual' n
           return (GHC.L l (GHC.VarPat nn))
     renameLPat _ x = return x
 
@@ -2068,15 +2085,16 @@ renamePN' oldPN newName useQual t = do
     renameTransform useQual' t' =
           -- Note: bottom-up traversal (no ' at end)
             (SYB.everywhereM (
-                   SYB.mkM   (rename useQual')
-                  `SYB.extM` (renameVar useQual')
-                  `SYB.extM` (renameTyVar useQual')
+            -- (everywhereM' (
+                   SYB.mkM   (rename            useQual')
+                  `SYB.extM` (renameVar         useQual')
+                  `SYB.extM` (renameTyVar       useQual')
                   `SYB.extM` (renameHsTyVarBndr useQual')
-                  `SYB.extM` (renameLIE useQual')
-                  `SYB.extM` (renameLPat useQual')
-                  `SYB.extM` (renameTypeSig useQual')
-                  `SYB.extM` (renameImportDecl useQual')
-                  `SYB.extM` (renameFunBind useQual')
+                  `SYB.extM` (renameLIE         useQual')
+                  `SYB.extM` (renameLPat        useQual')
+                  `SYB.extM` (renameTypeSig     useQual')
+                  `SYB.extM` (renameImportDecl  useQual')
+                  `SYB.extM` (renameFunBind     useQual')
                    ) t')
   -- ans <- getRefactAnns
   -- let (t',(ans',_),logOut) = runTransform ans (renameTransform useQual t)
@@ -2086,7 +2104,7 @@ renamePN' oldPN newName useQual t = do
   return t'
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Rename each occurrences of the identifier in the given syntax
 -- phrase with the new name.
 
@@ -2349,7 +2367,7 @@ renamePNworker oldPN newName useQual t = do
                      rdrNameFromName True newName'
              replaceRdrName (GHC.L l newTok)
              return ()
-
+-}
 ----------------------------------------------------------------------------------------
 -- | Check whether the specified identifier is declared in the given syntax phrase t,
 -- if so, rename the identifier by creating a new name automatically. If the Bool parameter
@@ -2673,28 +2691,4 @@ removeOffset offset toks = map (\(t,s) -> (adjust t,s)) toks
             in
               GHC.mkSrcSpan locs loce
           _ -> l
-
--- ---------------------------------------------------------------------
-
--- | Get signature for a declaration
-getSig :: (SYB.Data t) => GHC.Name -> t
-     -> Maybe (GHC.LSig GHC.Name)
-getSig pn t = maybeSig
-  where
-   maybeSig = if (emptyList sigList)
-      then Nothing
-      else Just $ head sigList
-
-   sigList = SYB.everythingStaged SYB.Renamer (++) []
-              ([] `SYB.mkQ` inDecls) t
-
-   inDecls (sigs::[GHC.LSig GHC.Name])
-      | not $ emptyList (snd (break (definesTypeSig pn) sigs)) -- /=[]
-     = let (_decls1,decls2)= break (definesTypeSig pn) sigs
-           sig@(GHC.L l (GHC.TypeSig names typ ptn)) = ghead "getSigsAndToks" decls2  -- as decls2/=[], no problem with head
-           sig' = if  length names > 1
-                   then (GHC.L l (GHC.TypeSig ((filter (\(GHC.L _ x) -> x /= pn) names)) typ ptn))
-                   else sig
-       in [sig']
-   inDecls _ = []
 

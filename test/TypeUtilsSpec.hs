@@ -3405,7 +3405,7 @@ spec = do
 
   describe "isExported" $ do
     it "returns True if a GHC.Name is exported" $ do
-      -- (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/B1.hs"
+      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/B1.hs"
 
       let
         comp = do
@@ -3421,7 +3421,7 @@ spec = do
          exSumSquares <- isExported sumSquares
 
          return (myFringe,exMyFring,sumSquares,exSumSquares)
-      ((mf,emf,ss,ess),_s) <- ct $ runRefactGhc comp [Left "./Renaming/B1.hs"] initialState testOptions
+      ((mf,emf,ss,ess),_s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t}) testOptions
 
       (showGhcQual mf) `shouldBe` "Renaming.B1.myFringe"
       emf `shouldBe` True
@@ -3855,7 +3855,6 @@ This function is not used and has been removed
         comp = do
          -- (t1,_toks1)  <- parseSourceFileTest "./TypeUtils/JustImports.hs"
          -- clearParsedModule
-         let renamed1 = fromJust $ GHC.tm_renamed_source t
          parsed <- getRefactParsed
 
          let modName  = GHC.mkModuleName "Data.Maybe"
@@ -3863,11 +3862,10 @@ This function is not used and has been removed
          let  itemName = mkRdrName "fromJust"
 
          res  <- addItemsToImport modName parsed [itemName]
-         toks <- fetchToks
+         putRefactParsed res emptyAnns
 
-         return (res,toks,renamed1,toks)
-      -- ((_r,_t,_r2,_tk2),s) <- ct $ runRefactGhcState comp
-      ((_r,_t,_r2,_tk2),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+         return (res)
+      ((_r),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       -- This is the correct behavior. If the import doesn't have an import list, creating
       -- one for an item effectively reduces the imported interface.
@@ -3898,24 +3896,25 @@ This function is not used and has been removed
 -}
 
     -- ---------------------------------
-    it "adds an item to an import entry with existing items." $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/SelectivelyImports.hs"
+
+    it "adds an item to an import entry with existing items" $ do
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./TypeUtils/SelectivelyImports.hs"
       let
         comp = do
          -- (t1,_toks1)  <- parseSourceFileTest "./TypeUtils/SelectivelyImports.hs"
-         let renamed1 = fromJust $ GHC.tm_renamed_source t
          parsed <-getRefactParsed
 
          let modName  = GHC.mkModuleName "Data.Maybe"
          -- itemName <- mkNewGhcName Nothing "isJust"
-         let  itemName = mkRdrName "fromJust"
+         let  itemName = mkRdrName "isJust"
 
          res  <- addItemsToImport modName parsed [itemName]
-
-         return (res,renamed1,toks)
+         putRefactParsed res emptyAnns
+         return (res)
       -- ((_r,_r2,_tk2),_s) <- ct $ runRefactGhcState comp
-      ((_r,_r2,_tk2),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (GHC.showRichTokenStream toks) `shouldBe` "module SelectivelyImports where\n\nimport Data.Maybe (fromJust,isJust)\n\n__ = id\n"
+      ((_r),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- (GHC.showRichTokenStream toks) `shouldBe` "module SelectivelyImports where\n\nimport Data.Maybe (fromJust,isJust)\n\n__ = id\n"
+      (sourceFromState s) `shouldBe` "module SelectivelyImports where\n\nimport Data.Maybe (fromJust,isJust)\n\n__ = id\n"
 
 {- -- test after properly inserting conditional identifier
     it "Add an item to an import entry with existing items, passing existing conditional identifier." $ do

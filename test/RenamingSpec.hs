@@ -450,8 +450,8 @@ spec = do
     -- ---------------------------------
 
     it "renames in QualServer QualClient" $ do
-     r <- ct $ rename (testSettingsMainfile "./Renaming/QualClient.hs") testOptions "./Renaming/QualServer.hs" "foo1" (11,1)
-     -- ct $ rename (logTestSettingsMainfile "./Renaming/QualClient.hs") testOptions "./Renaming/QualServer.hs" "foo1" (11,1)
+     r <- ct $ rename defaultTestSettings testOptions  "./Renaming/QualServer.hs" "foo1" (11,1)
+     -- r <- ct $ rename logTestSettings testOptions  "./Renaming/QualServer.hs" "foo1" (11,1)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
