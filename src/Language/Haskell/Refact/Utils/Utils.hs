@@ -251,7 +251,7 @@ parseSourceFileGhc targetFile = do
         Just modSum -> getModuleDetails modSum
   -}
   opts <- getTargetGhcOptions [Left targetFile]
-  logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ showGhc (targetFile,opts)
+  -- logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ showGhc (targetFile,opts)
   loadTarget opts [targetFile]
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph

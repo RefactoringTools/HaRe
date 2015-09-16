@@ -1,6 +1,6 @@
 module DupDef.Dd3 where
 
-import DupDef.Dd1 hiding (dd,ff)
+import DupDef.Dd1 hiding (dd,mm)
 
 
 f2 x = ff (x+1)

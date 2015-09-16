@@ -57,11 +57,11 @@ spec = do
     -- ---------------------------------
 
     it "duplicates a definition in a match" $ do
-     -- ct $ doDuplicateDef ["DupDef/Dd1.hs","mm","23","5"]
-     res <- ct $ duplicateDef defaultTestSettings testOptions "DupDef/Dd1.hs" "mm" (23,5)
+     res <- ct $ duplicateDef defaultTestSettings testOptions "DupDef/Dd1.hs" "nn" (23,5)
+     -- res <- ct $ duplicateDef logTestSettings testOptions "DupDef/Dd1.hs" "nn" (23,5)
      (show res) `shouldBe` "[\"DupDef/Dd1.hs\"]"
      diff <- compareFiles "./test/testdata/DupDef/Dd1.refactored.hs"
-                          "./test/testdata/DupDef/Dd1.hs.expected.mm"
+                          "./test/testdata/DupDef/Dd1.hs.expected.nn"
      diff `shouldBe` []
 
     -- ---------------------------------
