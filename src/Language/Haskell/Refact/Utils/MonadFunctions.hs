@@ -65,6 +65,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Utility
        , nameSybTransform, nameSybQuery
        , fileNameFromModSummary
+       , mkNewGhcNamePure
 
        , logDataWithAnns
        , logAnns
@@ -81,9 +82,15 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 
--- import qualified FastString    as GHC
+import qualified Bag           as GHC
+import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified GhcMonad      as GHC
+import qualified Module        as GHC
+import qualified Name          as GHC
+import qualified RdrName       as GHC
+import qualified Unique        as GHC
+import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 -- import qualified GHC.SYB.Utils as SYB
@@ -229,8 +236,7 @@ modifyAnns tk f = tk'
 
 -- ----------------------------------------------------------------------
 
-putParsedModule
-  :: GHC.TypecheckedModule -> RefactGhc ()
+putParsedModule :: GHC.TypecheckedModule -> RefactGhc ()
 putParsedModule tm = do
   st <- get
   put $ st { rsModule = initRefactModule tm }
@@ -448,6 +454,47 @@ initRefactModule tm
 initTokenCacheLayout :: a -> TokenCache a
 initTokenCacheLayout a = TK (Map.fromList [((TId 0),a)]) (TId 0)
 
+-- ---------------------------------------------------------------------
+
+-- |We need the ParsedSource because it more closely reflects the actual source
+-- code, but must be able to work with the renamed representation of the names
+-- involved. This function constructs a map from every Located RdrName in the
+-- ParsedSource to its corresponding name in the RenamedSource. It also deals
+-- with the wrinkle that we need to Location of the RdrName to make sure we have
+-- the right Name, but not all RdrNames have a Location.
+-- This function is called before the RefactGhc monad is active.
+initRdrNameMap :: GHC.TypecheckedModule -> NameMap
+initRdrNameMap tm = r
+  where
+    parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
+    renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
+
+    checkRdr :: GHC.Located GHC.RdrName -> Maybe [(GHC.SrcSpan,GHC.RdrName)]
+    checkRdr (GHC.L l n@(GHC.Unqual _)) = Just [(l,n)]
+    checkRdr (GHC.L l n@(GHC.Qual _ _)) = Just [(l,n)]
+    checkRdr (GHC.L _ _)= Nothing
+
+    checkName :: GHC.Located GHC.Name -> Maybe [GHC.Located GHC.Name]
+    checkName ln = Just [ln]
+
+    rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr ) parsed
+    names    = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
+
+    nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
+
+    -- If the name does not exist (e.g. a TH Splice that has been expanded, make a new one)
+    -- No attempt is made to make sure that equivalent ones have equivalent names.
+    lookupName l n i = case Map.lookup l nameMap of
+      Just v -> v
+      Nothing -> case n of
+                   GHC.Unqual u -> mkNewGhcNamePure 'h' i Nothing  (GHC.occNameString u)
+                   GHC.Qual q u -> mkNewGhcNamePure 'h' i (Just (GHC.Module (GHC.stringToPackageKey "") q)) (GHC.occNameString u)
+
+    r = Map.fromList $ map (\((l,n),i) -> (l,lookupName l n i)) $ zip rdrNames [1..]
+    -- r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
+    -- r1 = Map.fromList $ map (\l -> (l,Map.lookup l nameMap)) rdrNames
+    -- r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
+{-
 initRdrNameMap :: GHC.TypecheckedModule -> NameMap
 initRdrNameMap tm = r
   where
@@ -468,8 +515,17 @@ initRdrNameMap tm = r
     nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
 
     r1 = Map.fromList $ map (\l -> (l,Map.lookup l nameMap)) rdrNames
-    -- r = Map.map (fromMaybe (error "initRdrNameMap:no val")) r1
     r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
+-}
+-- ---------------------------------------------------------------------
+
+mkNewGhcNamePure :: Char -> Int -> Maybe GHC.Module -> String -> GHC.Name
+mkNewGhcNamePure c i maybeMod name =
+  let un = GHC.mkUnique c i -- H for HaRe :)
+      n = case maybeMod of
+               Nothing   -> GHC.mkInternalName un      (GHC.mkVarOcc name) GHC.noSrcSpan
+               Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) GHC.noSrcSpan
+  in n
 
 -- ---------------------------------------------------------------------
 

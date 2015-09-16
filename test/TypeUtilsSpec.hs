@@ -1413,22 +1413,23 @@ spec = do
 
     it "finds free vars in TH files" $ do
       (t,_toks,tgt) <- ct $ parsedFileGhc "./TH/Main.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
-
-      -- (SYB.showData SYB.Renamer 0 binds) `shouldBe` ""
-      -- (showGhcQual binds) `shouldBe` ""
-
+      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- putStrLn (SYB.showData SYB.Parser 0 parsed)
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
+      -- putStrLn (SYB.showData SYB.Renamer 0 renamed)
       let
         comp = do
           getModuleGhc "./TH/Main.hs"
-          fds' <- hsFreeAndDeclaredGhc renamed
+          parsed <- getRefactParsed
+          nm <- getRefactNameMap
+          let fds' = hsFreeAndDeclaredRdr nm parsed
+          -- fds' <- hsFreeAndDeclaredGhc renamed
           return (fds')
       ((fds),_s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
 
       (show fds) `shouldBe`
-            "(FN [System.IO.putStrLn, TH.Printf.pr],"++
-             "DN [TH.Main.baz, TH.Main.sillyString, TH.Main.main])"
+            "(FN [System.IO.putStrLn, pr],"++
+             "DN [TH.Main.main, TH.Main.baz, TH.Main.sillyString])"
 
   -- ---------------------------------------------
 
@@ -2586,6 +2587,7 @@ spec = do
 
   describe "renamePN" $ do
     it "replaces a Name with another, updating tokens 1" $ do
+      (t,_toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          parsed <- getRefactParsed
@@ -2597,7 +2599,8 @@ spec = do
          return (new,newName,n')
       let
 
-      ((nb,nn,n),s) <- ct $ runTestGhc comp "./DupDef/Dd1.hs"
+      ((nb,nn,n),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((nb,nn,n),s) <- ct $ runTestGhc comp "./DupDef/Dd1.hs"
       -- ((nb,nn,n),s) <- ct $ runLogTestGhc comp "./DupDef/Dd1.hs"
       (showGhcQual (n,nn)) `shouldBe` "(DupDef.Dd1.toplevel, bar2)"
       -- error (show $ annsFromState s)
@@ -2607,7 +2610,7 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "replaces a Name with another, updating tokens 2" $ do
-      -- (t, toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
 
       -- let renamed = fromJust $ GHC.tm_renamed_source t
       -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2630,8 +2633,9 @@ spec = do
          putRefactParsed parsed' emptyAnns
          return (new,newName,decl,n')
       let
+      ((nb,nn,d,n),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      ((nb,nn,d,n),s) <- ct $ runTestGhc comp "./Demote/WhereIn4.hs"
+      -- ((nb,nn,d,n),s) <- ct $ runTestGhc comp "./Demote/WhereIn4.hs"
       (showGhcQual d) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
       (showGhcQual (n,nn)) `shouldBe` "(p, p_1)"
       -- (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
@@ -3405,7 +3409,7 @@ spec = do
 
   describe "isExported" $ do
     it "returns True if a GHC.Name is exported" $ do
-      (t, toks, tgt) <- ct $ parsedFileGhc "./Renaming/B1.hs"
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./Renaming/B1.hs"
 
       let
         comp = do

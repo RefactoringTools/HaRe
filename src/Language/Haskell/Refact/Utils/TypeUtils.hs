@@ -283,12 +283,8 @@ mkNewGhcName maybeMod name = do
   s <- get
   u <- gets rsUniqState
   put s { rsUniqState = (u+1) }
+  return (mkNewGhcNamePure 'H' (u + 1) maybeMod name)
 
-  let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
-      n = case maybeMod of
-               Nothing   -> GHC.mkInternalName un      (GHC.mkVarOcc name) GHC.noSrcSpan
-               Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) GHC.noSrcSpan
-  return n
 
 -- ---------------------------------------------------------------------
 
