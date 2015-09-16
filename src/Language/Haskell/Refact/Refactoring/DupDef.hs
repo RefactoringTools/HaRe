@@ -9,10 +9,8 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import qualified GHC
-import qualified OccName               as GHC
 import qualified RdrName               as GHC
 
-import Control.Monad
 import Data.List
 import Data.Maybe
 
@@ -21,7 +19,6 @@ import Language.Haskell.GhcMod.Internal as GM (mpPath)
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Transform
 
 -- ---------------------------------------------------------------------
@@ -50,7 +47,7 @@ comp fileName newName (row, col) = do
           Just pn ->
             do
               logm $ "DupDef.comp:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
-              (refactoredMod@((_fp,_ismod),(anns',parsed')),(isDone,nn)) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
+              (refactoredMod@((_fp,_ismod),(_anns',_parsed')),(isDone,nn)) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
               logm $ "DupDef.com:isDone=" ++ show isDone
               case isDone of
                 DupDefFailed -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
@@ -85,9 +82,8 @@ doDuplicating pn newName = do
 reallyDoDuplicating :: GHC.Located GHC.Name -> String
               -> InScopes
               -> RefactGhc (DupDefResult,GHC.Name)
-reallyDoDuplicating pn newName inscopes = do
+reallyDoDuplicating pn newName _inscopes = do
    clearRefactDone
-   nm <- getRefactNameMap
    parsed <- getRefactParsed
    newNameGhc <- mkNewGhcName Nothing newName
 
@@ -106,10 +102,9 @@ reallyDoDuplicating pn newName inscopes = do
                                       `SYB.extM` (dupInLetStmt newNameGhc)
                                      ) parsed2
        putRefactParsed parsed' emptyAnns
-       d <- getRefactDone
-       let nn = findNewPName nm newName parsed'
-       if d then return (DupDefLowerLevel,newNameGhc)
-            else return (DupDefFailed,newNameGhc)
+       done <- getRefactDone
+       if done then return (DupDefLowerLevel,newNameGhc)
+               else return (DupDefFailed,newNameGhc)
 
         where
         --1. The definition to be duplicated is at top level.
@@ -138,13 +133,13 @@ reallyDoDuplicating pn newName inscopes = do
                 else return match
 
         --3. The definition to be duplicated is a local declaration in a pattern binding
-        dupInPat newNameGhc (pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p rhs _typ _fvs _))) :: GHC.LHsDecl GHC.RdrName)
+        dupInPat newNameGhc (pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p _rhs _typ _fvs _))) :: GHC.LHsDecl GHC.RdrName)
           = doDuplicating' newNameGhc pat pn
         --   | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes pat pn
         dupInPat _ pat = return pat
 
         --4: The defintion to be duplicated is a local decl in a Let expression
-        dupInLet newNameGhc (letExp@(GHC.L _ (GHC.HsLet ds _e)):: GHC.LHsExpr GHC.RdrName)
+        dupInLet newNameGhc (letExp@(GHC.L _ (GHC.HsLet _ds _e)):: GHC.LHsExpr GHC.RdrName)
           = doDuplicating' newNameGhc letExp pn
         --   | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
         dupInLet _ letExp = return letExp
@@ -153,7 +148,7 @@ reallyDoDuplicating pn newName inscopes = do
         -- Note: The local declarations in a case alternative are covered in #2 above.
 
         --6.The definition to be duplicated is a local decl in a Let statement.
-        dupInLetStmt newNameGhc (letStmt@(GHC.L _ (GHC.LetStmt ds)):: GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+        dupInLetStmt newNameGhc (letStmt@(GHC.L _ (GHC.LetStmt _ds)):: GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
           = doDuplicating' newNameGhc letStmt pn
            -- was |findFunOrPatBind pn ds /=[]=doDuplicating' inscps letStmt pn
         --    |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
@@ -165,7 +160,7 @@ reallyDoDuplicating pn newName inscopes = do
 
 
         doDuplicating' :: (HasDecls t) => GHC.Name -> t -> GHC.Located GHC.Name -> RefactGhc t
-        doDuplicating' newNameGhc t ln = do
+        doDuplicating' newNameGhc t _ln = do
           logm $ "doDuplicating' entered"
           -- logm $ "doDuplicating' entered:t=" ++ SYB.showData SYB.Parser 0 t
           declsp <- liftT $ hsDecls t
@@ -214,34 +209,6 @@ reallyDoDuplicating pn newName inscopes = do
                            parentr' <- liftT $ replaceDecls parentr newdecls
                            return parentr'
 
-
-
--- | Find the the new definition name in GHC.Name format.
-findNewPName :: (SYB.Data t) => NameMap -> String -> t -> GHC.Name
-findNewPName nm name parsed = gfromJust "findNewPName" res
-  where
-     res = SYB.something (nameSybQuery workerR) parsed
-
-     workerR ln@(GHC.L l pname::GHC.Located GHC.RdrName)
-        | (GHC.occNameString $ GHC.rdrNameOcc pname) == name = Just (rdrName2NamePure nm ln)
-        -- = error $ "findNewPName:(name,thingy)=" ++ show (name, GHC.occNameString $ GHC.rdrNameOcc pname)
-     workerR _ = Nothing
-     -- workerR  (pname::GHC.RdrName)
-     --    | (GHC.occNameString $ GHC.rdrNameOcc pname) == name = Just (error $ "need to call rdrNameToName")
-     -- workerR _ = Nothing
-
-{-
--- | Find the the new definition name in GHC.Name format.
-findNewPName :: String -> GHC.RenamedSource -> GHC.Name
-findNewPName name renamed = gfromJust "findNewPName" res
-  where
-     res = SYB.somethingStaged SYB.Renamer Nothing
-            (Nothing `SYB.mkQ` worker) renamed
-
-     worker  (pname::GHC.Name)
-        | (GHC.occNameString $ GHC.getOccName pname) == name = Just pname
-     worker _ = Nothing
--}
 
 -- | Do refactoring in the client module. That is to hide the
 -- identifer in the import declaration if it will cause any problem in
