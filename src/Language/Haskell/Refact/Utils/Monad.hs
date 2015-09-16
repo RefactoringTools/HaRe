@@ -233,6 +233,8 @@ setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
 
 -- ---------------------------------------------------------------------
 
+instance GM.GmOut (StateT RefactState IO) where
+
 instance GM.GmLog RefactGhc where
     gmlJournal v = RefactGhc (GM.gmlJournal v)
     gmlHistory   = RefactGhc GM.gmlHistory

@@ -55,7 +55,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.3
+                                , ghc-mod >= 5.4
                                 , mtl
                                 , old-time
                                 , pretty
@@ -146,7 +146,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.3
+                                , ghc-mod >= 5.4
                                 , mtl
                                 , old-time
                                 , parsec >= 3.1.6
@@ -218,7 +218,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 5.3
+    , ghc-mod >= 5.4
     , hspec
     , mtl
     , old-time

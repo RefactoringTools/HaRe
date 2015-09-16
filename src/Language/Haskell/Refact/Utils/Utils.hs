@@ -122,25 +122,7 @@ getTargetGhc (GM.ModulePath _mn fp) = getModuleGhc fp
 getModuleGhc ::
   FilePath -> RefactGhc ()
 getModuleGhc targetFile = do
-  -- TODO: consult cached store of multiple module graphs, one for
-  --       each main file.
-  {-
-  mTarget <- identifyTargetModule targetFile
-  logm $ "getModuleGhc:mTarget=" ++ show mTarget
-  case mTarget of
-    Nothing -> return ()
-    Just tm -> do
-      void $ activateModule tm
-      return ()
-  -}
-
   parseSourceFileGhc targetFile
-  {-
-  mm <- getModuleMaybe targetFile
-  case mm of
-    Just ms -> getModuleDetails ms
-    Nothing -> parseSourceFileGhc targetFile
-  -}
 
 -- ---------------------------------------------------------------------
 {-
@@ -269,6 +251,7 @@ parseSourceFileGhc targetFile = do
         Just modSum -> getModuleDetails modSum
   -}
   opts <- getTargetGhcOptions [Left targetFile]
+  logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ showGhc (targetFile,opts)
   loadTarget opts [targetFile]
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph

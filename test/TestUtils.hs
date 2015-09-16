@@ -107,6 +107,7 @@ parsedFileGhc fileName = do
        res <- parseSourceFileTest fileName
        return res
   (parseResult,_s) <- runRefactGhcStateLog comp fileName Normal
+  -- (parseResult,_s) <- runRefactGhcStateLog comp fileName Debug
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -197,8 +198,7 @@ mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 runTestInternal :: RefactGhc a -> FilePath -> RefactState -> GM.Options
                 -> IO (a, RefactState)
 runTestInternal comp fileName st opts =
-  runRefactGhc (initGhcSession [Left fileName] >> comp) [Left fileName] st opts
-  -- runRefactGhc comp [Left fileName] st opts
+  runRefactGhc comp [Left fileName] st opts
 
 -- ---------------------------------------------------------------------
 
@@ -234,6 +234,8 @@ runRefactGhcStateLog comp fileName logOn  = do
         , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
+  -- putStrLn $ "runRefactGhcStateLog:initState=" ++ show initState
+  -- putStrLn $ "runRefactGhcStateLog:testOptions=" ++ show testOptions
   runTestInternal comp fileName initState testOptions
 
 -- ---------------------------------------------------------------------
@@ -243,6 +245,7 @@ testOptions :: GM.Options
 testOptions = GM.defaultOptions {
     GM.optOutput     = GM.OutputOpts {
       GM.ooptLogLevel       = GM.GmError
+      -- GM.ooptLogLevel       = GM.GmVomit
     , GM.ooptStyle          = GM.PlainStyle
     , GM.ooptLineSeparator  = GM.LineSeparator "\0"
     , GM.ooptLinePrefix     = Nothing
