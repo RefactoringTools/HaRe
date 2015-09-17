@@ -16,7 +16,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Conveniences for state access
 
          fetchAnnsFinal
-       , fetchToks -- Deprecated
        , getTypecheckedModule
 
        , getRefactStreamModified
@@ -47,9 +46,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , replaceRdrName
        , refactRunTransform
        , liftT
-
-       -- * TokenUtils API
-       , getToksForSpan
 
        -- * State flags for managing generic traversals
        , getRefactDone
@@ -87,7 +83,6 @@ import qualified Name          as GHC
 import qualified Unique        as GHC
 
 import qualified Data.Generics as SYB
--- import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
@@ -104,23 +99,12 @@ import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
--- |fetch the possibly modified tokens. Deprecated
-fetchToks :: RefactGhc [PosToken]
-fetchToks = do
-  error $ "fetchToks no longer used"
-
 -- |fetch the final annotations
 fetchAnnsFinal :: RefactGhc Anns
 fetchAnnsFinal = do
   Just tm <- gets rsModule
   let anns = (tkCache $ rsTokenCache tm) Map.! mainTid
   return anns
-
--- |Get the current tokens for a given GHC.SrcSpan.
-getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
-getToksForSpan _sspan = do
-  error $ "getToksForSpan no longer used"
-
 
 -- ---------------------------------------------------------------------
 
@@ -485,32 +469,7 @@ initRdrNameMap tm = r
                    _            -> error "initRdrNameMap:should not happen"
 
     r = Map.fromList $ map (\((l,n),i) -> (l,lookupName l n i)) $ zip rdrNames [1..]
-    -- r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
-    -- r1 = Map.fromList $ map (\l -> (l,Map.lookup l nameMap)) rdrNames
-    -- r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
-{-
-initRdrNameMap :: GHC.TypecheckedModule -> NameMap
-initRdrNameMap tm = r
-  where
-    parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
-    renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
 
-    checkRdr :: GHC.Located GHC.RdrName -> Maybe [GHC.SrcSpan]
-    checkRdr (GHC.L l (GHC.Unqual _)) = Just [l]
-    checkRdr (GHC.L l (GHC.Qual _ _)) = Just [l]
-    checkRdr (GHC.L _ _)= Nothing
-
-    checkName :: GHC.Located GHC.Name -> Maybe [GHC.Located GHC.Name]
-    checkName ln = Just [ln]
-
-    rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr ) parsed
-    names    = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
-
-    nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
-
-    r1 = Map.fromList $ map (\l -> (l,Map.lookup l nameMap)) rdrNames
-    r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
--}
 -- ---------------------------------------------------------------------
 
 mkNewGhcNamePure :: Char -> Int -> Maybe GHC.Module -> String -> GHC.Name
@@ -583,22 +542,18 @@ nameSybQuery checker = q
     worker (pnt :: (GHC.Located a))
       = checker pnt
 
-    -- workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
     workerBind (GHC.L l (GHC.VarPat name))
       = checker (GHC.L l name)
     workerBind _ = Nothing
 
-    -- workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
     workerExpr ((GHC.L l (GHC.HsVar name)))
       = checker (GHC.L l name)
     workerExpr _ = Nothing
 
     workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
-    -- workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))))
       = checker (GHC.L ln name)
     workerLIE _ = Nothing
 
-    -- workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
     workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name)))
       = checker (GHC.L l name)
     workerHsTyVarBndr _ = Nothing

@@ -30,7 +30,6 @@ module Language.Haskell.Refact.Utils.Monad
        , defaultSettings
        , logSettings
 
-       -- , loadModuleGraphGhc
        , getTargetGhcOptions
        , loadTarget
        , cabalModuleGraphs
@@ -108,7 +107,6 @@ data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 
 data RefactModule = RefMod
         { rsTypecheckedMod  :: !GHC.TypecheckedModule
-        -- , rsOrigTokenStream :: ![PosToken]         -- ^Original Token stream for the current module
         , rsNameMap         :: NameMap
           -- ^ Mapping from the names in the ParsedSource to the renamed
           -- versions. Note: No strict mark, can be computed lazily.
@@ -162,14 +160,11 @@ When HaRe needs a new SrcSpan, for this, it generates it from this
 field, to ensure uniqueness.
 -}
 
--- type TargetModule = ([FilePath], (Maybe FilePath,GHC.ModSummary))
 type TargetModule = GM.ModulePath -- From ghc-mod
--- data ModulePath = ModulePath { mpModule :: ModuleName, mpPath :: FilePath }
 
 instance GHC.Outputable TargetModule where
   ppr t = GHC.text (show t)
 
--- type TargetGraph = ([FilePath],[(Maybe FilePath, GHC.ModSummary)])
 
 -- The CabalGraph comes directly from ghc-mod
 -- type CabalGraph = Map.Map ChComponentName (GM.GmComponent GMCResolved (Set.Set ModulePath))
@@ -216,8 +211,6 @@ newtype RefactGhc a = RefactGhc
                , ExceptionMonad
                )
 
--- type RefactGhc a = GHC.GhcT (GhcModT (StateT RefactState IO)) a
-
 -- ---------------------------------------------------------------------
 
 runRefactGhc ::
@@ -258,7 +251,6 @@ instance GHC.HasDynFlags RefactGhc where
 instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
     get = lift get
     put = lift . put
-    -- state = lift . state
 
 instance (MonadTrans GHC.GhcT) where
    lift = GHC.liftGhcT
@@ -348,17 +340,6 @@ loadModuleGraphGhc maybeTargetFiles = do
     Nothing -> return ()
   return ()
 -}
--- ---------------------------------------------------------------------
-{-
-cabalComponentSets :: RefactGhc [Set.Set GM.ModulePath]
-cabalComponentSets = do
-  mgs <- cabalModuleGraphs
-  -- logm $ "cabalComponentSets:mgs=" ++ show mgs
-  let
-    toSet (k,v) = Set.insert k v
-    flatten (GM.GmModuleGraph mg) = foldl Set.union Set.empty $ map toSet (Map.toList mg)
-  return $ map flatten mgs
--}
 
 -- ---------------------------------------------------------------------
 
@@ -373,14 +354,6 @@ cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
       return $ graph
 
 -- ---------------------------------------------------------------------
-
--- initGmlSession :: [GM.GHCOption] -> (GHC.DynFlags -> GHC.Ghc GHC.DynFlags) -> RefactGhc ()
--- initGmlSession opts mdf = RefactGhc (GM.GmlT $ GM.initSession opts mdf)
-
--- getTargetGhcOptions :: GM.Cradle -> Set.Set (Either FilePath GHC.ModuleName)
---                   -> RefactGhc [GM.GHCOption]
--- getTargetGhcOptions crdl mfns
---   = RefactGhc (GM.GmlT $ GM.targetGhcOptions crdl mfns)
 
 getTargetGhcOptions :: [Either FilePath GHC.ModuleName]
                   -> RefactGhc [GM.GHCOption]
@@ -398,40 +371,10 @@ loadTarget :: [GM.GHCOption] -> [FilePath] -> RefactGhc ()
 loadTarget opts targetFiles = RefactGhc (GM.loadTargets opts targetFiles)
 
 -- ---------------------------------------------------------------------
-{-
--- | Make sure the given file is the currently loaded target, and load
--- it if not. Assumes that all the module graphs had been generated
--- before, so these are not updated.
-ensureTargetLoaded :: TargetModule -> RefactGhc GHC.ModSummary
-ensureTargetLoaded (target,(_,modSum)) = do
-  settings <- get
-  let currentTarget = rsCurrentTarget settings
-  if currentTarget == Just target
-    then do
-      logm $ "ensureTargetLoaded: not loading:" ++ show target
-      return modSum
-    else do
-      logm $ "ensureTargetLoaded: loading:" ++ show target
-      loadTarget target
-      put $ settings { rsCurrentTarget = Just target}
-      graph <- GHC.getModuleGraph
-      let newModSum = filter (\ms -> GHC.ms_mod modSum == GHC.ms_mod ms) graph
-      return $ ghead "ensureTargetLoaded" newModSum
--}
--- ---------------------------------------------------------------------
 
 canonicalizeGraph ::
   [GHC.ModSummary] -> RefactGhc [(Maybe FilePath, GHC.ModSummary)]
 canonicalizeGraph graph = do
-  {-
-  let mm = map (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) graph
-      canon ((Just fp),m) = do
-        fp' <- canonicalizePath fp
-        return $ (Just fp',m)
-      canon (Nothing,m)  = return (Nothing,m)
-
-  mm' <- mapM (liftIO . canon) mm
-  -}
   mm' <- mapM canonicalizeModSummary graph
   return mm'
 

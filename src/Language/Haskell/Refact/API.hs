@@ -48,7 +48,6 @@ module Language.Haskell.Refact.API
 
        -- ** Conveniences for state access
 
-       , fetchToks -- Deprecated
        , getTypecheckedModule
        , RefacResult(..)
        , getRefactStreamModified
@@ -71,9 +70,6 @@ module Language.Haskell.Refact.API
        , replaceRdrName
        , refactRunTransform
        , liftT
-
-       -- ** TokenUtils API
-       -- , getToksForSpan
 
        -- ** State flags for managing generic traversals
        , getRefactDone
@@ -240,7 +236,6 @@ module Language.Haskell.Refact.API
   , setGhcContext
 
  -- * from `Language.Haskell.Refact.Utils.TokenUtils`
-  , Positioning(..)
   , NameMap
 
  ) where

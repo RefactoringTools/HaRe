@@ -93,8 +93,4 @@ instance GHC.Outputable (GHC.TyFamEqn GHC.Name (GHC.LHsTyVarBndrs GHC.Name)) whe
 
 -- ---------------------------------------------------------------------
 
--- type HsModuleP = GHC.Located (GHC.HsModule GHC.RdrName)
-
--- ---------------------------------------------------------------------
-
 type PosToken = (GHC.Located GHC.Token, String)

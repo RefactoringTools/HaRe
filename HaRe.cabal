@@ -72,7 +72,7 @@ Library
                                 , Cabal >= 1.22
                                 -- , uniplate
 
-        GHC-Options:             -Wall -O0
+        -- GHC-Options:             -Wall -O0
 
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe

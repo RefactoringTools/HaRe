@@ -7,8 +7,6 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
     prettyprint
   , prettyprint2
   , ppType
-  -- , lexStringToRichTokens
-  -- , getDataConstructors
   , setGhcContext
   , showGhcQual
   )
@@ -16,12 +14,8 @@ module Language.Haskell.Refact.Utils.GhcVersionSpecific
 
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
--- import qualified GHC.Paths     as GHC
--- import qualified Lexer         as GHC
 import qualified Outputable    as GHC
--- import qualified StringBuffer  as GHC
 
--- import Language.Haskell.Refact.Utils.TypeSyn
 
 
 -- ---------------------------------------------------------------------
@@ -57,21 +51,6 @@ ppType x = GHC.renderWithStyle GHC.tracingDynFlags (GHC.pprParendType x) (GHC.mk
 #else
 ppType x = GHC.renderWithStyle                     (GHC.pprParendType x) (GHC.mkUserStyle GHC.neverQualify GHC.AllTheWay)
 #endif
-
--- ---------------------------------------------------------------------
-
-{-
-getDataConstructors :: GHC.LHsDecl n -> [GHC.LConDecl n]
-#if __GLASGOW_HASKELL__ > 704
-getDataConstructors (GHC.L _ (GHC.TyClD (GHC.TyDecl _ _ (GHC.TyData _ _ _ _ cons _) _))) = cons
-#else
-getDataConstructors (GHC.L _ (GHC.TyClD (GHC.TyData _ _ _ _ _ _ cons _))) = cons
-      -- TyClD - Type definitions
-      -- GHC7.4.2: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyData _ _ name _ _ _ cons _)))
-      -- GHC7.6.3: defines' decl@(GHC.L l (GHC.TyClD (GHC.TyDecl _name _vars (GHC.TyData _ _ _ _ cons _) _fvs)))
-#endif
-getDataConstructors _ = []
--}
 
 -- ---------------------------------------------------------------------
 
