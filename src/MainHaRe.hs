@@ -87,45 +87,38 @@ instance Exception HareError
 
 main :: IO ()
 main = flip catches handlers $ do
-  {-
     hSetEncoding stdout utf8
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
-    cradle <- findCradle
     let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg2 = cmdArg !. 2
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
         cmdArg5 = cmdArg !. 5
+    -- putStrLn $ "cmdArg0=" ++ cmdArg0
     res <- case cmdArg0 of
-   -}
-    let res = "Need to reinstate this"
-{-
       -- demote wants FilePath -> SimpPos
-      "demote" -> runFunc cradle $ demote opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "demote" -> runFunc $ demote opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- dupdef wants FilePath -> String -> SimpPos
-      "dupdef" -> runFunc cradle $ duplicateDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
--}
+      "dupdef" -> runFunc $ duplicateDef opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
       -- iftocase wants FilePath -> SimpPos -> SimpPos
-      -- "iftocase" -> runFunc cradle $ ifToCase opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
-{-
+      "iftocase" -> runFunc $ ifToCase opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
       -- liftOneLevel wants FilePath -> SimpPos
-      "liftOneLevel" -> runFunc cradle $ liftOneLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "liftOneLevel" -> runFunc $ liftOneLevel opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- liftToTopLevel wants FilePath -> SimpPos
-      "liftToTopLevel" -> runFunc cradle $ liftToTopLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "liftToTopLevel" -> runFunc $ liftToTopLevel opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- rename wants FilePath -> String -> SimpPos
-      "rename" -> runFunc cradle $ rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+      "rename" -> runFunc $ rename opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
       -- roundtrip wants FilePath
-      "roundtrip" -> runFunc cradle $ roundTrip opt defaultOptions cmdArg1
+      "roundtrip" -> runFunc $ roundTrip opt defaultOptions cmdArg1
 
-      "show" -> putStrLn  (show (opt,cradle))
+      "show" -> putStrLn  (show (opt))
 
       cmd      -> throw (NoSuchCommand cmd)
--}
     -- setCurrentDirectory currentDirectory
     putStr (show res)
     -- putStr $ "(ok " ++ showLisp mfs ++ ")"
@@ -162,11 +155,11 @@ main = flip catches handlers $ do
 
 ----------------------------------------------------------------
 
-runFunc :: Cradle -> IO [String] -> IO ()
-runFunc cradle f = do
+runFunc :: IO [String] -> IO ()
+runFunc f = do
   r <- catchException f
   let ret = case r of
-       Left s    -> "(error " ++ (show s) ++ "[" ++ (show $ cradleCabalFile cradle) ++ "])"
+       Left s    -> "(error " ++ (show s) ++ ")"
        Right mfs -> "(ok " ++ showLisp mfs ++ ")"
   putStrLn ret
 

@@ -5,12 +5,12 @@ module E where
 foo x = bob x f
   where
     f = (case (odd x) of
-           True  -> do
-              -- This is an odd result
-              bob x 1
-           False -> do
-              -- This is an even result
-              bob x 2) + 2
+      True  -> do
+         -- This is an odd result
+         bob x 1
+      False -> do
+         -- This is an even result
+         bob x 2) + 2
 
 bob x y = x + y
 

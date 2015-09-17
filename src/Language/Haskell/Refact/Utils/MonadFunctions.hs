@@ -78,19 +78,13 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        ) where
 
 import Control.Monad.State
--- import Control.Exception
 import Data.List
-import Data.Maybe
 
-import qualified Bag           as GHC
-import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified GhcMonad      as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
-import qualified RdrName       as GHC
 import qualified Unique        as GHC
-import qualified Var           as GHC
 
 import qualified Data.Generics as SYB
 -- import qualified GHC.SYB.Utils as SYB
@@ -107,7 +101,6 @@ import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.ExactPrint
 
 import qualified Data.Map as Map
--- import Control.Applicative
 
 -- ---------------------------------------------------------------------
 
@@ -489,6 +482,7 @@ initRdrNameMap tm = r
       Nothing -> case n of
                    GHC.Unqual u -> mkNewGhcNamePure 'h' i Nothing  (GHC.occNameString u)
                    GHC.Qual q u -> mkNewGhcNamePure 'h' i (Just (GHC.Module (GHC.stringToPackageKey "") q)) (GHC.occNameString u)
+                   _            -> error "initRdrNameMap:should not happen"
 
     r = Map.fromList $ map (\((l,n),i) -> (l,lookupName l n i)) $ zip rdrNames [1..]
     -- r = Map.mapWithKey (\k v -> fromMaybe (error $ "initRdrNameMap:no val for:" ++ showGhc k) v) r1
