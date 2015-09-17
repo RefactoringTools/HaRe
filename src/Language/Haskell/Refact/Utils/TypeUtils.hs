@@ -2034,8 +2034,7 @@ renamePN' oldPN newName useQual t = do
 
     renameFunBind :: Bool -> GHC.HsBindLR GHC.RdrName GHC.RdrName -> Transform (GHC.HsBindLR GHC.RdrName GHC.RdrName)
     renameFunBind _useQual (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick)
-     -- | (GHC.nameUnique n == GHC.nameUnique oldPN) || (GHC.nameUnique n == GHC.nameUnique newName)
-     | cond (GHC.L ln n) -- || (GHC.nameUnique n == GHC.nameUnique newName)
+     | cond (GHC.L ln n)
      = do -- Need to (a) rename the actual funbind name
           --         NOTE: due to bottom-up traversal, (a) should
           --               already have been done.

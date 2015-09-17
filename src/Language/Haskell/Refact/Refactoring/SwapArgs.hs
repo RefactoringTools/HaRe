@@ -77,7 +77,6 @@ doSwap (GHC.L _s n1) = do
 
          -- 2. All call sites of the function...
          inExp nm expr@((GHC.L _x (GHC.HsApp (GHC.L _y (GHC.HsApp e e1)) e2))::GHC.LHsExpr GHC.RdrName)
-            -- | GHC.nameUnique (expToNameRdr nm e) == GHC.nameUnique n1
             | cond
                    =  update e2 e1 =<< update e1 e2 expr
             where
@@ -97,7 +96,6 @@ doSwap (GHC.L _s n1) = do
                      return (GHC.L x (GHC.TypeSig [lname] (tyListToFun (t1':t2':ts)) pns))
 
          inType nm (GHC.L _x (GHC.TypeSig (n:ns) _types _)::GHC.LSig GHC.RdrName)
-           -- | GHC.nameUnique n1 `elem` (map (\(GHC.L _ n') -> GHC.nameUnique n') (n:ns))
            | GHC.nameUnique n1 `elem` (map (\n' -> GHC.nameUnique (rdrName2NamePure nm n')) (n:ns))
             = error "Error in swapping arguments in type signature: signature bound to muliple entities!"
 
