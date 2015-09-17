@@ -14,8 +14,8 @@ import qualified RdrName               as GHC
 import Data.List
 import Data.Maybe
 
-import qualified Language.Haskell.GhcMod as GM (Options(..))
-import Language.Haskell.GhcMod.Internal as GM (mpPath)
+import qualified Language.Haskell.GhcMod as GM
+import Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
@@ -108,10 +108,6 @@ reallyDoDuplicating pn newName _inscopes = do
 
         where
         --1. The definition to be duplicated is at top level.
-        -- dupInMod :: (GHC.HsGroup GHC.Name)-> RefactGhc (GHC.HsGroup GHC.Name)
-        -- dupInMod (grp :: (GHC.HsGroup GHC.Name))
-        --   | not $ emptyList (findFunOrPatBind pn (hsBinds grp)) = doDuplicating' inscopes grp pn
-        -- dupInMod grp = return grp
         dupInModule :: GHC.Name -> GHC.ParsedSource -> RefactGhc GHC.ParsedSource
         dupInModule newNameGhc p
           = do
@@ -125,7 +121,6 @@ reallyDoDuplicating pn newName _inscopes = do
         dupInMatch newNameGhc (match::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
           = do
               nm <- getRefactNameMap
-              -- declsp <- liftT $ hsDecls rhs
               declsp <- liftT $ hsDecls match
               logm $ "dupInMatch:declsp=" ++ showGhc declsp
               if not $ emptyList (findFunOrPatBind nm pn declsp)
@@ -135,13 +130,11 @@ reallyDoDuplicating pn newName _inscopes = do
         --3. The definition to be duplicated is a local declaration in a pattern binding
         dupInPat newNameGhc (pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p _rhs _typ _fvs _))) :: GHC.LHsDecl GHC.RdrName)
           = doDuplicating' newNameGhc pat pn
-        --   | not $ emptyList (findFunOrPatBind pn (hsBinds rhs)) = doDuplicating' inscopes pat pn
         dupInPat _ pat = return pat
 
         --4: The defintion to be duplicated is a local decl in a Let expression
         dupInLet newNameGhc (letExp@(GHC.L _ (GHC.HsLet _ds _e)):: GHC.LHsExpr GHC.RdrName)
           = doDuplicating' newNameGhc letExp pn
-        --   | not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letExp pn
         dupInLet _ letExp = return letExp
 
         --5. The definition to be duplicated is a local decl in a case alternative.
@@ -150,8 +143,6 @@ reallyDoDuplicating pn newName _inscopes = do
         --6.The definition to be duplicated is a local decl in a Let statement.
         dupInLetStmt newNameGhc (letStmt@(GHC.L _ (GHC.LetStmt _ds)):: GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
           = doDuplicating' newNameGhc letStmt pn
-           -- was |findFunOrPatBind pn ds /=[]=doDuplicating' inscps letStmt pn
-        --    |not $ emptyList (findFunOrPatBind pn (hsBinds ds)) = doDuplicating' inscopes letStmt pn
         dupInLetStmt _ letStmt = return letStmt
 
 
@@ -178,10 +169,7 @@ reallyDoDuplicating pn newName _inscopes = do
                 declsp <- liftT $ hsDecls parentr
                 nm <- getRefactNameMap
                 let
-                    -- declsr = hsBinds parentr
-
                     duplicatedDecls = definingDeclsRdrNames nm [n] declsp True False
-                    -- (after,before)  = break (definesP pn) (reverse declsp)
 
                 logm $ "doDuplicating'':duplicatedDecls=" ++ showGhc duplicatedDecls
                 (f,d) <- hsFDNamesFromInsideRdr parentr
@@ -192,12 +180,8 @@ reallyDoDuplicating pn newName _inscopes = do
                 dv <- hsVisiblePNsRdr nm ln declsp --dv: names may shadow new name
                 let vars        = nub (f `union` d `union` map showGhc dv)
 
-                -- newNameGhc <- mkNewGhcName Nothing newName
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow
                 nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName Nothing
-
-                -- logm ("DupDef: nameAlreadyInScope =" ++ (show nameAlreadyInScope)) -- ++AZ++ debug
-                -- logm ("DupDef: ln =" ++ (show ln)) -- ++AZ++ debug
 
                 if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls)
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
@@ -205,7 +189,6 @@ reallyDoDuplicating pn newName _inscopes = do
                    else do
                            setRefactDone
                            newdecls <- duplicateDecl declsp n newNameGhc
-                           -- logm $ "doDuplicating'':newdecls=" ++ showGhc newdecls
                            parentr' <- liftT $ replaceDecls parentr newdecls
                            return parentr'
 
@@ -217,28 +200,21 @@ refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
                     -> RefactGhc ApplyRefacResult
 refactorInClientMod oldPN serverModName newPName targetModule
   = do
-       logm ("refactorInClientMod: (oldPN,serverModName,newPName)=" ++ (showGhc (oldPN,serverModName,newPName))) -- ++AZ++ debug
+       logm ("refactorInClientMod: (oldPN,serverModName,newPName)=" ++ (showGhc (oldPN,serverModName,newPName)))
        -- void $ activateModule targetModule
        getTargetGhc targetModule
 
-       -- let fileName = gfromJust "refactorInClientMod" $ GHC.ml_hs_file $ GHC.ms_location modSummary
        let fileName = GM.mpPath targetModule
-{-
-       -- modInfo@(t,ts) <- getModuleGhc fileName
-       getModuleGhc fileName
--}
        renamed <- getRefactRenamed
        parsed <- getRefactParsed
 
        let modNames = willBeUnQualImportedBy serverModName renamed
        logm ("refactorInClientMod: (modNames)=" ++ (showGhc (modNames))) -- ++AZ++ debug
 
-       -- if isJust modNames && needToBeHided (pNtoName newPName) exps parsed
        mustHide <- needToBeHided newPName renamed parsed
        logm ("refactorInClientMod: (mustHide)=" ++ (showGhc (mustHide))) -- ++AZ++ debug
        if isJust modNames && mustHide
         then do
-                -- refactoredMod <- applyRefac (doDuplicatingClient serverModName [newPName]) (Just modInfo) fileName
                 (refactoredMod,_) <- applyRefac (doDuplicatingClient serverModName [newPName]) (RSFile fileName)
                 return refactoredMod
         else return ((fileName,RefacUnmodifed),(emptyAnns,parsed))
@@ -280,5 +256,4 @@ willBeUnQualImportedBy modName (_,imps,_,_)
          where getModName (GHC.L _ (GHC.ImportDecl _ _modName1 _qualify _source _safe _isQualified _isImplicit as _h))
                  = if isJust as then (fromJust as)
                                 else modName
-               -- simpModName (SN m loc) = m
 

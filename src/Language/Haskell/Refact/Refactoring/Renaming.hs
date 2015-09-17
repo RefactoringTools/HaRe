@@ -59,12 +59,9 @@ comp fileName newName (row,col) = do
     getModuleGhc fileName
     renamed <- getRefactRenamed
     parsed  <- getRefactParsed
-    -- logm $ "comp:renamed=" ++ SYB.showData SYB.Renamer 0 renamed -- ++AZ++
-    -- logm $ "comp:parsed=" ++ (SYB.showData SYB.Parser 0 parsed) -- ++AZ++
 
     modu <- getModule
     targetModule <- getRefactTargetModule
-    -- let (Just (modName,_)) = getModuleName parsed
     let modName = case getModuleName parsed of
                     Just (mn,_) -> mn
                     Nothing -> GHC.mkModuleName "Main"
@@ -73,8 +70,6 @@ comp fileName newName (row,col) = do
     case maybePn of
         Just pn@(GHC.L _ n) -> do
            logm $ "Renaming:(n,modu)=" ++ showGhc (n,modu)
-           -- let (GHC.L _ rdrName') = gfromJust "Renaming.comp.1" $ locToRdrName (row, col) parsed
-           -- logm $ "Renaming.comp:rdrName'=" ++ (showGhc rdrName')
 
            let (GHC.L _ rdrName) = gfromJust "Renaming.comp.2" $ locToRdrName (row, col) parsed
            let rdrNameStr = GHC.occNameString $ GHC.rdrNameOcc rdrName
@@ -86,7 +81,6 @@ comp fileName newName (row,col) = do
 
 
            logm $ "Renaming.comp: before GHC.nameModule,n=" ++ showGhc n
-           -- let defineMod = GHC.moduleName $ GHC.nameModule n
 
            let defineMod = case GHC.nameModule_maybe n of
                             Just mn -> GHC.moduleName mn
@@ -136,14 +130,11 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
   return nIsExported
    where
      -- 1. The name is declared in a module(top level name)
-     -- renameInMod (mod::HsModuleP)
      renameInMod :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
      renameInMod ren
-        -- was | isDeclaredIn oldn ren = do
         | True = do
            logm $ "renameInMod"
            renameTopLevelVarName oldn newNameStr newNameGhc modName ren True True
-     -- renameInMod _ren = mzero
 
 
 renameTopLevelVarName :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName -> GHC.RenamedSource
@@ -166,7 +157,6 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
      logm $ "renameTopLevelVarName:(scopeClashNames,intersection)=" ++ (showGhc (scopeClashNames,intersect scopeClashNames f'))
      logm $ "renameTopLevelVarName:(oldPN,modName)=" ++ (showGhc (oldPN,modName))
      if (nonEmptyList $ intersect scopeClashNames f')
-     -- if elem newNameStr f
        then error ("The new name will cause ambiguous occurrence problem,"
                    ++" please select another new name or qualify the use of ' "
                    ++ newName ++ "' before renaming!\n") -- Another implementation option is to add the qualifier
@@ -181,13 +171,11 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
 
                                  logm $ "renameTopLevelVarName:basic tests done"
 
-                                 -- isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName Nothing
                                  isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
                                  logm $ "renameTopLevelVarName:after isInScopeUnqual"
                                  logm $ "renameTopLevelVarName:oldPN=" ++ showGhc oldPN
                                  ds <- hsVisibleNames oldPN renamed
                                  logm $ "renameTopLevelVarName:ds computed=" ++ (show ds)
-                                 -- '\\[pNtoName oldPN]' handles the case in which the new name is same as the old name
                                  if existChecking && elem newName ((nub (ds `union` f)) \\[nameToString oldPN])
                                    then error ("Name '"++newName++"'  already existed, or rename '"
                                                 ++nameToString oldPN++ "' to '"++newName++
@@ -196,17 +184,14 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                           then do
                                                logm $ "renameTopLevelVarName start..:should have qualified"
                                                parsed <- getRefactParsed
-                                               -- void $ renamePN oldPN newNameGhc True renamed
                                                parsed' <- renamePN' oldPN newNameGhc True parsed
                                                putRefactParsed parsed' mempty
                                                logm $ "renameTopLevelVarName done:should have qualified"
-                                               -- drawTokenTreeDetailed "should be qualified" -- ++AZ++ debug
                                                r' <- getRefactRenamed
                                                return r'
                                           else do
                                                logm $ "renameTopLevelVarName start.."
                                                parsed <- getRefactParsed
-                                               -- void $ renamePN oldPN newNameGhc False renamed
                                                parsed' <- renamePN' oldPN newNameGhc False parsed
                                                putRefactParsed parsed' mempty
                                                logm $ "renameTopLevelVarName done"
@@ -218,19 +203,10 @@ renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
                   -> RefactGhc [ApplyRefacResult]
 renameInClientMod oldPN newName newNameGhc targetModule = do
       logm $ "renameInClientMod:(oldPN,newNameGhc,targetModule)=" ++ (showGhc (oldPN,newNameGhc,targetModule)) -- ++AZ++
-      -- void $ activateModule targetModule
       getTargetGhc targetModule
-      {- ++AZ++ debug stuff -}
-      names <- ghandle handler (GHC.parseName $ nameToString oldPN)
-      nameInfo <- mapM GHC.lookupName names
-      logm $ "renameInClientMod: nameInfo=" ++ (showGhc nameInfo)
-      {- ++AZ++ debug stuff end -}
 
       renamed <- getRefactRenamed
       modName <- getRefactModuleName
-      -- let modName = GHC.moduleName $ GHC.ms_mod modSummary
-      -- causeNameClashInExports oldPN newName mod exps
-      -- logm $ "renameInClientMod:causeNameClashInExports oldPN modName renamed=" ++ (show $ causeNameClashInExports oldPN modName renamed)
 
       -- There are two different tests we need to do here
       -- 1. Does the new name clash with some existing name in the
@@ -240,11 +216,8 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
       isInScopeUnqual    <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
       isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName              Nothing
       logm $ "renameInClientMod: (isInScopeAndUnqual,isInScopeUnqualNew)=" ++ (show (isInScopeUnqual,isInScopeUnqualNew)) -- ++AZ++
-      -- if  qualifier == []  --this name is not imported, but it maybe used in the import list
-      -- if isInScopeUnqual
       if isInScopeUnqualNew
        then
-        -- do (mod', ((ts',m),f))<-runStateT (renamePN oldPN Nothing newName True mod) ((ts,unmodified), fileName)
         do
            (refactoredMod,_) <- applyRefac (refactRenameSimple oldPN newName newNameGhc True) RSAlreadyLoaded
            return [refactoredMod]
@@ -256,16 +229,10 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
                -- TODO: implement rest of this
                return [refactoredMod]
   where
-     handler:: (GHC.GhcMonad m) => SomeException -> m [GHC.Name]
-     handler _ = return []
-
      refactRenameSimple :: GHC.Name -> String -> GHC.Name -> Bool -> RefactGhc ()
      refactRenameSimple old newStr new useQual = do
        qualifyTopLevelVar newStr
-       renamed <- getRefactRenamed
-       -- logm $ "renameInClientMod.refactRename:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
        parsed <- getRefactParsed
-       -- void $ renamePN old new useQual renamed
        parsed' <- renamePN' old new useQual parsed
        putRefactParsed parsed' mempty
        return ()
@@ -279,8 +246,6 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
      qualifyTopLevelVar new = do
        toQualify <- inScopeNames new
        logm $ "renameInClientMod.qualifyTopLevelVar:new:toQualify=" ++ (show new) ++ ":" ++ (showGhc toQualify)
-       -- renamed <- getRefactRenamed
-       -- renamePN new new True True renamed
        mapM_ qualifyToplevelName toQualify
        return ()
 
@@ -322,21 +287,9 @@ isValidNewName oldName rdrNameStr newName = res
                     (isConId newName)
                     "Invalid type constructor/class name!"
 
-   -- classOk = if isClassName oldName && isConId newName
-   --            then True
-   --            else error "Invalid class name!"
-
    dataConOk = doTest (GHC.isDataConName oldName)
                       (isConId newName)
                       "Invalid data constructor name!"
-
-   -- fieldOk = doTest (isFieldName oldName)
-   --                  (isVarId newName)
-   --                  "Invalid field name!"
-
-   -- instanceOk = doTest (isInstanceName oldName)
-   --                     (isVarId newName)
-   --                     "Invalid class instance name!"
 
    tyVarOk = doTest (GHC.isTyVarName oldName)
                     (isVarId newName)
@@ -358,6 +311,4 @@ isValidNewName oldName rdrNameStr newName = res
 
    res = tyconOk && dataConOk {- && fieldOk && instanceOk -} &&
          tyVarOk && matchNamesOk
-
-   -- res = error $ "isValidNewName:(tyconOk,dataConOk`,fieldOk,instanceOk,tyVarOk,matchNamesOk)=" ++ (show (tyconOk,dataConOk,fieldOk,instanceOk,tyVarOk,matchNamesOk))
 
