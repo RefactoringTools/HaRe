@@ -11,6 +11,7 @@ import Language.Haskell.Refact.API
 
 -- To be moved into HaRe API
 import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.MonadFunctions
 
@@ -40,8 +41,8 @@ removeBracketTransform fileName beginPos endPos = do
            removePar e@(HsPar _ s)
             | sameOccurrence e expr = do
               startAnns <- liftT $ getAnnsT
-              let oldkey = mkKey e
-                  newkey = mkKey s
+              let oldkey = mkAnnKey e
+                  newkey = mkAnnKey s
                   newanns = fromMaybe startAnns $ replace oldkey newkey startAnns
               setRefactAnns newanns
               return s

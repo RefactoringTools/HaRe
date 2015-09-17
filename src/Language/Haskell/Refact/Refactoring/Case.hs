@@ -69,15 +69,15 @@ reallyDoIfToCase expr p = do
 ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
                   -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
 ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
-  caseLoc        <- uniqueSrcSpan -- HaRe:-1:1
-  trueMatchLoc   <- uniqueSrcSpan -- HaRe:-1:2
-  trueLoc1       <- uniqueSrcSpan -- HaRe:-1:3
-  trueLoc        <- uniqueSrcSpan -- HaRe:-1:4
-  trueRhsLoc     <- uniqueSrcSpan -- HaRe:-1:5
-  falseLoc1      <- uniqueSrcSpan -- HaRe:-1:6
-  falseLoc       <- uniqueSrcSpan -- HaRe:-1:7
-  falseMatchLoc  <- uniqueSrcSpan -- HaRe:-1:8
-  falseRhsLoc    <- uniqueSrcSpan -- HaRe:-1:9
+  caseLoc        <- liftT uniqueSrcSpanT -- HaRe:-1:1
+  trueMatchLoc   <- liftT uniqueSrcSpanT -- HaRe:-1:2
+  trueLoc1       <- liftT uniqueSrcSpanT -- HaRe:-1:3
+  trueLoc        <- liftT uniqueSrcSpanT -- HaRe:-1:4
+  trueRhsLoc     <- liftT uniqueSrcSpanT -- HaRe:-1:5
+  falseLoc1      <- liftT uniqueSrcSpanT -- HaRe:-1:6
+  falseLoc       <- liftT uniqueSrcSpanT -- HaRe:-1:7
+  falseMatchLoc  <- liftT uniqueSrcSpanT -- HaRe:-1:8
+  falseRhsLoc    <- liftT uniqueSrcSpanT -- HaRe:-1:9
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
   let ret = GHC.L caseLoc (GHC.HsCase e1
