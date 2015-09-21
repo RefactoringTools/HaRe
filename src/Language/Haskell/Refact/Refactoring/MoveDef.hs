@@ -83,7 +83,6 @@ liftToTopLevel :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [Fil
 liftToTopLevel settings opts fileName (row,col) =
   runRefacSession settings opts [Left fileName] (compLiftToTopLevel fileName (row,col))
 
-
 compLiftToTopLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftToTopLevel fileName (row,col) = do
@@ -577,11 +576,9 @@ moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
 
   let funBinding = mliftedDecls
 
-  -- logm $ "moveDecl1:(funBinding)=" ++ showGhc (funBinding)
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',_sigsRemoved) <- rmTypeSigs sigNames t
-  logm $ "moveDecl1:after rmTypeSigs:t''" ++ SYB.showData SYB.Parser 0 t''
-  -- logm $ "moveDecl1:sigsRemoved=" ++ showGhc sigsRemoved
+  -- logm $ "moveDecl1:after rmTypeSigs:t''" ++ SYB.showData SYB.Parser 0 t''
   logm $ "moveDecl1:mliftedSigs=" ++ showGhc mliftedSigs
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
   logm $ "moveDecl1:after rmDecl:t'" ++ SYB.showData SYB.Parser 0 t'
@@ -1138,8 +1135,8 @@ doDemoting  pn = do
            else return match
 
        --3. The demoted definition is a local decl in a pattern binding
-       demoteInPat x@(pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p rhs _ _ _)))::GHC.LHsDecl GHC.RdrName) = do
-         decls <- liftT $ hsDecls rhs
+       demoteInPat x@(pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p (GHC.GRHSs _grhs lb) _ _ _)))::GHC.LHsDecl GHC.RdrName) = do
+         decls <- liftT $ hsDecls lb
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
            then do
@@ -1301,13 +1298,15 @@ doDemoting' t pn = do
                             return match'
                  dupInMatch _ x = return x
 
-                 dupInPat nm ((GHC.PatBind pat rhs ty fvs ticks) :: GHC.HsBind GHC.RdrName)
+                 dupInPat nm ((GHC.PatBind pat rhs@(GHC.GRHSs grhs lb) ty fvs ticks) :: GHC.HsBind GHC.RdrName)
                     | (not $ findNamesRdr nm pns pat) && findNamesRdr nm pns rhs
                    = do
                        logm $ "duplicateDecls.dupInPat"
                        let declsToLift = definingDeclsRdrNames' nm pns t
-                       rhs' <- moveDecl1 rhs Nothing pns declsToLift pns [] False
-                       return (GHC.PatBind pat rhs' ty fvs ticks)
+                       -- rhs' <- moveDecl1 rhs Nothing pns declsToLift pns [] False
+                       -- return (GHC.PatBind pat rhs' ty fvs ticks)
+                       lb' <- moveDecl1 lb Nothing pns declsToLift pns [] False
+                       return (GHC.PatBind pat (GHC.GRHSs grhs lb') ty fvs ticks)
                  dupInPat _ x = return x
 
                  -- demotedDecls = definingDecls pns decls True False
@@ -1421,7 +1420,7 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
           nm <- getRefactNameMap
           SYB.everywhereMStaged SYB.Parser (SYB.mkM (worker nm) `SYB.extM` (workerBind nm)) decls
           where
-          worker nm (match'@(GHC.L _ (GHC.FunBind ln _ (GHC.MG _match'es _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
+          worker nm (match'@(GHC.L _ (GHC.FunBind ln _ (GHC.MG _matches _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
             = do
                 logm $ "foldInDemotedDecls:rdrName2NamePure nm ln=" ++ show (rdrName2NamePure nm ln)
                 if isJust (find (== rdrName2NamePure nm ln) pns')

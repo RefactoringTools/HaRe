@@ -1053,16 +1053,16 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
     = do
          decls <- liftT (hsDecls parent')
          case decls of
-           -- [] -> liftT $ setDeclSpacing newDeclSig 1 4
            [] -> liftT $ setDeclSpacing newDeclSig 2 0
            ds -> do
              DP (r,c) <- liftT (getEntryDPT (head ds))
              liftT $ setDeclSpacing newDeclSig r c
-             -- liftT $ setPrecedingLinesT (head ds) 1 0
              liftT $ setPrecedingLinesT (head ds) 2 0
          r <- liftT $ replaceDecls parent' (newDeclSig++decls)
          return r
 
+-- ---------------------------------------------------------------------
+--
 -- ---------------------------------------------------------------------
 
 rdrNameFromName :: Bool -> GHC.Name -> RefactGhc GHC.RdrName
@@ -1425,7 +1425,6 @@ duplicateDecl ::
 duplicateDecl decls n newFunName
  = do
      logm $ "duplicateDecl entered:(decls,n,newFunName)=" ++ showGhc (decls,n,newFunName)
-     -- decls <- liftT $ hsDecls t
      nm <- getRefactNameMap
      let
        declsToDup = definingDeclsRdrNames nm [n] decls True False
@@ -1446,6 +1445,7 @@ duplicateDecl decls n newFunName
                              liftT $ mapM_ (\d -> setEntryDPT d (DP (1,0))) (tail funBinding3)
      let (decls1,decls2) = break (definesDeclRdr nm n) decls
          (declsToDup',declsRest) = break (not . definesDeclRdr nm n) decls2
+     -- logDataWithAnns "duplicateDecl:funBinding3" funBinding3
      return $ decls1 ++ declsToDup' ++ funBinding3 ++ declsRest
 
 -- ---------------------------------------------------------------------
@@ -1505,14 +1505,15 @@ rmDecl pn incSig t = do
       = doRmDeclList x
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-    inLet x@(GHC.L ss (GHC.HsLet localDecls expr))
+    inLet letExpr@(GHC.L ss (GHC.HsLet localDecls expr))
       = do
          isDone <- getDone
          if isDone
-           then return x
+           then return letExpr
            else do
              nameMap <- getRefactNameMap
-             decls <- liftT $ hsDecls localDecls
+             -- decls <- liftT $ hsDecls localDecls
+             decls <- liftT $ hsDecls letExpr
              let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
              if not $ emptyList decls2
                 then do
@@ -1525,12 +1526,13 @@ rmDecl pn incSig t = do
                      -- logm $ "rmDecl.inLet:length decls /= 1"
                      -- let decls2' = gtail "inLet" decls2
                      decls' <- doRmDecl decls1 decls2
-                     localDecls' <- liftT $ replaceDecls localDecls decls'
-                     -- logDataWithAnns "inLet" (GHC.L ss (GHC.HsLet localDecls' expr))
-                     return $ (GHC.L ss (GHC.HsLet localDecls' expr))
+                     letExpr' <- liftT $ replaceDecls letExpr decls'
+                     return letExpr'
+                     -- localDecls' <- liftT $ replaceDecls localDecls decls'
+                     -- return $ (GHC.L ss (GHC.HsLet localDecls' expr))
                 else do
                   -- liftT $ replaceDecls localDecls decls
-                  return x
+                  return letExpr
     inLet x = return x
 
     -- ---------------------------------
@@ -1574,8 +1576,10 @@ declsSybTransform :: (SYB.Typeable a)
   -> a -> RefactGhc a
 declsSybTransform transform = mt
   where
-    mt = SYB.mkM inMatch `SYB.extM` inPatDecl `SYB.extM` inModule
-                         `SYB.extM` inHsLet
+    mt = SYB.mkM inMatch
+         `SYB.extM` inPatDecl
+         `SYB.extM` inModule
+         `SYB.extM` inHsLet
 
     inModule :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
     inModule (modu :: GHC.ParsedSource)
@@ -1587,7 +1591,8 @@ declsSybTransform transform = mt
 
     inPatDecl ::GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
     inPatDecl x@(GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _)))
-       = transform x
+       -- = transform x
+       = error $ "declsSybTransform:need to reimplement PatBind case"
     inPatDecl x = return x
 
     inHsLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
@@ -1668,7 +1673,8 @@ rmTypeSig pn t
 
    inPatDecl ::GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
    inPatDecl x@(GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _)))
-      = doRmTypeSig x
+      -- = doRmTypeSig x
+      = error $ "rmTypeSig:reinstate PatBind case"
    inPatDecl x = return x
 
    -- inPatBind ::GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
@@ -1706,8 +1712,6 @@ rmTypeSig pn t
                       -- signature part but discarding the other names
                       newSpan <- liftT uniqueSrcSpanT
                       let oldSig = (GHC.L newSpan (GHC.TypeSig [pnt] typ p))
-                      -- ++AZ++ : could just use new SrcSpan and copy top level annotation
-                      -- oldSig' <- liftT $ doCloneT oldSig
                       liftT $ modifyAnnsT (copyAnn sig oldSig)
                       setStateStorage (StorageSigRdr oldSig)
 
@@ -1716,18 +1720,10 @@ rmTypeSig pn t
                   else do
                       let [oldSig] = decl2Sig sig
                       setStateStorage (StorageSigRdr oldSig)
-                      {-
-                      unless (null $ tail decls2) $ do
-                        liftT $ transferEntryDPT sig (head $ tail decls2)
-                        unless (null decls1) $ do liftT $ balanceComments (last decls1) sig
-                        liftT $ balanceComments (head decls2) (head $ tail decls2)
-                      -}
                       decls' <- doRmDecl decls1 decls2
                       parent' <- liftT $ replaceDecls parent decls'
-                      -- parent' <- liftT $ replaceDecls parent (decls1++tail decls2)
                       return parent'
             else do
-              -- liftT $ replaceDecls parent decls
               return parent
 
    getDone = do

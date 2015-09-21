@@ -1237,10 +1237,6 @@ ClassDecl
 getDeclaredTypesRdr :: GHC.LHsDecl GHC.RdrName -> RefactGhc [GHC.Name]
 getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
   nm <- getRefactNameMap
-  let
-    getMsn meths = do
-      ds <- liftT $ hsDecls meths
-      return (getDeclaredVarsRdr nm ds)
   case decl of
     (GHC.FamDecl (GHC.FamilyDecl _ ln _ _)) -> return [rdrName2NamePure nm ln]
     (GHC.SynDecl ln  _ _ _) -> return [rdrName2NamePure nm ln]
@@ -1250,13 +1246,14 @@ getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
       return $ [rdrName2NamePure nm ln] ++ ddns
 
     (GHC.ClassDecl _ ln _vars _fds sigs meths ats _atdefs _ _fvs) -> do
-      msn <- getMsn meths
+      -- msn <- getMsn meths
+      let msn = getDeclaredVarsRdr nm (map wrapDecl $ GHC.bagToList meths)
       let fds = map (GHC.fdLName . GHC.unLoc) ats
           fds' = map (rdrName2NamePure nm) fds
       return $ nub $ [rdrName2NamePure nm ln] ++ ssn ++ msn ++ fds' -- ++ asn
       where
         getLSig :: GHC.LSig GHC.RdrName -> [GHC.Name]
-        getLSig (GHC.L _ (GHC.TypeSig ns _ _)) = map (rdrName2NamePure nm) ns
+        getLSig (GHC.L _ (GHC.TypeSig ns _ _))  = map (rdrName2NamePure nm) ns
         getLSig (GHC.L _ (GHC.GenericSig ns _)) = map (rdrName2NamePure nm) ns
         getLSig (GHC.L _ (GHC.IdSig _n)) = []
         getLSig (GHC.L _ (GHC.InlineSig ln2 _)) = [rdrName2NamePure nm ln2]

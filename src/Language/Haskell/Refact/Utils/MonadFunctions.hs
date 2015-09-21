@@ -277,8 +277,21 @@ refactReplaceDecls t decls = do
 
 -- |Run a transformation in the ghc-exactprint Transform monad, updating the
 -- current annotations and unique SrcSpan value.
-refactRunTransform :: Transform a -> RefactGhc a
+refactRunTransform :: TransformT RefactGhc a -> RefactGhc a
 refactRunTransform transform = do
+  u <- gets rsUniqState
+  ans <- getRefactAnns
+  -- let (a,(ans',u'),logLines) = runTransformFrom u ans transform
+  (a,(ans',u'),logLines) <- runTransformFromT u ans transform
+  -- logm $ "refactRunTransform:ans'=" ++ showGhc ans'
+  putUnique u'
+  setRefactAnns ans'
+  when (not (null logLines)) $ do
+    logm $ intercalate "\n" logLines
+  return a
+
+refactRunTransformId :: Transform a -> RefactGhc a
+refactRunTransformId transform = do
   u <- gets rsUniqState
   ans <- getRefactAnns
   let (a,(ans',u'),logLines) = runTransformFrom u ans transform
@@ -294,7 +307,7 @@ refactRunTransform transform = do
 -- ---------------------------------------------------------------------
 
 instance HasTransform RefactGhc where
-  liftT = refactRunTransform
+  liftT = refactRunTransformId
 
 -- ---------------------------------------------------------------------
 

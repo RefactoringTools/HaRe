@@ -8,27 +8,31 @@ module Language.Haskell.Refact.Utils.ExactPrint
     replace
   , replaceAnnKey
   , copyAnn
+
+  , hsDeclsGeneric
   ) where
 
 import qualified GHC           as GHC
 
 import qualified Data.Generics as SYB
 
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
 
 import qualified Data.Map as Map
-
+-- ---------------------------------------------------------------------
+ 
 -- ---------------------------------------------------------------------
 
 replaceAnnKey :: (SYB.Data old,SYB.Data new)
   => GHC.Located old -> GHC.Located new -> Anns -> Anns
 replaceAnnKey old new ans =
-  case Map.lookup (mkAnnKeyU old) ans of
+  case Map.lookup (mkAnnKey old) ans of
     Nothing -> ans
     Just v ->  anns'
       where
-        anns1 = Map.delete (mkAnnKeyU old) ans
-        anns' = Map.insert (mkAnnKeyU new) v anns1
+        anns1 = Map.delete (mkAnnKey old) ans
+        anns' = Map.insert (mkAnnKey new) v anns1
 
 
 -- ---------------------------------------------------------------------
@@ -36,11 +40,11 @@ replaceAnnKey old new ans =
 copyAnn :: (SYB.Data old,SYB.Data new)
   => GHC.Located old -> GHC.Located new -> Anns -> Anns
 copyAnn old new ans =
-  case Map.lookup (mkAnnKeyU old) ans of
+  case Map.lookup (mkAnnKey old) ans of
     Nothing -> ans
     Just v ->  anns'
       where
-        anns' = Map.insert (mkAnnKeyU new) v ans
+        anns' = Map.insert (mkAnnKey new) v ans
 
 -- ---------------------------------------------------------------------
 
