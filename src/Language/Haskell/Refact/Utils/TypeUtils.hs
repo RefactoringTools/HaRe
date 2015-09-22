@@ -1014,38 +1014,52 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
       -> GHC.Name -- ^Name to add the declaration after
       -> [GHC.LHsDecl GHC.RdrName] -- ^declaration and maybe sig
       -> RefactGhc t -- ^updated AST
-  appendDecl parent' pn' newDeclSig
+  appendDecl parent1 pn' newDeclSig = do
+    hasDeclsSybTransform workerHsDecls workerBind parent1
+    where
+      workerHsDecls :: forall t. HasDecls t => t -> RefactGhc t
+      workerHsDecls parent' = do
+        logm $ "addDecl.appendDecl:(pn')=" ++ showGhc pn'
+        liftT $ setDeclSpacing newDeclSig 2 0
+        nameMap <- getRefactNameMap
+        decls <- liftT $ hsDecls parent'
+        let
+           (before,after) = break (definesDeclRdr nameMap pn') decls
+
+        logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
+        let (decls1,decls2) = case after of
+              [] -> (before,[])
+              _  -> (before ++ [ghead "appendDecl14" after],
+                     gtail "appendDecl15" after)
+        liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
+
+      workerBind :: (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))
+      workerBind = assert False undefined
+
+{-
     = do
          logm $ "addDecl.appendDecl:(pn')=" ++ showGhc pn'
          liftT $ setDeclSpacing newDeclSig 2 0
          nameMap <- getRefactNameMap
-         -- decls <- liftT $ hsDecls parent'
-         -- decls <- liftT $ hsDeclsGeneric parent'
-         declswp <- liftT $ hsDeclsWithParent parent'
-         case declswp of
-           [(declsparent,decls)] -> do
-             let
-                -- flatDeclsWp = concatMap (\(p,ds) -> map (\d -> (p,d)) ds) declswp
-                -- (before,after) = break (\(p,d) -> definesDeclRdr nameMap pn' d) flatDeclsWp
-                (before,after) = break (definesDeclRdr nameMap pn') decls
+         decls <- liftT $ hsDecls parent'
+         let
+            (before,after) = break (definesDeclRdr nameMap pn') decls
 
-             logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
-             let (decls1,decls2) = case after of
-                   [] -> (before,[])
-                   _  -> (before ++ [ghead "appendDecl14" after],
-                          gtail "appendDecl15" after)
-             -- liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
-             declsparent' <- liftT $ replaceDeclsWithParent declsparent (decls1++newDeclSig++decls2)
-             error $ "declsparent'"
-
+         logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
+         let (decls1,decls2) = case after of
+               [] -> (before,[])
+               _  -> (before ++ [ghead "appendDecl14" after],
+                      gtail "appendDecl15" after)
+         liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
+-}
   addLocalDecl :: (SYB.Typeable t,SYB.Data t)
                => t -> [GHC.LHsDecl GHC.RdrName]
                -> RefactGhc t
   addLocalDecl parent' newDeclSig = do
-    -- ++AZ++ TODO: Harvest this generic transformation into ghc-exactprint
     logm $ "addLocalDecl entered"
     -- logDataWithAnns "addLocalDecl.parent'" parent'
-    trf parent'
+    -- trf parent'
+    hasDeclsSybTransform workerHasDecls workerBind parent'
     where
       workerHasDecls :: (HasDecls t) => t -> RefactGhc t
       workerHasDecls p = do
@@ -1068,7 +1082,7 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
             match' <- workerHasDecls match
             return (GHC.L l (GHC.FunBind n i (GHC.MG [match'] a ptt o) co fvs t))
           -- ++AZ++ TODO Need to complete this, multiple Match, PatBind
-
+{-
       trf = SYB.mkM   parsedSource
            `SYB.extM` lmatch
            `SYB.extM` lexpr
@@ -1095,7 +1109,7 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
         (GHC.L l d') <- lhsbind (GHC.L l d)
         return (GHC.L l (GHC.ValD d'))
       lvald x = return x
-
+-}
 {-
     = do
          decls <- liftT (hsDecls parent')
@@ -1108,6 +1122,43 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
          r <- liftT $ replaceDecls parent' (newDeclSig++decls)
          return r
 -}
+-- ---------------------------------------------------------------------
+-- ++AZ++ TODO: Migrate this to ghc-exactprint
+hasDeclsSybTransform :: (SYB.Data t2, SYB.Typeable t2)
+       => (forall t. HasDecls t => t -> RefactGhc t)
+             -- ^Worker function for the general case
+       -> (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))
+             -- ^Worker function for FunBind/PatBind
+       -> t2 -- ^Item to be updated
+       -> RefactGhc t2
+hasDeclsSybTransform workerHasDecls workerBind t = trf t
+  where
+    trf = SYB.mkM   parsedSource
+         `SYB.extM` lmatch
+         `SYB.extM` lexpr
+         `SYB.extM` lstmt
+         `SYB.extM` lhsbind
+         `SYB.extM` lvald
+
+    parsedSource (p::GHC.ParsedSource) = workerHasDecls p
+
+    lmatch (lm::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+      = workerHasDecls lm
+
+    lexpr (le::GHC.LHsExpr GHC.RdrName)
+      = workerHasDecls le
+
+    lstmt (d::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+      = workerHasDecls d
+
+    lhsbind (b@(GHC.L l GHC.FunBind{}):: GHC.LHsBind GHC.RdrName)
+      = workerBind b
+    lhsbind x = return x
+
+    lvald (GHC.L l (GHC.ValD d)) = do
+      (GHC.L l d') <- lhsbind (GHC.L l d)
+      return (GHC.L l (GHC.ValD d'))
+    lvald x = return x
 
 -- ---------------------------------------------------------------------
 
@@ -1769,7 +1820,9 @@ rmTypeSig :: (SYB.Data t) =>
       -> RefactGhc (t,Maybe (GHC.LSig GHC.RdrName))
                      -- ^ The result and removed signature, if there
                      -- was one
-                     -- NOTE: It may have originated from a SigD, it is up to the calling function to insert this if required
+                     
+                     -- NOTE: It may have originated from a SigD, it is up
+                     -- to the calling function to insert this if required
 rmTypeSig pn t
   = do
      setStateStorage StorageNone
@@ -1786,14 +1839,17 @@ rmTypeSig pn t
       = doRmTypeSig modu
 
    -- Deals with the distrinct parts of a FunBind
-   inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+   inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+           -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
    inMatch x@(GHC.L _ (GHC.Match _ _ _ (GHC.GRHSs _ _localDecls)))
       = doRmTypeSig x
 
    inPatDecl ::GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
-   inPatDecl x@(GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _)))
-      -- = doRmTypeSig x
-      = error $ "rmTypeSig:reinstate PatBind case"
+   inPatDecl x@(GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _))) = do
+      decls <- liftT $ hsDeclsPatBindD x
+      decls' <- doRmTypeSigDecls decls
+      liftT $ replaceDeclsPatBindD x decls'
+
    inPatDecl x = return x
 
    -- inPatBind ::GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
@@ -1805,11 +1861,18 @@ rmTypeSig pn t
 
    doRmTypeSig :: (HasDecls t) => t -> RefactGhc t
    doRmTypeSig parent = do
+     decls <- liftT $ hsDecls parent
+     decls' <- doRmTypeSigDecls decls
+     liftT $ replaceDecls parent decls'
+
+
+   doRmTypeSigDecls :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+   doRmTypeSigDecls decls = do
      isDone <- getDone
      if isDone
-       then return parent
+       then return decls
        else do
-         decls <- liftT $ hsDecls parent
+         -- decls <- liftT $ hsDecls parent
          -- logDataWithAnns "doRmTypeSig:decls" decls
          nameMap <- getRefactNameMap
          let (decls1,decls2)= break (definesSigDRdr nameMap pn) decls
@@ -1834,16 +1897,16 @@ rmTypeSig pn t
                       liftT $ modifyAnnsT (copyAnn sig oldSig)
                       setStateStorage (StorageSigRdr oldSig)
 
-                      parent' <- liftT $ replaceDecls parent (decls1++[newSig]++gtail "doRmTypeSig" decls2)
-                      return parent'
+                      -- parent' <- liftT $ replaceDecls parent (decls1++[newSig]++gtail "doRmTypeSig" decls2)
+                      return (decls1++[newSig]++gtail "doRmTypeSig" decls2)
                   else do
                       let [oldSig] = decl2Sig sig
                       setStateStorage (StorageSigRdr oldSig)
                       decls' <- doRmDecl decls1 decls2
-                      parent' <- liftT $ replaceDecls parent decls'
-                      return parent'
+                      -- parent' <- liftT $ replaceDecls parent decls'
+                      return decls'
             else do
-              return parent
+              return decls
 
    getDone = do
      s <- getStateStorage
@@ -1956,7 +2019,7 @@ rmQualifier pns t = do
     where
      rename nm (ln@(GHC.L l pn)::GHC.Located GHC.RdrName)
        | elem (rdrName2NamePure nm ln) pns
-       = do do
+       = do
                -- let (rs,_) = break (=='.') $ reverse $ showGhc pn -- ++TODO: replace this with the appropriate formulation
                --     s = reverse rs
                -- return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
@@ -2480,10 +2543,8 @@ renamePNworker oldPN newName useQual t = do
 -}
 ----------------------------------------------------------------------------------------
 -- | Check whether the specified identifier is declared in the given syntax phrase t,
--- if so, rename the identifier by creating a new name automatically. If the Bool parameter
--- is True, the token stream will be modified, otherwise only the AST is modified.
-
-autoRenameLocalVar:: (HasDecls t)
+-- if so, rename the identifier by creating a new name automatically.
+autoRenameLocalVar:: (SYB.Data t)
                      => GHC.Name    -- ^ The identifier.
                      -> t           -- ^ The syntax phrase.
                      -> RefactGhc t -- ^ The result.
@@ -2491,7 +2552,7 @@ autoRenameLocalVar pn t = do
   logm $ "autoRenameLocalVar: (pn)=" ++ (showGhc (pn))
   -- = everywhereMStaged SYB.Renamer (SYB.mkM renameInMatch)
   nm <- getRefactNameMap
-  decls <- liftT $ hsDecls t
+  decls <- liftT $ hsDeclsGeneric t
   if isDeclaredInRdr nm pn decls
          then do t' <- worker t
                  return t'

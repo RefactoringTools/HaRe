@@ -169,8 +169,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
                $ error "Sorry, the refactorer cannot lift a definition from an instance declaration!"
          -}
          nameMap <- getRefactNameMap
-         declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
-         logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
+         -- declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
+         -- logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
          let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
              declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
              liftedSigs  = definingSigsRdrNames nameMap declaredPns parent
@@ -363,7 +363,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  (declsp ,_,_) = runTransform ans (hsDecls p)
                  doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
                    where
-                     (declsbs,_,_) = runTransform ans (hsDecls bs)
+                     -- (declsbs,_,_) = runTransform ans (hsDecls bs)
+                     (declsbs,_,_) = runTransform ans (hsDeclsGeneric bs)
 
                  candidateBinds = map snd
                                 $ filter (\(l,_bs) -> nonEmptyList l)
@@ -371,7 +372,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                 $ declsp
 
              getHsDecls ans t = decls
-               where (decls,_,_) = runTransform ans (hsDecls t)
+               -- where (decls,_,_) = runTransform ans (hsDecls t)
+               where (decls,_,_) = runTransform ans (hsDeclsGeneric t)
 
              -- ------------------------
 
@@ -559,7 +561,7 @@ compDemote fileName (row,col) = do
 
 -- ---------------------------------------------------------------------
 
-moveDecl1 :: (HasDecls t,SYB.Data t)
+moveDecl1 :: (SYB.Data t)
   => t -- ^ The syntax element to update
   -> Maybe GHC.Name -- ^ If specified, add defn after this one
 
@@ -574,8 +576,6 @@ moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
   logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
   logm $ "moveDecl1:(topLevel,t)=" ++ SYB.showData SYB.Parser 0 (topLevel,t)
 
-  let funBinding = mliftedDecls
-
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',_sigsRemoved) <- rmTypeSigs sigNames t
   -- logm $ "moveDecl1:after rmTypeSigs:t''" ++ SYB.showData SYB.Parser 0 t''
@@ -583,7 +583,7 @@ moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
   logm $ "moveDecl1:after rmDecl:t'" ++ SYB.showData SYB.Parser 0 t'
   let sigs = map wrapSig mliftedSigs
-  r <- addDecl t' defName (sigs++funBinding,Nothing) topLevel
+  r <- addDecl t' defName (sigs++mliftedDecls,Nothing) topLevel
 
   return r
 
@@ -1122,7 +1122,8 @@ doDemoting  pn = do
 
        --2. The demoted definition is a local decl in a match
        demoteInMatch match@(GHC.L _ (GHC.Match _ _pats _mt (GHC.GRHSs _ ds))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
-         decls <- liftT $ hsDecls ds
+         -- decls <- liftT $ hsDecls ds
+         decls <- liftT $ hsDecls match
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
            then do
@@ -1136,7 +1137,7 @@ doDemoting  pn = do
 
        --3. The demoted definition is a local decl in a pattern binding
        demoteInPat x@(pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p (GHC.GRHSs _grhs lb) _ _ _)))::GHC.LHsDecl GHC.RdrName) = do
-         decls <- liftT $ hsDecls lb
+         decls <- liftT $ hsDeclsPatBindD x
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
            then do
@@ -1151,7 +1152,7 @@ doDemoting  pn = do
 
        --4: The demoted definition is a local decl in a Let expression
        demoteInLet x@(letExp@(GHC.L _ (GHC.HsLet ds _e))::GHC.LHsExpr GHC.RdrName) = do
-         decls <- liftT $ hsDecls ds
+         decls <- liftT $ hsDecls x
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
            then do
@@ -1168,7 +1169,7 @@ doDemoting  pn = do
        --6.The demoted definition is a local decl in a Let statement.
        -- demoteInStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
        demoteInStmt (letStmt@(GHC.L _ (GHC.LetStmt binds))::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
-         decls <- liftT $ hsDecls binds
+         decls <- liftT $ hsDecls letStmt
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
            then do
@@ -1184,10 +1185,11 @@ doDemoting  pn = do
 
 
 -- |Demote the declaration of 'pn' in the context of 't'.
-doDemoting' :: (UsedByRhs t,HasDecls t) => t -> GHC.Name -> RefactGhc t
+doDemoting' :: (UsedByRhs t) => t -> GHC.Name -> RefactGhc t
 doDemoting' t pn = do
    nm <- getRefactNameMap
-   origDecls <- liftT $ hsDecls t
+   -- origDecls <- liftT $ hsDecls t
+   origDecls <- liftT $ hsDeclsGeneric t
    let
        demotedDecls'= definingDeclsRdrNames nm [pn] origDecls True False
        declaredPns = nub $ concatMap (definedNamesRdr nm) demotedDecls'
@@ -1198,7 +1200,8 @@ doDemoting' t pn = do
    r <-  if not pnsUsed -- (usedByRhs t declaredPns)
        then do
               logm $ "doDemoting' no pnsUsed"
-              dt <- liftT $ hsDecls t
+              -- dt <- liftT $ hsDecls t
+              let dt = origDecls
               let demotedDecls = definingDeclsRdrNames nm [pn] dt True True
                   otherBinds = (deleteFirstsBy (sameBindRdr nm) dt demotedDecls)
                       {- From 'hsDecls t' to 'hsDecls t \\ demotedDecls'.
@@ -1303,8 +1306,6 @@ doDemoting' t pn = do
                    = do
                        logm $ "duplicateDecls.dupInPat"
                        let declsToLift = definingDeclsRdrNames' nm pns t
-                       -- rhs' <- moveDecl1 rhs Nothing pns declsToLift pns [] False
-                       -- return (GHC.PatBind pat rhs' ty fvs ticks)
                        lb' <- moveDecl1 lb Nothing pns declsToLift pns [] False
                        return (GHC.PatBind pat (GHC.GRHSs grhs lb') ty fvs ticks)
                  dupInPat _ x = return x
