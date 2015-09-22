@@ -980,7 +980,7 @@ rmPreludeImports = filter isPrelude where
 -- phrase. If the second argument is Nothing, then the declaration
 -- will be added to the beginning of the declaration list, but after
 -- the data type declarations is there is any.
-addDecl:: (HasDecls t)
+addDecl:: (SYB.Data t,SYB.Typeable t)
         => t              -- ^The AST to be updated
         -> Maybe GHC.Name -- ^If this is Just, then the declaration
                           -- will be added right after this
@@ -999,12 +999,144 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
     Nothing -> return ()
     Just declAnns -> -- addRefactAnns declAnns
       liftT $ modifyAnnsT (mergeAnns declAnns)
-  if isJust pn
-    then appendDecl parent (gfromJust "addDecl" pn) declSig
-    else if topLevel
-           -- then addTopLevelDecl parent declSig
-           then addLocalDecl    parent declSig
-           else addLocalDecl    parent declSig
+  case pn of
+    Just pn' -> appendDecl   parent pn' declSig
+    Nothing  -> addLocalDecl parent     declSig
+ where
+  setDeclSpacing newDeclSig n c = do
+    -- First clear any previous indentation
+    mapM_ (\d -> setPrecedingLinesDeclT d 1 0) newDeclSig
+    setPrecedingLinesT (ghead "addDecl" newDeclSig) n c
+    -- mapM_ (\d -> setPrecedingLinesT d 1 0) (gtail "addDecl" newDeclSig)
+
+  appendDecl :: (SYB.Data t)
+      => t        -- ^Original AST
+      -> GHC.Name -- ^Name to add the declaration after
+      -> [GHC.LHsDecl GHC.RdrName] -- ^declaration and maybe sig
+      -> RefactGhc t -- ^updated AST
+  appendDecl parent' pn' newDeclSig
+    = do
+         logm $ "addDecl.appendDecl:(pn')=" ++ showGhc pn'
+         liftT $ setDeclSpacing newDeclSig 2 0
+         nameMap <- getRefactNameMap
+         -- decls <- liftT $ hsDecls parent'
+         -- decls <- liftT $ hsDeclsGeneric parent'
+         declswp <- liftT $ hsDeclsWithParent parent'
+         case declswp of
+           [(declsparent,decls)] -> do
+             let
+                -- flatDeclsWp = concatMap (\(p,ds) -> map (\d -> (p,d)) ds) declswp
+                -- (before,after) = break (\(p,d) -> definesDeclRdr nameMap pn' d) flatDeclsWp
+                (before,after) = break (definesDeclRdr nameMap pn') decls
+
+             logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
+             let (decls1,decls2) = case after of
+                   [] -> (before,[])
+                   _  -> (before ++ [ghead "appendDecl14" after],
+                          gtail "appendDecl15" after)
+             -- liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
+             declsparent' <- liftT $ replaceDeclsWithParent declsparent (decls1++newDeclSig++decls2)
+             error $ "declsparent'"
+
+  addLocalDecl :: (SYB.Typeable t,SYB.Data t)
+               => t -> [GHC.LHsDecl GHC.RdrName]
+               -> RefactGhc t
+  addLocalDecl parent' newDeclSig = do
+    -- ++AZ++ TODO: Harvest this generic transformation into ghc-exactprint
+    logm $ "addLocalDecl entered"
+    -- logDataWithAnns "addLocalDecl.parent'" parent'
+    trf parent'
+    where
+      workerHasDecls :: (HasDecls t) => t -> RefactGhc t
+      workerHasDecls p = do
+         logm $ "workerHasDecls entered"
+         decls <- liftT (hsDecls p)
+         case decls of
+           [] -> liftT $ setDeclSpacing newDeclSig 2 0
+           ds -> do
+             DP (r,c) <- liftT (getEntryDPT (head ds))
+             liftT $ setDeclSpacing newDeclSig r c
+             liftT $ setPrecedingLinesT (head ds) 2 0
+         r <- liftT $ replaceDecls p (newDeclSig++decls)
+         return r
+
+      workerBind :: GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
+      workerBind b = do
+        logm $ "workerBind entered"
+        case b of
+          GHC.L l (GHC.FunBind n i (GHC.MG [match] a ptt o) co fvs t) -> do
+            match' <- workerHasDecls match
+            return (GHC.L l (GHC.FunBind n i (GHC.MG [match'] a ptt o) co fvs t))
+          -- ++AZ++ TODO Need to complete this, multiple Match, PatBind
+
+      trf = SYB.mkM   parsedSource
+           `SYB.extM` lmatch
+           `SYB.extM` lexpr
+           `SYB.extM` lstmt
+           `SYB.extM` lhsbind
+           `SYB.extM` lvald
+
+      parsedSource (p::GHC.ParsedSource) = workerHasDecls p
+
+      lmatch (lm::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+        = workerHasDecls lm
+
+      lexpr (le::GHC.LHsExpr GHC.RdrName)
+        = workerHasDecls le
+
+      lstmt (d::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+        = workerHasDecls d
+
+      lhsbind (b@(GHC.L l GHC.FunBind{}):: GHC.LHsBind GHC.RdrName)
+        = workerBind b
+      lhsbind x = return x
+
+      lvald (GHC.L l (GHC.ValD d)) = do
+        (GHC.L l d') <- lhsbind (GHC.L l d)
+        return (GHC.L l (GHC.ValD d'))
+      lvald x = return x
+
+{-
+    = do
+         decls <- liftT (hsDecls parent')
+         case decls of
+           [] -> liftT $ setDeclSpacing newDeclSig 2 0
+           ds -> do
+             DP (r,c) <- liftT (getEntryDPT (head ds))
+             liftT $ setDeclSpacing newDeclSig r c
+             liftT $ setPrecedingLinesT (head ds) 2 0
+         r <- liftT $ replaceDecls parent' (newDeclSig++decls)
+         return r
+-}
+
+-- ---------------------------------------------------------------------
+
+-- | Adding a declaration to the declaration list of the given syntax
+-- phrase. If the second argument is Nothing, then the declaration
+-- will be added to the beginning of the declaration list, but after
+-- the data type declarations is there is any.
+addDecl':: (HasDecls t)
+        => t              -- ^The AST to be updated
+        -> Maybe GHC.Name -- ^If this is Just, then the declaration
+                          -- will be added right after this
+                          -- identifier's definition.
+        -> ([GHC.LHsDecl GHC.RdrName],  Maybe Anns)
+             -- ^ The declaration with optional signatures to be added, together
+             -- with optional Annotations.
+        -> Bool              -- ^ True means the declaration is a
+                             -- toplevel declaration.
+        -- ++TODO:AZ get rid of the topLevel Bool, no longer used
+        -> RefactGhc t
+
+addDecl' parent pn (declSig, mDeclAnns) topLevel = do
+  logm $ "addDecl:declSig=" ++ showGhc declSig
+  case mDeclAnns of
+    Nothing -> return ()
+    Just declAnns -> -- addRefactAnns declAnns
+      liftT $ modifyAnnsT (mergeAnns declAnns)
+  case pn of
+    Just pn' -> appendDecl   parent pn' declSig
+    Nothing  -> addLocalDecl parent     declSig
  where
   setDeclSpacing newDeclSig n c = do
     -- First clear any previous indentation
@@ -1032,19 +1164,6 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
                _  -> (before ++ [ghead "appendDecl14" after],
                       gtail "appendDecl15" after)
          liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
-
-
-{-
-  -- ^Add a definition to the beginning of the definition declaration
-  -- list, but after the data type declarations if there are any.
-  addTopLevelDecl :: (HasDecls t)
-       => t -> [GHC.LHsDecl GHC.RdrName]
-       -> RefactGhc t
-  addTopLevelDecl parent' newDeclSig
-    = do decls <- liftT (hsDecls parent')
-         liftT $ setDeclSpacing newDeclSig 2 0
-         liftT $ replaceDecls parent' (newDeclSig++decls)
--}
 
   addLocalDecl :: (HasDecls t)
                => t -> [GHC.LHsDecl GHC.RdrName]

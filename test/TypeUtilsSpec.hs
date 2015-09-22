@@ -1722,7 +1722,6 @@ spec = do
       (t, toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
-      -- let declsr = hsBinds renamed
       let Just np = locToName (14, 1) renamed
       (showGhcQual np) `shouldBe` "DupDef.Dd1.tup"
 
@@ -1738,28 +1737,22 @@ spec = do
 
          (front,[parent],back) <- divideDecls decls ln
 
-         (parent',Just (funBinding,declsToDup,declsp')) <- refactRunTransform $ modifyLocalDecl (GHC.getLoc parent) parent $ \_m declsp -> do
-           -- declsp <- liftT $ hsDecls parent
-           -- declsp <- liftT $ hsDeclsGeneric parent
+         (parent',Just (funBinding,declsToDup,declsp')) <- modifyValD (GHC.getLoc parent) parent $ \_m declsp -> do
            let
              declsToDup = definingDeclsRdrNames nm [n] declsp True True
              funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
 
-           declsp' <- lift $ duplicateDecl declsp n newName2
-           logDataWithAnnsTr "declsp'" declsp'
-           ans' <- getAnnsT
-           logTr $ "refactRunTransform:ans'=" ++ showGhc ans'
+           declsp' <- duplicateDecl declsp n newName2
 
-           -- parent' <- liftT $ replaceDecls parent declsp'
            return (declsp',Just (funBinding,declsToDup,declsp'))
-           -- return (declsp,Nothing)
 
          parsed' <- liftT $ replaceDecls parsed (front ++ [parent'] ++ back)
          putRefactParsed parsed' emptyAnns
 
          return (funBinding,declsToDup,declsp')
-      -- ((fb,dd,newb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      ((fb,dd,newb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+
+      ((fb,dd,newb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((fb,dd,newb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
       (showGhcQual n) `shouldBe` "ff"
       (showGhcQual dd) `shouldBe` "[ff = 15]"
@@ -2376,8 +2369,8 @@ spec = do
          parsed' <- addDecl parsed (Just n) ([decl],Just declAnns) True
          putRefactParsed parsed' emptyAnns
          return (n,parsed')
-      -- ((n,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
-      ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((n,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (GHC.showRichTokenStream $ toks) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nnn = nn2\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
@@ -2409,8 +2402,7 @@ spec = do
 
     it "adds a local declaration without a type signature 1" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
-      pendingWith "rework modifyLocalDecl"
-      {-
+
       let
         comp = do
          parsed <- getRefactParsed
@@ -2423,7 +2415,12 @@ spec = do
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
+
          newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
+         -- (newDecl,_) <- modifyLocalDecl (GHC.getLoc tlDecl) tlDecl $ \_m declsp -> do
+         --   declsp' <- addDecl declsp Nothing ([decl],Just declAnns) False
+         --   return (declsp',Nothing)
+
          logm $ "test:addDecl done"
 
          return (tlDecl,newDecl)
@@ -2434,7 +2431,6 @@ spec = do
       -- putStrLn (showAnnDataItemFromState s nb)
       (exactPrintFromState s nb) `shouldBe` "\ntoplevel x = c * x\n  where\n    nn = nn2"
       (showGhcQual nb)           `shouldBe` "toplevel x\n  = c * x\n  where\n      nn = nn2"
-      -}
 
     -- -------------------------------------------
 
