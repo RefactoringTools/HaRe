@@ -2585,6 +2585,60 @@ spec = do
       (exactPrintFromState s nb) `shouldBe` "\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there are multi matches), the parameters are not folded after demoting.\n\nsumSquares x y = sq p x + sq p y\n         where sq :: Int -> Int -> Int\n               sq pow 0 = 0\n               sq pow z = z^pow  --there is a comment\n\n               p=2  {-There is a comment-}"
       (showGhcQual nb) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2\n      sq :: Int -> Int -> Int\n      sq pow 0 = 0\n      sq pow z = z ^ pow"
 
+    -- -------------------------------------------
+
+    it "does not add a local decl to a FunBind with multiple matches" $ do
+      (t, _toks, tgt) <- ct $ parsedFileGhc "./MoveDef/MultiFunBind1.hs"
+      let
+        comp = do
+         parsed  <- getRefactParsed
+         renamed <- getRefactRenamed
+         nameMap <- getRefactNameMap
+
+         let Just (GHC.L _ tl) = locToName (3, 1) renamed
+         decls <- refactRunTransform (hsDecls parsed)
+         let -- decls = hsBinds parsed
+             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+
+         let Just (GHC.L _ y) = locToName (6, 1) renamed
+
+         let [yDecl] = definingDeclsRdrNames nameMap [y] decls False False
+
+         newDecl <- addDecl tlDecl Nothing ([yDecl],Nothing) False
+
+         return (yDecl,tlDecl,newDecl)
+      r <- catchException $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      r `shouldBe` Just  "addDecl:Cannot add a local decl to a FunBind with multiple matches"
+
+    -- -------------------------------------------
+
+    it "adds a local declaration to a PatBind" $ do
+      (t, toks, tgt) <- ct $ parsedFileGhc "./MoveDef/PatBind1.hs"
+      let
+        comp = do
+
+         parsed <- getRefactParsed
+         renamed <- getRefactRenamed
+         nameMap <- getRefactNameMap
+
+         let Just (GHC.L _ tl) = locToName (3, 1) renamed
+         decls <- refactRunTransform (hsDecls parsed)
+         let
+             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
+
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
+
+         return (tlDecl,newDecl)
+      ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      -- ((tl,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (showGhcQual tl) `shouldBe` "tup@(h, t) = (x, 1)"
+      (GHC.showRichTokenStream $ toks) `shouldBe` "module PatBind1 where\n\ntup@(h,t) = (x,1)\n\nx = 2\n\n"
+      -- putStrLn (showAnnDataItemFromState s nb)
+      (exactPrintFromState s nb) `shouldBe` "\n\ntup@(h,t) = (x,1)\n  where\n    nn = nn2"
+      (showGhcQual nb) `shouldBe` "tup@(h, t)\n  = (x, 1)\n  where\n      nn = nn2"
+
   -- ---------------------------------------------
 
   describe "renamePN" $ do

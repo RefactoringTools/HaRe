@@ -1062,18 +1062,36 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
     -- trf parent'
     hasDeclsSybTransform workerHasDecls workerBind parent'
     where
-      workerHasDecls :: (HasDecls t) => t -> RefactGhc t
-      workerHasDecls p = do
-         logm $ "workerHasDecls entered"
-         decls <- liftT (hsDecls p)
+      workerDecls :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+      workerDecls decls = do
+         logm $ "workerDecls entered"
          case decls of
            [] -> liftT $ setDeclSpacing newDeclSig 2 0
            ds -> do
              DP (r,c) <- liftT (getEntryDPT (head ds))
              liftT $ setDeclSpacing newDeclSig r c
              liftT $ setPrecedingLinesT (head ds) 2 0
-         r <- liftT $ replaceDecls p (newDeclSig++decls)
+         -- r <- liftT $ replaceDecls p (newDeclSig++decls)
+         return (newDeclSig++decls)
+
+      workerHasDecls :: (HasDecls t) => t -> RefactGhc t
+      workerHasDecls p = do
+         logm $ "workerHasDecls entered"
+         decls <- liftT (hsDecls p)
+         decls' <- workerDecls decls
+         r <- liftT $ replaceDecls p decls'
          return r
+      -- workerHasDecls p = do
+      --    logm $ "workerHasDecls entered"
+      --    decls <- liftT (hsDecls p)
+      --    case decls of
+      --      [] -> liftT $ setDeclSpacing newDeclSig 2 0
+      --      ds -> do
+      --        DP (r,c) <- liftT (getEntryDPT (head ds))
+      --        liftT $ setDeclSpacing newDeclSig r c
+      --        liftT $ setPrecedingLinesT (head ds) 2 0
+      --    r <- liftT $ replaceDecls p (newDeclSig++decls)
+      --    return r
 
       workerBind :: GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
       workerBind b = do
@@ -1082,7 +1100,16 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
           GHC.L l (GHC.FunBind n i (GHC.MG [match] a ptt o) co fvs t) -> do
             match' <- workerHasDecls match
             return (GHC.L l (GHC.FunBind n i (GHC.MG [match'] a ptt o) co fvs t))
-          -- ++AZ++ TODO Need to complete this, multiple Match, PatBind
+          GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t) -> do
+            error "addDecl:Cannot add a local decl to a FunBind with multiple matches"
+          p@(GHC.L l (GHC.PatBind _pat _rhs _ty _fvs _t)) -> do
+            logm $ "workerBind.PatBind entered"
+            decls <- liftT (hsDeclsPatBind p)
+            decls' <- workerDecls decls
+            r <- liftT $ replaceDeclsPatBind p decls'
+            return r
+
+          x -> error $ "addLocalDecl.workerBind:not processing:" ++ SYB.showData SYB.Parser 0 x
 
 -- ---------------------------------------------------------------------
 -- ++AZ++ TODO: Migrate this to ghc-exactprint
