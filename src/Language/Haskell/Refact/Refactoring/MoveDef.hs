@@ -208,7 +208,6 @@ liftOneLevel :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FileP
 liftOneLevel settings opts fileName (row,col) =
   runRefacSession settings opts [Left fileName] (compLiftOneLevel fileName (row,col))
 
-
 compLiftOneLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftOneLevel fileName (row,col) = do
@@ -337,9 +336,9 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
              ans <- liftT getAnnsT
              zp <- ztransformStagedM SYB.Parser
                                 (Nothing
-                                `SYB.mkQ`  (liftToModQ    nm ans)
-                                `SYB.extQ` (liftToMatchQ' nm ans)
-                                `SYB.extQ` (liftToLetQ    nm ans)
+                                `SYB.mkQ`  (liftToModQ   nm ans)
+                                `SYB.extQ` (liftToMatchQ nm ans)
+                                `SYB.extQ` (liftToLetQ   nm ans)
                                 ) (Z.toZipper parsed)
              let parsed' = Z.fromZipper zp
              putRefactParsed parsed' emptyAnns
@@ -355,6 +354,12 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              -- ------------------------
 
+             liftToModQ ::
+                           NameMap -> Anns
+                        -> GHC.ParsedSource
+                        -> Maybe (SYB.Stage
+                                  -> Z.Zipper GHC.ParsedSource
+                                  -> RefactGhc (Z.Zipper GHC.ParsedSource))
              liftToModQ nm ans (p :: GHC.ParsedSource)
                 | nonEmptyList candidateBinds
                   = Just (doLiftZ p declsp)
@@ -365,7 +370,14 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                    where
                      -- (declsbs,_,_) = runTransform ans (hsDecls bs)
                      (declsbs,_,_) = runTransform ans (hsDeclsGeneric bs)
+                     -- (declsbs',_,_) = runTransform ans (hsDeclsGeneric bs)
+                     -- declsbs = error $ "liftToModQ:declsbs=" ++ SYB.showData SYB.Parser 0 declsbs'
+                     -- declsbs = error $ "liftToModQ:bs=" ++ SYB.showData SYB.Parser 0 bs
 
+                 -- candidateBinds = error $ "liftToModQ:p=" ++ SYB.showData SYB.Parser 0 p
+                 -- candidateBinds = error $ "liftToModQ:declsp=" ++ SYB.showData SYB.Parser 0 declsp
+                 -- candidateBinds = error $ "liftToModQ:declsp=" ++ showGhc declsp
+                 -- candidateBinds = error $ "liftToModQ:map declsp=" ++ showGhc (map doOne declsp)
                  candidateBinds = map snd
                                 $ filter (\(l,_bs) -> nonEmptyList l)
                                 $ map doOne
@@ -377,11 +389,13 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
              -- ------------------------
 
-             liftToMatchQ' :: (SYB.Data a)
-                           => NameMap -> Anns
-                           -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
-                           -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
-             liftToMatchQ' nm ans (m@(GHC.L _ (GHC.Match _ _pats _mtyp (GHC.GRHSs _rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+             liftToMatchQ :: (SYB.Data a)
+                          => NameMap -> Anns
+                          -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+                          -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
+             liftToMatchQ nm ans (m@(GHC.L _ (GHC.Match _ _pats _mtyp (GHC.GRHSs _rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+                    -- = error $ "liftToMatchQ hit:decls=" ++ showGhc (getHsDecls ans  ds)
+                    -- = error $ "liftToMatchQ hit:ds=" ++ SYB.showData SYB.Parser 0 ds
                  | (nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans  ds) False False))
                     = Just (doLiftZ m (getHsDecls ans  ds))
                  | otherwise = Nothing
@@ -392,6 +406,10 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         => NameMap -> Anns
                         -> GHC.LHsExpr GHC.RdrName -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
              liftToLetQ nm ans ll@(GHC.L _ (GHC.HsLet ds _e))
+               -- = error $ "liftToLetQ:ds=" ++ SYB.showData SYB.Parser 0 ds
+               -- = error $ "liftToLetQ:decls ds=" ++ SYB.showData SYB.Parser 0 (getHsDecls ans ds)
+               -- = error $ "liftToLetQ:defining decls ds=" ++ SYB.showData SYB.Parser 0 (definingDeclsRdrNames nm [n] (getHsDecls ans ds) False  False)
+               -- = error $ "liftToLetQ:(ll,ds ll)=" ++ SYB.showData SYB.Parser 0 (ll,(getHsDecls ans ll))
                | nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans ds) False  False)
                  = Just (doLiftZ ll (getHsDecls ans ll))
                | otherwise = Nothing
@@ -422,6 +440,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 
                     let
                       wtop (ren::GHC.ParsedSource) = do
+                        logm $ "wtop entered"
                         nm <- getRefactNameMap
                         let (_,DN dd) = (hsFreeAndDeclaredRdr nm ren)
                         worker ren decls pn dd True
@@ -467,7 +486,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                 -> RefactGhc t
              workerTop dest ds dd toToplevel
                   =do
-                      -- logm $ "MoveDef.worker: dest" ++ (showGhc dest)
+                      logm $ "MoveDef.worker: dest" ++ SYB.showData SYB.Parser 0 dest
                       logm $ "MoveDef.workerTop: ds=" ++ (showGhc ds)
                       done <- getRefactDone
                       if done then return dest
@@ -489,6 +508,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                     --True means the new decl will be at the same level with its parant.
                                     let toMove = parent'
                                     pdecls <- liftT $ hsDecls toMove
+                                    -- logm $ "MoveDef.workerTop:toMove=" ++ SYB.showData SYB.Parser 0 toMove
+                                    -- logm $ "MoveDef.workerTop:pdecls=" ++ (showGhc pdecls)
                                     let mAfter = case pdecls of
                                           [] -> Nothing
                                           _ -> (Just (ghead "worker" (definedNamesRdr nm (glast "workerTop" ds))))
@@ -1239,12 +1260,15 @@ doDemoting' t pn = do
                                        ++" after demoting, please do renaming first!")
                             else  --duplicate demoted declarations to the right place.
                                  do
+                                    duplicateDecls declaredPns removedDecl demotedSigs t'
+                                    {-
                                     logm $ "MoveDef: about to duplicateDecls"
                                     dds <- liftT $ hsDecls t'
                                     ds'' <- duplicateDecls declaredPns removedDecl demotedSigs dds
                                     logm $ "MoveDef:duplicateDecls done"
                                     t'' <- liftT $ replaceDecls t' ds''
                                     return t''
+                                    -}
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        else error "This function can not be demoted as it is used in current level!\n"
@@ -1273,15 +1297,46 @@ doDemoting' t pn = do
                   usedInMatch _ _ = []
 
 
-          -- duplicate demotedDecls to the right place (the outer most level where it is used).
-          duplicateDecls :: [GHC.Name] -- ^ function names to be demoted
+          duplicateDecls :: (SYB.Data t,SYB.Typeable t)
+                         => [GHC.Name] -- ^ function names to be demoted
                          -> GHC.LHsDecl GHC.RdrName   -- ^Bind being demoted
                          -> [GHC.LSig GHC.RdrName]    -- ^Signatures being demoted, if any
-                         -> [GHC.LHsDecl GHC.RdrName] -- ^Binds of original top
-                                                      -- level entiity,
-                                                      -- including src and dst
-                         -> RefactGhc [GHC.LHsDecl GHC.RdrName]
-          duplicateDecls pns demoted dsig decls
+                         -> t
+                         -> RefactGhc t
+          duplicateDecls pns demoted dsig t = do
+            logm $ "duplicateDecls:t=" ++ SYB.showData SYB.Parser 0 t
+            hasDeclsSybTransform workerHsDecls workerBind t
+            where
+              workerHsDecls :: forall t. HasDecls t => t -> RefactGhc t
+              workerHsDecls t = do
+                dds <- liftT $ hsDecls t
+                ds'' <- duplicateDecls' pns demoted dsig dds
+                liftT $ replaceDecls t ds''
+
+              workerBind :: (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))
+              workerBind t@(GHC.L _ (GHC.PatBind{})) = do
+                dds <- liftT $ hsDeclsPatBind t
+                ds'' <- duplicateDecls' pns demoted dsig dds
+                liftT $ replaceDeclsPatBind t ds''
+
+            {-
+            logm $ "MoveDef: about to duplicateDecls"
+            dds <- liftT $ hsDecls t
+            ds'' <- duplicateDecls pns demoted dsig dds
+            logm $ "MoveDef:duplicateDecls done"
+            t' <- liftT $ replaceDecls t ds''
+            return t'
+            -}
+
+          -- duplicate demotedDecls to the right place (the outer most level where it is used).
+          duplicateDecls' :: [GHC.Name] -- ^ function names to be demoted
+                          -> GHC.LHsDecl GHC.RdrName   -- ^Bind being demoted
+                          -> [GHC.LSig GHC.RdrName]    -- ^Signatures being demoted, if any
+                          -> [GHC.LHsDecl GHC.RdrName] -- ^Binds of original top
+                                                       -- level entiity,
+                                                       -- including src and dst
+                          -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+          duplicateDecls' pns demoted dsig decls
              = do
                   nm <- getRefactNameMap
                   everywhereMStaged' SYB.Parser (SYB.mkM (dupInMatch nm) -- top-down approach

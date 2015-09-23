@@ -110,6 +110,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , removeOffset
 
     , declsSybTransform
+    , hasDeclsSybTransform
 
     -- * Typed AST traversals (added by CMB)
     -- * Miscellous
@@ -1710,6 +1711,8 @@ rmDecl pn incSig t = do
     doRmDeclList parent
       = do
          isDone <- getDone
+         logm $ "doRmDeclList:isDone=" ++ show isDone
+         logm $ "doRmDeclList:parent=" ++ SYB.showData SYB.Parser 0 parent
          if isDone
            then return parent
            else do
@@ -1723,7 +1726,7 @@ rmDecl pn incSig t = do
                  setStateStorage (StorageDeclRdr decl)
                  decls'  <- doRmDecl decls1 decls2
                  parent' <- liftT $ replaceDecls parent decls'
-                 -- logDataWithAnns "doRmDeclList:(parent')" (parent')
+                 logDataWithAnns "doRmDeclList:(parent')" (parent')
                  return parent'
                else do
                  -- liftT $ replaceDecls parent decls

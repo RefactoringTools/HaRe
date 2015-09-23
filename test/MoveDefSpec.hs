@@ -348,7 +348,7 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
 
     it "liftOneLevel.liftToMod D1 C1 A1 8 6" $ do
      r <- ct $ liftOneLevel defaultTestSettings testOptions "./LiftOneLevel/D1.hs" (8,6)
-     -- r <- liftOneLevel logTestSettings testOptions "./test/testdata/LiftOneLevel/D1.hs" (8,6)
+     -- r <- ct $ liftOneLevel logTestSettings testOptions "./LiftOneLevel/D1.hs" (8,6)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      (show r') `shouldBe` "[\"./LiftOneLevel/D1.hs\",\"LiftOneLevel/C1.hs\"]"
      diff <- compareFiles "./test/testdata/LiftOneLevel/D1.hs.expected"
@@ -546,7 +546,6 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes a definition from the top level 1" $ do
-     -- doDemote ["./test/testdata/MoveDef/Demote.hs","7","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/MoveDef/Demote.hs" (7,1)
      -- r <- demote logTestSettings testOptions "./test/testdata/MoveDef/Demote.hs" (7,1)
      (show r) `shouldBe` "[\"./test/testdata/MoveDef/Demote.hs\"]"
