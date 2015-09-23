@@ -198,7 +198,6 @@ module Language.Haskell.Refact.API
     , removeOffset
 
     , declsSybTransform
-    , hasDeclsSybTransform
 
     -- ** Typed AST traversals (added by CMB)
     -- ** Miscellous
