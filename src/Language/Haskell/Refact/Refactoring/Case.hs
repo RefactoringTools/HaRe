@@ -14,7 +14,6 @@ import Language.Haskell.Refact.API
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.Refact.Utils.ExactPrint
 
 import qualified Data.Map as Map
 -- import Debug.Trace

@@ -1142,7 +1142,7 @@ doDemoting  pn = do
            else return x
 
        --2. The demoted definition is a local decl in a match
-       demoteInMatch match@(GHC.L _ (GHC.Match _ _pats _mt (GHC.GRHSs _ ds))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+       demoteInMatch match@(GHC.L _ (GHC.Match _ _pats _mt (GHC.GRHSs _ _ds))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
          -- decls <- liftT $ hsDecls ds
          decls <- liftT $ hsDecls match
          nm <- getRefactNameMap
@@ -1157,7 +1157,7 @@ doDemoting  pn = do
            else return match
 
        --3. The demoted definition is a local decl in a pattern binding
-       demoteInPat x@(pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p (GHC.GRHSs _grhs lb) _ _ _)))::GHC.LHsDecl GHC.RdrName) = do
+       demoteInPat x@(pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p (GHC.GRHSs _grhs _lb) _ _ _)))::GHC.LHsDecl GHC.RdrName) = do
          decls <- liftT $ hsDeclsPatBindD x
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
@@ -1172,7 +1172,7 @@ doDemoting  pn = do
        demoteInPat x = return x
 
        --4: The demoted definition is a local decl in a Let expression
-       demoteInLet x@(letExp@(GHC.L _ (GHC.HsLet ds _e))::GHC.LHsExpr GHC.RdrName) = do
+       demoteInLet x@(letExp@(GHC.L _ (GHC.HsLet _ds _e))::GHC.LHsExpr GHC.RdrName) = do
          decls <- liftT $ hsDecls x
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
@@ -1189,7 +1189,7 @@ doDemoting  pn = do
 
        --6.The demoted definition is a local decl in a Let statement.
        -- demoteInStmt (letStmt@(HsLetStmt ds stmts):: (HsStmt (HsExpP) (HsPatP) [HsDeclP]))
-       demoteInStmt (letStmt@(GHC.L _ (GHC.LetStmt binds))::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+       demoteInStmt (letStmt@(GHC.L _ (GHC.LetStmt _binds))::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
          decls <- liftT $ hsDecls letStmt
          nm <- getRefactNameMap
          if not $ emptyList (definingDeclsRdrNames nm [pn] decls False False)
@@ -1303,21 +1303,21 @@ doDemoting' t pn = do
                          -> [GHC.LSig GHC.RdrName]    -- ^Signatures being demoted, if any
                          -> t
                          -> RefactGhc t
-          duplicateDecls pns demoted dsig t = do
-            logm $ "duplicateDecls:t=" ++ SYB.showData SYB.Parser 0 t
-            hasDeclsSybTransform workerHsDecls workerBind t
+          duplicateDecls pns demoted dsig o = do
+            logm $ "duplicateDecls:t=" ++ SYB.showData SYB.Parser 0 o
+            hasDeclsSybTransform workerHsDecls workerBind o
             where
               workerHsDecls :: forall t. HasDecls t => t -> RefactGhc t
-              workerHsDecls t = do
-                dds <- liftT $ hsDecls t
+              workerHsDecls t' = do
+                dds <- liftT $ hsDecls t'
                 ds'' <- duplicateDecls' pns demoted dsig dds
-                liftT $ replaceDecls t ds''
+                liftT $ replaceDecls t' ds''
 
               workerBind :: (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))
-              workerBind t@(GHC.L _ (GHC.PatBind{})) = do
-                dds <- liftT $ hsDeclsPatBind t
+              workerBind t'@(GHC.L _ (GHC.PatBind{})) = do
+                dds <- liftT $ hsDeclsPatBind t'
                 ds'' <- duplicateDecls' pns demoted dsig dds
-                liftT $ replaceDeclsPatBind t ds''
+                liftT $ replaceDeclsPatBind t' ds''
 
             {-
             logm $ "MoveDef: about to duplicateDecls"

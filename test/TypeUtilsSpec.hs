@@ -17,10 +17,9 @@ import Data.Maybe
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Utils
+-- import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.Binds
-import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
@@ -31,9 +30,6 @@ import Language.Haskell.Refact.Utils.Variables
 
 import qualified Data.Map as Map
 import Data.List
-import Control.Monad.Identity
-import Control.Monad.State
-import Control.Monad.Writer
 
 main :: IO ()
 main = do
@@ -3731,8 +3727,6 @@ This function is not used and has been removed
   describe "autoRenameLocalVar" $ do
     it "renames an identifier if it is used and updates tokens" $ do
       (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
-      pendingWith "rework modifyLocalDecl"
-  {-
       let
         comp = do
           renamed <- getRefactRenamed
@@ -3754,7 +3748,7 @@ This function is not used and has been removed
       (showGhcQual d) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
       (showGhcQual r) `shouldBe` "sumSquares x y\n  = sq p_1 x + sq p_1 y\n  where\n      p_1 = 2"
       (exactPrintFromState s r) `shouldBe` "\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2"
--}
+
   -- ---------------------------------------
 
   describe "mkNewName" $ do
