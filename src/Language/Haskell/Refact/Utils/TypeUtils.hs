@@ -1152,12 +1152,14 @@ hasDeclsSybTransform workerHasDecls workerBind t = trf t
     lstmt (d::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
       = workerHasDecls d
 
-    lhsbind (b@(GHC.L l GHC.FunBind{}):: GHC.LHsBind GHC.RdrName)
+    lhsbind (b@(GHC.L _ GHC.FunBind{}):: GHC.LHsBind GHC.RdrName)
+      = workerBind b
+    lhsbind b@(GHC.L _ GHC.PatBind{})
       = workerBind b
     lhsbind x = return x
 
     lvald (GHC.L l (GHC.ValD d)) = do
-      (GHC.L l d') <- lhsbind (GHC.L l d)
+      (GHC.L _ d') <- lhsbind (GHC.L l d)
       return (GHC.L l (GHC.ValD d'))
     lvald x = return x
 
@@ -1676,7 +1678,7 @@ rmDecl pn incSig t = do
       = doRmDeclList x
 
     inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-    inLet letExpr@(GHC.L ss (GHC.HsLet localDecls expr))
+    inLet letExpr@(GHC.L _ (GHC.HsLet _localDecls expr))
       = do
          isDone <- getDone
          if isDone
@@ -1742,8 +1744,7 @@ rmDecl pn incSig t = do
 
 -- ---------------------------------------------------------------------
 
--- declsSybTransform :: (SYB.Typeable a, SYB.Typeable t)
---              => (GHC.Located a -> Maybe r) -> t -> Maybe r
+-- ++AZ++ TODO: I think this has been superseded by hasDeclsSybTransform
 declsSybTransform :: (SYB.Typeable a)
   => (forall b. HasDecls b => b -> RefactGhc b)
   -> a -> RefactGhc a

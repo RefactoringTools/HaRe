@@ -96,9 +96,9 @@ reallyDoDuplicating pn newName _inscopes = do
        return (DupDefTopLevel,newNameGhc)
      else do
        parsed' <- SYB.everywhereMStaged SYB.Parser (
-                                      SYB.mkM    (dupInMatch newNameGhc)
-                                      `SYB.extM` (dupInPat newNameGhc)
-                                      `SYB.extM` (dupInLet newNameGhc)
+                                      SYB.mkM    (dupInMatch   newNameGhc)
+                                      `SYB.extM` (dupInPat     newNameGhc)
+                                      `SYB.extM` (dupInLet     newNameGhc)
                                       `SYB.extM` (dupInLetStmt newNameGhc)
                                      ) parsed2
        putRefactParsed parsed' emptyAnns
@@ -129,7 +129,9 @@ reallyDoDuplicating pn newName _inscopes = do
 
         --3. The definition to be duplicated is a local declaration in a pattern binding
         dupInPat newNameGhc (pat@(GHC.L _ (GHC.ValD (GHC.PatBind _p _rhs _typ _fvs _))) :: GHC.LHsDecl GHC.RdrName)
-          = doDuplicating' newNameGhc pat pn
+          = do
+            logm $ "dupInPat hit"
+            doDuplicating' newNameGhc pat pn
         dupInPat _ pat = return pat
 
         --4: The defintion to be duplicated is a local decl in a Let expression
@@ -150,23 +152,48 @@ reallyDoDuplicating pn newName _inscopes = do
           = filter (\d->isFunBindP d || isSimplePatDecl d) $ definingDeclsRdrNames nm [n] ds True False
 
 
-        doDuplicating' :: (HasDecls t) => GHC.Name -> t -> GHC.Located GHC.Name -> RefactGhc t
+        doDuplicating' :: (SYB.Typeable t,SYB.Data t) => GHC.Name -> t -> GHC.Located GHC.Name -> RefactGhc t
         doDuplicating' newNameGhc t _ln = do
           logm $ "doDuplicating' entered"
           -- logm $ "doDuplicating' entered:t=" ++ SYB.showData SYB.Parser 0 t
-          declsp <- liftT $ hsDecls t
+          -- declsp <- liftT $ hsDecls t
+          declsp <- liftT $ hsDeclsGeneric t
           nm <- getRefactNameMap
           if not $ emptyList (findFunOrPatBind nm pn declsp)
             then doDuplicating'' newNameGhc t pn
             else return t
 
 
-        doDuplicating'' :: (HasDecls t) => GHC.Name -> t -> GHC.Located GHC.Name
+        doDuplicating'' :: (SYB.Data t) => GHC.Name -> t -> GHC.Located GHC.Name
                        -> RefactGhc t
-        doDuplicating'' newNameGhc parentr ln@(GHC.L _ n)
+        doDuplicating'' newNameGhc parentr ln = do
+          logm $ "doDuplicating'':parentr=" ++ SYB.showData SYB.Parser 0 parentr
+          r <- hasDeclsSybTransform workerHsDecls workerBind parentr
+          logm $ "doDuplicating'':done"
+          return r
+          where
+              workerHsDecls :: forall t. HasDecls t => t -> RefactGhc t
+              workerHsDecls t = do
+                logm $ "workerHsDecls hit"
+                ds <- liftT $ hsDecls t
+                ds' <- doDuplicating3 newNameGhc parentr ln ds
+                liftT $ replaceDecls t ds'
+
+              workerBind :: (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))
+              workerBind t@(GHC.L _ (GHC.PatBind{})) = do
+                logm $ "workerBind hit"
+                ds <- liftT $ hsDeclsPatBind t
+                ds' <- doDuplicating3 newNameGhc t ln ds
+                liftT $ replaceDeclsPatBind t ds'
+              workerBind x = error $ "DupDef.doDuplicating'':workerBind got:" ++ showGhc x
+
+        doDuplicating3 :: (SYB.Data t) => GHC.Name -> t -> GHC.Located GHC.Name
+                       -> [GHC.LHsDecl GHC.RdrName]
+                       -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+        doDuplicating3 newNameGhc parentr ln@(GHC.L _ n) declsp
            = do
                 logm $ "doDuplicating'' entered:ln" ++ showGhc ln
-                declsp <- liftT $ hsDecls parentr
+                -- declsp <- liftT $ hsDecls parentr
                 nm <- getRefactNameMap
                 let
                     duplicatedDecls = definingDeclsRdrNames nm [n] declsp True False
@@ -189,8 +216,9 @@ reallyDoDuplicating pn newName _inscopes = do
                    else do
                            setRefactDone
                            newdecls <- duplicateDecl declsp n newNameGhc
-                           parentr' <- liftT $ replaceDecls parentr newdecls
-                           return parentr'
+                           -- parentr' <- liftT $ replaceDecls parentr newdecls
+                           -- return parentr'
+                           return newdecls
 
 
 -- | Do refactoring in the client module. That is to hide the
