@@ -110,7 +110,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , removeOffset
 
     , declsSybTransform
-    , hasDeclsSybTransform
+    -- , hasDeclsSybTransform
 
     -- * Typed AST traversals (added by CMB)
     -- * Miscellous
@@ -1059,7 +1059,6 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
   addLocalDecl parent' newDeclSig = do
     logm $ "addLocalDecl entered"
     -- logDataWithAnns "addLocalDecl.parent'" parent'
-    -- trf parent'
     hasDeclsSybTransform workerHasDecls workerBind parent'
     where
       workerDecls :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
@@ -1071,7 +1070,6 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
              DP (r,c) <- liftT (getEntryDPT (head ds))
              liftT $ setDeclSpacing newDeclSig r c
              liftT $ setPrecedingLinesT (head ds) 2 0
-         -- r <- liftT $ replaceDecls p (newDeclSig++decls)
          return (newDeclSig++decls)
 
       workerHasDecls :: (HasDecls t) => t -> RefactGhc t
@@ -1081,17 +1079,6 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
          decls' <- workerDecls decls
          r <- liftT $ replaceDecls p decls'
          return r
-      -- workerHasDecls p = do
-      --    logm $ "workerHasDecls entered"
-      --    decls <- liftT (hsDecls p)
-      --    case decls of
-      --      [] -> liftT $ setDeclSpacing newDeclSig 2 0
-      --      ds -> do
-      --        DP (r,c) <- liftT (getEntryDPT (head ds))
-      --        liftT $ setDeclSpacing newDeclSig r c
-      --        liftT $ setPrecedingLinesT (head ds) 2 0
-      --    r <- liftT $ replaceDecls p (newDeclSig++decls)
-      --    return r
 
       workerBind :: GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
       workerBind b = do
@@ -1100,9 +1087,9 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
           GHC.L l (GHC.FunBind n i (GHC.MG [match] a ptt o) co fvs t) -> do
             match' <- workerHasDecls match
             return (GHC.L l (GHC.FunBind n i (GHC.MG [match'] a ptt o) co fvs t))
-          GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t) -> do
+          GHC.L _ (GHC.FunBind _ _ (GHC.MG _matches _ _ _) _ _ _) -> do
             error "addDecl:Cannot add a local decl to a FunBind with multiple matches"
-          p@(GHC.L l (GHC.PatBind _pat _rhs _ty _fvs _t)) -> do
+          p@(GHC.L _ (GHC.PatBind _pat _rhs _ty _fvs _t)) -> do
             logm $ "workerBind.PatBind entered"
             decls <- liftT (hsDeclsPatBind p)
             decls' <- workerDecls decls
@@ -1110,46 +1097,6 @@ addDecl parent pn (declSig, mDeclAnns) topLevel = do
             return r
 
           x -> error $ "addLocalDecl.workerBind:not processing:" ++ SYB.showData SYB.Parser 0 x
-
--- ---------------------------------------------------------------------
--- ++AZ++ TODO: Migrate this to ghc-exactprint
-hasDeclsSybTransform :: (SYB.Data t2, SYB.Typeable t2)
-       => (forall t. HasDecls t => t -> RefactGhc t)
-             -- ^Worker function for the general case
-       -> (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))
-             -- ^Worker function for FunBind/PatBind
-       -> t2 -- ^Item to be updated
-       -> RefactGhc t2
-hasDeclsSybTransform workerHasDecls workerBind t = trf t
-  where
-    trf = SYB.mkM   parsedSource
-         `SYB.extM` lmatch
-         `SYB.extM` lexpr
-         `SYB.extM` lstmt
-         `SYB.extM` lhsbind
-         `SYB.extM` lvald
-
-    parsedSource (p::GHC.ParsedSource) = workerHasDecls p
-
-    lmatch (lm::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-      = workerHasDecls lm
-
-    lexpr (le::GHC.LHsExpr GHC.RdrName)
-      = workerHasDecls le
-
-    lstmt (d::GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-      = workerHasDecls d
-
-    lhsbind (b@(GHC.L _ GHC.FunBind{}):: GHC.LHsBind GHC.RdrName)
-      = workerBind b
-    lhsbind b@(GHC.L _ GHC.PatBind{})
-      = workerBind b
-    lhsbind x = return x
-
-    lvald (GHC.L l (GHC.ValD d)) = do
-      (GHC.L _ d') <- lhsbind (GHC.L l d)
-      return (GHC.L l (GHC.ValD d'))
-    lvald x = return x
 
 -- ---------------------------------------------------------------------
 --
