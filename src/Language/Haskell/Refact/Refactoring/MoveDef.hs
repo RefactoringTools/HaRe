@@ -1318,15 +1318,8 @@ doDemoting' t pn = do
                 dds <- liftT $ hsDeclsPatBind t'
                 ds'' <- duplicateDecls' pns demoted dsig dds
                 liftT $ replaceDeclsPatBind t' ds''
+              workerBind x = error $ "MoveDef.duplicateDecls.workerBind:unmatched LHsBind:" ++ showGhc x
 
-            {-
-            logm $ "MoveDef: about to duplicateDecls"
-            dds <- liftT $ hsDecls t
-            ds'' <- duplicateDecls pns demoted dsig dds
-            logm $ "MoveDef:duplicateDecls done"
-            t' <- liftT $ replaceDecls t ds''
-            return t'
-            -}
 
           -- duplicate demotedDecls to the right place (the outer most level where it is used).
           duplicateDecls' :: [GHC.Name] -- ^ function names to be demoted

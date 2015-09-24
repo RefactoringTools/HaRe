@@ -43,8 +43,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactNameMap
 
        -- * New ghc-exactprint interfacing
-       , replaceRdrName
-       , refactRunTransform
+       -- , replaceRdrName
+       -- , refactRunTransform
        , liftT
 
        -- * State flags for managing generic traversals
@@ -85,15 +85,12 @@ import qualified Unique        as GHC
 import qualified Data.Generics as SYB
 
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Utils
 
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
-import Language.Haskell.Refact.Utils.ExactPrint
 
 import qualified Data.Map as Map
 
@@ -225,6 +222,7 @@ clearParsedModule = do
 
 -- ---------------------------------------------------------------------
 
+{-
 -- |Replace the Located RdrName in the ParsedSource
 replaceRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
 replaceRdrName (GHC.L l newName) = do
@@ -267,6 +265,7 @@ replaceRdrName (GHC.L l newName) = do
   putRefactParsed parsed' emptyAnns
   setRefactAnns anns'
   return ()
+-}
 
 -- ---------------------------------------------------------------------
 {-
@@ -275,6 +274,7 @@ refactReplaceDecls t decls = do
   liftT (replaceDecls t decls)
 -}
 
+{-
 -- |Run a transformation in the ghc-exactprint Transform monad, updating the
 -- current annotations and unique SrcSpan value.
 refactRunTransform :: TransformT RefactGhc a -> RefactGhc a
@@ -289,6 +289,7 @@ refactRunTransform transform = do
   when (not (null logLines)) $ do
     logm $ intercalate "\n" logLines
   return a
+-}
 
 refactRunTransformId :: Transform a -> RefactGhc a
 refactRunTransformId transform = do

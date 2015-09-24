@@ -67,8 +67,7 @@ module Language.Haskell.Refact.API
        , getRefactModuleName
 
        -- * New ghc-exactprint interfacing
-       , replaceRdrName
-       , refactRunTransform
+       -- , refactRunTransform
        , liftT
 
        -- ** State flags for managing generic traversals
@@ -195,7 +194,7 @@ module Language.Haskell.Refact.API
     -- The following functions are not in the the API yet.
     , causeNameClashInExports
 
-    , removeOffset
+    -- , removeOffset
 
     , declsSybTransform
 

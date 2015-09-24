@@ -2406,7 +2406,8 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         -- decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
@@ -2440,7 +2441,7 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
@@ -2469,7 +2470,7 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
@@ -2498,7 +2499,7 @@ spec = do
          -- logParsedSource "start"
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
@@ -2527,7 +2528,7 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (4, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
@@ -2554,7 +2555,7 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (10, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let -- decls = hsBinds parsed
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
@@ -2596,7 +2597,7 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (3, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let -- decls = hsBinds parsed
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 
@@ -2622,7 +2623,7 @@ spec = do
          nameMap <- getRefactNameMap
 
          let Just (GHC.L _ tl) = locToName (3, 1) renamed
-         decls <- refactRunTransform (hsDecls parsed)
+         decls <- liftT (hsDecls parsed)
          let
              [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
 

@@ -1299,7 +1299,7 @@ definedPNs (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)) = [pname]
 definedPNs (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))         = (hsNamess p)
 definedPNs (GHC.L _ (GHC.VarBind pname _rhs _))              = [pname]
 
--- TODO: what about GHC.AbsBinds?
+-- AbsBinds and ValBinds will never occur in ParsedSource
 definedPNs  _ = []
 
 definedPNsRdr :: GHC.LHsDecl GHC.RdrName -> [GHC.Located GHC.RdrName]

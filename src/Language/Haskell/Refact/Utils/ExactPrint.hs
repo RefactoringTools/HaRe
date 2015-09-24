@@ -8,15 +8,12 @@ module Language.Haskell.Refact.Utils.ExactPrint
     replace
   , replaceAnnKey
   , copyAnn
-
-  , hsDeclsGeneric
   ) where
 
 import qualified GHC           as GHC
 
 import qualified Data.Generics as SYB
 
-import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
 
 import qualified Data.Map as Map

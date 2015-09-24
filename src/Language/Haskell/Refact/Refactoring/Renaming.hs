@@ -10,7 +10,6 @@ import qualified RdrName               as GHC
 
 import Control.Monad
 import Data.List
-import Exception
 
 import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
