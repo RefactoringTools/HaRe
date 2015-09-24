@@ -989,12 +989,9 @@ addDecl:: (SYB.Data t,SYB.Typeable t)
         -> ([GHC.LHsDecl GHC.RdrName],  Maybe Anns)
              -- ^ The declaration with optional signatures to be added, together
              -- with optional Annotations.
-        -> Bool              -- ^ True means the declaration is a
-                             -- toplevel declaration.
-        -- ++TODO:AZ get rid of the topLevel Bool, no longer used
         -> RefactGhc t
 
-addDecl parent pn (declSig, mDeclAnns) topLevel = do
+addDecl parent pn (declSig, mDeclAnns) = do
   logm $ "addDecl:declSig=" ++ showGhc declSig
   case mDeclAnns of
     Nothing -> return ()

@@ -192,7 +192,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              let defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
              parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
              parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] liftedDecls'
-                                                            declaredPns mLiftedSigs' True
+                                                            declaredPns mLiftedSigs'
              putRefactParsed parsed2 emptyAnns
 
              return declaredPns
@@ -443,8 +443,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         logm $ "wtop entered"
                         nm <- getRefactNameMap
                         let (_,DN dd) = (hsFreeAndDeclaredRdr nm ren)
-                        worker ren decls pn dd True
-                        -- workerTop ren decls dd True
+                        worker ren decls pn dd
+                        -- workerTop ren decls dd
 
 
                       wmatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
@@ -455,14 +455,14 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                          let (_,DN dd) = hsFreeAndDeclaredRdr nm grhss
 
                          decls' <- liftT $ hsDecls m
-                         workerTop m decls' dd False
+                         workerTop m decls' dd
 
                       wlet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
                       wlet l@(GHC.L _ (GHC.HsLet dsl _e)) = do
                          logm $ "wlet entered "
                          nm <- getRefactNameMap
                          let (_,DN dd) = hsFreeAndDeclaredRdr nm dsl
-                         dsl' <- workerTop l decls dd False
+                         dsl' <- workerTop l decls dd
                          return dsl'
                       wlet x = return x
 
@@ -482,9 +482,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                 -> [GHC.LHsDecl GHC.RdrName] -- ^ list containing the decl to be
                                              -- lifted
                 -> [GHC.Name] -- ^Declared variables in the destination
-                -> Bool -- ^True if lifting to the top level
                 -> RefactGhc t
-             workerTop dest ds dd toToplevel
+             workerTop dest ds dd
                   =do
                       logm $ "MoveDef.worker: dest" ++ SYB.showData SYB.Parser 0 dest
                       logm $ "MoveDef.workerTop: ds=" ++ (showGhc ds)
@@ -515,7 +514,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                           _ -> (Just (ghead "worker" (definedNamesRdr nm (glast "workerTop" ds))))
                                     dest' <- moveDecl1 toMove
                                                mAfter
-                                               [n] liftedDecls' declaredPns mLiftedSigs' toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                               [n] liftedDecls' declaredPns mLiftedSigs'
                                     return dest'
                             else askRenamingMsg pns "lifting"
 
@@ -528,9 +527,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                              -- lifted
                 -> GHC.Located GHC.Name -- ^ The name of the decl to be lifted
                 -> [GHC.Name] -- ^Declared variables in the destination
-                -> Bool -- ^True if lifting to the top level
                 -> RefactGhc t
-             worker dest ds pnn dd toToplevel
+             worker dest ds pnn dd
                   =do
                       -- logm $ "MoveDef.worker: dest" ++ (showGhc dest)
                       logm $ "MoveDef.worker: ds=" ++ (showGhc ds)
@@ -553,7 +551,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                                     toMove <- liftT $ replaceDecls dest (before++parent'++after)
                                     dest' <- moveDecl1 toMove
                                                (Just (ghead "worker" (definedNamesRdr nm (ghead "worker" parent'))))
-                                               [n] liftedDecls' declaredPns mLiftedSigs' toToplevel -- False -- ++AZ++ TODO: should be True for toplevel move
+                                               [n] liftedDecls' declaredPns mLiftedSigs'
                                     return dest'
                             else askRenamingMsg pns "lifting"
 
@@ -591,11 +589,10 @@ moveDecl1 :: (SYB.Data t)
   -> [GHC.Name]     -- ^ The signatures to remove. May be multiple if
                     --   decl being moved has a patbind.
   -> [GHC.LSig GHC.RdrName] -- ^ lifted decls signature if present
-  -> Bool           -- ^ True if moving to the top level
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
-moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
+moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs = do
   logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
-  logm $ "moveDecl1:(topLevel,t)=" ++ SYB.showData SYB.Parser 0 (topLevel,t)
+  logm $ "moveDecl1:(t)=" ++ SYB.showData SYB.Parser 0 (t)
 
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',_sigsRemoved) <- rmTypeSigs sigNames t
@@ -604,7 +601,7 @@ moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs topLevel = do
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
   logm $ "moveDecl1:after rmDecl:t'" ++ SYB.showData SYB.Parser 0 t'
   let sigs = map wrapSig mliftedSigs
-  r <- addDecl t' defName (sigs++mliftedDecls,Nothing) topLevel
+  r <- addDecl t' defName (sigs++mliftedDecls,Nothing)
 
   return r
 
@@ -1354,7 +1351,7 @@ doDemoting' t pn = do
                    = do
                        logm $ "duplicateDecls.dupInPat"
                        let declsToLift = definingDeclsRdrNames' nm pns t
-                       lb' <- moveDecl1 lb Nothing pns declsToLift pns [] False
+                       lb' <- moveDecl1 lb Nothing pns declsToLift pns []
                        return (GHC.PatBind pat (GHC.GRHSs grhs lb') ty fvs ticks)
                  dupInPat _ x = return x
 
@@ -1440,13 +1437,13 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
                    logm $ "MoveDef.foldParams foldInDemotedDecls done"
 
                    let match' = GHC.L l ((GHC.unLoc match) {GHC.m_grhss = rhs' })
-                   match'' <- addDecl match' Nothing (demotedDecls''',Nothing) False
+                   match'' <- addDecl match' Nothing (demotedDecls''',Nothing)
                    logm $ "MoveDef.foldParams addDecl done 1"
                    return match''
            else  do
                      logm $ "foldParams:no params"
                      let sigs = map wrapSig dsig
-                     match' <- addDecl match Nothing (sigs++[demotedDecls],Nothing) False
+                     match' <- addDecl match Nothing (sigs++[demotedDecls],Nothing)
                      logm "MoveDef.foldParams addDecl done 2"
                      return match'
 

@@ -2321,7 +2321,7 @@ spec = do
          parsed <- getRefactParsed
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "a" "nn = n2")
          -- let declAnns' = setPrecedingLines declAnns newDecl 2
-         parsed' <- addDecl parsed Nothing ([decl],Just declAnns) True
+         parsed' <- addDecl parsed Nothing ([decl],Just declAnns)
          putRefactParsed parsed' emptyAnns
          return parsed'
       (nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2342,7 +2342,7 @@ spec = do
          parsed <- getRefactParsed
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = 2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
-         parsed' <- addDecl parsed Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) True
+         parsed' <- addDecl parsed Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns)
          putRefactParsed parsed' emptyAnns
          return (sig,parsed')
       -- ((_hs,nb),s) <- runRefactGhc comp tgt $ initialState { rsModule = initRefactModule t }
@@ -2362,7 +2362,7 @@ spec = do
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "a" "nn = nn2")
          renamed <- getRefactRenamed
          let Just (GHC.L _l n) = locToName (21, 1) renamed
-         parsed' <- addDecl parsed (Just n) ([decl],Just declAnns) True
+         parsed' <- addDecl parsed (Just n) ([decl],Just declAnns)
          putRefactParsed parsed' emptyAnns
          return (n,parsed')
       ((n,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2384,7 +2384,7 @@ spec = do
          parsed <- getRefactParsed
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
-         parsed' <- addDecl parsed (Just n) ([sig,decl],Just $ mergeAnns sigAnns declAnns) True
+         parsed' <- addDecl parsed (Just n) ([sig,decl],Just $ mergeAnns sigAnns declAnns)
          putRefactParsed parsed' emptyAnns
          return (n,parsed')
       ((nn,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2413,7 +2413,7 @@ spec = do
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
-         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns)
          -- (newDecl,_) <- modifyLocalDecl (GHC.getLoc tlDecl) tlDecl $ \_m declsp -> do
          --   declsp' <- addDecl declsp Nothing ([decl],Just declAnns) False
          --   return (declsp',Nothing)
@@ -2448,7 +2448,7 @@ spec = do
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
 
-         newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns)
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2476,7 +2476,7 @@ spec = do
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
-         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns)
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2505,7 +2505,7 @@ spec = do
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
-         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns)
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2535,7 +2535,7 @@ spec = do
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
 
-         newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([sig,decl],Just $ mergeAnns sigAnns declAnns)
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2570,7 +2570,7 @@ spec = do
          liftT (balanceComments tlDecl sqSigDecl)
          liftT (balanceComments sqDecl afDecl)
 
-         newDecl <- addDecl tlDecl Nothing ([sqSigDecl,sqDecl],Nothing) False
+         newDecl <- addDecl tlDecl Nothing ([sqSigDecl,sqDecl],Nothing)
 
          return (sqSig,sqDecl,tlDecl,afDecl,newDecl)
       -- ((sigs,_sd,tl,aa,nb),s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
@@ -2605,7 +2605,7 @@ spec = do
 
          let [yDecl] = definingDeclsRdrNames nameMap [y] decls False False
 
-         newDecl <- addDecl tlDecl Nothing ([yDecl],Nothing) False
+         newDecl <- addDecl tlDecl Nothing ([yDecl],Nothing)
 
          return (yDecl,tlDecl,newDecl)
       r <- catchException $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
@@ -2629,7 +2629,7 @@ spec = do
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
-         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns) False
+         newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns)
 
          return (tlDecl,newDecl)
       ((tl,nb),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
