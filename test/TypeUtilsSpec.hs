@@ -1996,20 +1996,17 @@ spec = do
     it "removes the last local decl in a let/in clause" $ do
       (t, toks, tgt) <- ct $ parsedFileGhc "./LiftToToplevel/LetIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
 
-      -- let declsr = hsBinds renamed
-      let declsp = hsBinds parsed
       let Just (GHC.L _ n) = locToName (11, 22) renamed
       let
         comp = do
-         (newDecls,_removedDecl,_removedSig) <- rmDecl n True declsp
+         parsed <- getRefactParsed
+         (parsed',_removedDecl,_removedSig) <- rmDecl n True parsed
 
-         let parsed' = replaceBinds parsed newDecls
          putRefactParsed parsed' emptyAnns
 
-         return newDecls
+         return parsed'
       (_nb,s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
       -- (_nb,s) <- runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
 
@@ -2669,33 +2666,22 @@ spec = do
     it "replaces a Name with another, updating tokens 2" $ do
       (t, _toks, tgt) <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
 
-      -- let renamed = fromJust $ GHC.tm_renamed_source t
-      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      -- let declsr = hsBinds parsed
-      -- let decl = head $ drop 0 declsr
-
-      -- let Just (GHC.L _l n) = locToName (11, 21) renamed
       let
         comp = do
          renamed <- getRefactRenamed
          parsed <- getRefactParsed
-         let declsr = hsBinds parsed
+         declsr <- liftT $ hsDecls parsed
          let decl = head $ drop 0 declsr
          let Just (GHC.L _l n') = locToName (11, 21) renamed
          newName <- mkNewGhcName Nothing "p_1"
-         -- new <- renamePN n newName False decl
          new <- renamePN' n' newName False decl
-         let parsed' = replaceBinds parsed (new:tail declsr)
+         parsed' <- liftT $ replaceDecls parsed (new:tail declsr)
          putRefactParsed parsed' emptyAnns
          return (new,newName,decl,n')
       let
       ((nb,nn,d,n),s) <- ct $ runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      -- ((nb,nn),s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      -- ((nb,nn,d,n),s) <- ct $ runTestGhc comp "./Demote/WhereIn4.hs"
       (showGhcQual d) `shouldBe` "sumSquares x y\n  = sq p x + sq p y\n  where\n      p = 2"
       (showGhcQual (n,nn)) `shouldBe` "(p, p_1)"
-      -- (GHC.showRichTokenStream $ toks) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p x + sq p y\n         where p=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (sourceFromState s) `shouldBe` "module Demote.WhereIn4 where\n\n--A definition can be demoted to the local 'where' binding of a friend declaration,\n--if it is only used by this friend declaration.\n\n--Demoting a definition narrows down the scope of the definition.\n--In this example, demote the top level 'sq' to 'sumSquares'\n--In this case (there is single matches), if possible,\n--the parameters will be folded after demoting and type sigature will be removed.\n\nsumSquares x y = sq p_1 x + sq p_1 y\n         where p_1=2  {-There is a comment-}\n\nsq::Int->Int->Int\nsq pow z = z^pow  --there is a comment\n\nanotherFun 0 y = sq y\n     where  sq x = x^2\n\n"
       (showGhcQual nb) `shouldBe` "sumSquares x y\n  = sq p_1 x + sq p_1 y\n  where\n      p_1 = 2"
 
@@ -2706,20 +2692,21 @@ spec = do
       (t,toks, tgt) <- ct $ parsedFileGhc "./TokenTest.hs"
 
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      -- let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       -- let decls = hsBinds renamed
-      let decls = hsBinds parsed
-      let (GHC.L l _) = head $ drop 3 decls
-      (showGhcQual (ss2span l)) `shouldBe` "((19, 1), (21, 14))"
+      -- let decls = hsBinds parsed
+      -- let (GHC.L l _) = head $ drop 3 decls
+      -- (showGhcQual (ss2span l)) `shouldBe` "((19, 1), (21, 14))"
       let Just (GHC.L _ n) = locToName (19, 1) renamed
       (showGhcQual n) `shouldBe` "TokenTest.foo"
 
       let
         comp = do
+         parsed <- getRefactParsed
+         decls <- liftT $ hsDecls parsed
          newName <- mkNewGhcName Nothing "bar2"
-         -- new <- renamePN n newName False (head decls)
          new <- renamePN' n newName False (head $ drop 3 decls)
-         let parsed' = replaceBinds parsed (take 3 decls ++ [new] ++ drop 4 decls)
+         parsed' <- liftT $ replaceDecls parsed (take 3 decls ++ [new] ++ drop 4 decls)
          putRefactParsed parsed' emptyAnns
          return (new,newName)
       let
@@ -2739,25 +2726,20 @@ spec = do
       -- let forest = mkTreeFromTokens toks
 
       let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      -- let decls = hsBinds renamed
-      let decls = hsBinds parsed
-      let decl@(GHC.L l _) = head $ drop 3 decls
-      -- (showGhcQual l) `shouldBe` "test/testdata/TokenTest.hs:(19,1)-(21,13)"
-      (show $ ss2span l) `shouldBe` "((19,1),(21,14))"
       let Just (GHC.L _ n) = locToName (19, 1) renamed
       (showGhcQual n) `shouldBe` "TokenTest.foo"
 
-      let decl' = decl
+      -- let decl' = decl
 
       let
         comp = do
+         parsed <- getRefactParsed
+         decls <- liftT $ hsDecls parsed
+         let decl = head $ drop 3 decls
          newName <- mkNewGhcName Nothing "bar2"
-         -- toksForOp <- getToksForSpan sspan -- The new span this time
-         -- new <- renamePN n newName False decl'
-         new <- renamePN' n newName False decl'
+         new <- renamePN' n newName False decl
 
-         let parsed' = replaceBinds parsed (take 3 decls ++ [new] ++ drop 4 decls)
+         parsed' <- liftT $ replaceDecls parsed (take 3 decls ++ [new] ++ drop 4 decls)
          putRefactParsed parsed' emptyAnns
 
          return (new,newName)

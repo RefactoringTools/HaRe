@@ -111,8 +111,9 @@ module Language.Haskell.Refact.API
     , isFieldName
     , isClassName
     , isInstanceName
-    ,hsPNs
-    , hsBinds, replaceBinds, HsValBinds(..)
+    , hsPNs
+    , hsBinds
+    , HsValBinds(..)
     ,isDeclaredIn,isDeclaredInRdr
     ,FreeNames(..),DeclaredNames(..)
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
