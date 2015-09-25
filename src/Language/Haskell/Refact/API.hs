@@ -227,6 +227,7 @@ module Language.Haskell.Refact.API
 
  -- * from `Language.Haskell.Refact.Utils.GhcVersionSpecific`
   , showGhc
+  , showGhcQual
   , prettyprint
   , prettyprint2
   , ppType
@@ -235,9 +236,14 @@ module Language.Haskell.Refact.API
  -- * from `Language.Haskell.Refact.Utils.TokenUtils`
   , NameMap
 
+ -- * from `Language.Haskell.Refact.Utils.ExactPrint'`
+ , replace
+ , setRefactAnns
+
  ) where
 
 import Language.Haskell.Refact.Utils.Binds
+import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -245,8 +251,8 @@ import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.TypeUtils
-import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint.Utils

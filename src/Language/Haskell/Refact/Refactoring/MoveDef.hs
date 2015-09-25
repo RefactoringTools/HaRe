@@ -368,23 +368,14 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                  (declsp ,_,_) = runTransform ans (hsDecls p)
                  doOne bs = (definingDeclsRdrNames nm [n] declsbs False False,bs)
                    where
-                     -- (declsbs,_,_) = runTransform ans (hsDecls bs)
                      (declsbs,_,_) = runTransform ans (hsDeclsGeneric bs)
-                     -- (declsbs',_,_) = runTransform ans (hsDeclsGeneric bs)
-                     -- declsbs = error $ "liftToModQ:declsbs=" ++ SYB.showData SYB.Parser 0 declsbs'
-                     -- declsbs = error $ "liftToModQ:bs=" ++ SYB.showData SYB.Parser 0 bs
 
-                 -- candidateBinds = error $ "liftToModQ:p=" ++ SYB.showData SYB.Parser 0 p
-                 -- candidateBinds = error $ "liftToModQ:declsp=" ++ SYB.showData SYB.Parser 0 declsp
-                 -- candidateBinds = error $ "liftToModQ:declsp=" ++ showGhc declsp
-                 -- candidateBinds = error $ "liftToModQ:map declsp=" ++ showGhc (map doOne declsp)
                  candidateBinds = map snd
                                 $ filter (\(l,_bs) -> nonEmptyList l)
                                 $ map doOne
                                 $ declsp
 
              getHsDecls ans t = decls
-               -- where (decls,_,_) = runTransform ans (hsDecls t)
                where (decls,_,_) = runTransform ans (hsDeclsGeneric t)
 
              -- ------------------------
@@ -394,8 +385,6 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                           -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
                           -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
              liftToMatchQ nm ans (m@(GHC.L _ (GHC.Match _ _pats _mtyp (GHC.GRHSs _rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-                    -- = error $ "liftToMatchQ hit:decls=" ++ showGhc (getHsDecls ans  ds)
-                    -- = error $ "liftToMatchQ hit:ds=" ++ SYB.showData SYB.Parser 0 ds
                  | (nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans  ds) False False))
                     = Just (doLiftZ m (getHsDecls ans  ds))
                  | otherwise = Nothing
@@ -406,10 +395,6 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         => NameMap -> Anns
                         -> GHC.LHsExpr GHC.RdrName -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
              liftToLetQ nm ans ll@(GHC.L _ (GHC.HsLet ds _e))
-               -- = error $ "liftToLetQ:ds=" ++ SYB.showData SYB.Parser 0 ds
-               -- = error $ "liftToLetQ:decls ds=" ++ SYB.showData SYB.Parser 0 (getHsDecls ans ds)
-               -- = error $ "liftToLetQ:defining decls ds=" ++ SYB.showData SYB.Parser 0 (definingDeclsRdrNames nm [n] (getHsDecls ans ds) False  False)
-               -- = error $ "liftToLetQ:(ll,ds ll)=" ++ SYB.showData SYB.Parser 0 (ll,(getHsDecls ans ll))
                | nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans ds) False  False)
                  = Just (doLiftZ ll (getHsDecls ans ll))
                | otherwise = Nothing
@@ -443,6 +428,8 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                         logm $ "wtop entered"
                         nm <- getRefactNameMap
                         let (_,DN dd) = (hsFreeAndDeclaredRdr nm ren)
+                        -- ++AZ++ : TODO: get rid of worker in favour of
+                        -- workerTop
                         worker ren decls pn dd
                         -- workerTop ren decls dd
 
@@ -787,7 +774,7 @@ liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
   -- logm $ "liftedToTopLevel:got nm"
   decls <- liftT $ hsDecls parsed
   let topDecs = definingDeclsRdrNames nm [pn] decls False False
-  -- ++AZ++ :TODO: we are ot updating the nameMap to reflect moved decls
+  -- ++AZ++ :TODO: we are not updating the nameMap to reflect moved decls
   if nonEmptyList topDecs
      then do
        (_, parent,_) <- divideDecls decls pnt
@@ -1357,6 +1344,7 @@ doDemoting' t pn = do
 
                  -- demotedDecls = definingDecls pns decls True False
           ---------------------------------------------------------------------
+
           declaredNamesInTargetPlace :: (SYB.Data t)
                             => GHC.Name -> t
                             -- -> RefactGhc [GHC.Name]
@@ -1659,4 +1647,4 @@ isLocalFunOrPatName :: SYB.Data t => GHC.Name -> t -> Bool
 isLocalFunOrPatName pn scope
  = isLocalPN pn && isFunOrPatName pn scope
 
--- ---------------------------------------------------------------------
+-- EOF

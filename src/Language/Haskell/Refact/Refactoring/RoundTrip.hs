@@ -1,10 +1,5 @@
 module Language.Haskell.Refact.Refactoring.RoundTrip(roundTrip) where
 
--- import qualified Data.Generics         as SYB
--- import qualified GHC.SYB.Utils         as SYB
-
--- import qualified GHC           as GHC
-
 import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
@@ -22,6 +17,4 @@ comp fileName = do
   return [r]
 
 -- EOF
-
-
 

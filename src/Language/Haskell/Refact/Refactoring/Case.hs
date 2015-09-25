@@ -143,5 +143,3 @@ ifToCaseTransform x = return x
 
 -- EOF
 
-
-

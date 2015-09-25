@@ -12,8 +12,6 @@ import Language.Haskell.Refact.API
 -- To be moved into HaRe API
 import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.Refact.Utils.ExactPrint
-import Language.Haskell.Refact.Utils.MonadFunctions
 
 import Data.Maybe
 -- import Debug.Trace
@@ -51,5 +49,5 @@ removeBracketTransform fileName beginPos endPos = do
        (liftT getAnnsT) >>= putRefactParsed p2
        logm $ "logm: after refactor\n" ++ showGhc p2
 
-
+-- EOF
 

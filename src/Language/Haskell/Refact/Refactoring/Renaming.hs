@@ -13,8 +13,6 @@ import Data.List
 
 import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-
 
 {-This refactoring renames an indentifier to a user-specified name.
 
@@ -113,15 +111,6 @@ doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.Name -> GHC.Module
 doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
   logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ (showGhc (pn,rdrNameStr,newNameStr))
   renamed <- getRefactRenamed
-  {-
-  r' <- applyTP (once_buTPGhc (failTP `adhocTP` renameInMod
-                                -- `adhocTP` renameInMatch
-                                -- `adhocTP` renameInPattern
-                                -- `adhocTP` renameInExp
-                                -- `adhocTP` renameInAlt
-                                -- `adhocTP` renameInStmts
-                                )) renamed
-                                -}
   void $ SYB.everywhereM (SYB.mkM renameInMod
                          ) renamed
   logm "doRenaming done"
@@ -310,4 +299,6 @@ isValidNewName oldName rdrNameStr newName = res
 
    res = tyconOk && dataConOk {- && fieldOk && instanceOk -} &&
          tyVarOk && matchNamesOk
+
+-- EOF
 

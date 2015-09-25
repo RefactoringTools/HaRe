@@ -7,7 +7,6 @@
 
 import Control.Exception
 import Data.List
-import Data.Maybe
 import Data.Typeable
 import Data.Version
 import Language.Haskell.GhcMod
@@ -41,9 +40,10 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
 ----------------------------------------------------------------
 
 argspec :: [OptDescr (RefactSettings -> RefactSettings)]
-argspec = [ Option "m" ["mainfile"]
-              (ReqArg (\mf opts -> opts { rsetMainFile = Just [mf] }) "FILE")
-              "Main file name if not specified in cabal file"
+argspec = [
+             -- Option "m" ["mainfile"]
+             --  (ReqArg (\mf opts -> opts { rsetMainFile = Just [mf] }) "FILE")
+             --  "Main file name if not specified in cabal file"
 
           -- , Option "l" ["tolisp"]
           --     (NoArg (\opts -> opts { outputStyle = LispStyle }))
@@ -51,21 +51,21 @@ argspec = [ Option "m" ["mainfile"]
           -- , Option "h" ["hlintOpt"]
           --     (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
           --     "hlint options"
-          , Option "g" ["ghcOpt"]
-              (ReqArg (\g opts -> opts { rsetGhcOpts = g : rsetGhcOpts opts }) "ghcOpt")
-              "GHC options"
+          -- , Option "g" ["ghcOpt"]
+          --     (ReqArg (\g opts -> opts { rsetGhcOpts = g : rsetGhcOpts opts }) "ghcOpt")
+          --     "GHC options"
           -- , Option "o" ["operators"]
           --     (NoArg (\opts -> opts { operators = True }))
           --     "print operators, too"
           -- , Option "d" ["detailed"]
           --     (NoArg (\opts -> opts { detailed = True }))
           --     "print detailed info"
-          , Option "v" ["verbose"]
+            Option "v" ["verbose"]
               (NoArg (\opts -> opts { rsetVerboseLevel = Debug }))
               "debug logging on"
-          , Option "b" ["boundary"]
-            (ReqArg (\s opts -> opts { rsetLineSeparator = LineSeparator s }) "sep")
-            "specify line separator (default is Nul string)"
+          -- , Option "b" ["boundary"]
+          --   (ReqArg (\s opts -> opts { rsetLineSeparator = LineSeparator s }) "sep")
+          --   "specify line separator (default is Nul string)"
           ]
 
 parseArgs :: [OptDescr (RefactSettings -> RefactSettings)] -> [String] -> (RefactSettings, [String])
@@ -103,8 +103,10 @@ main = flip catches handlers $ do
 
       -- dupdef wants FilePath -> String -> SimpPos
       "dupdef" -> runFunc $ duplicateDef opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+
       -- iftocase wants FilePath -> SimpPos -> SimpPos
       "iftocase" -> runFunc $ ifToCase opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
+
       -- liftOneLevel wants FilePath -> SimpPos
       "liftOneLevel" -> runFunc $ liftOneLevel opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
@@ -113,13 +115,13 @@ main = flip catches handlers $ do
 
       -- rename wants FilePath -> String -> SimpPos
       "rename" -> runFunc $ rename opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+
       -- roundtrip wants FilePath
       "roundtrip" -> runFunc $ roundTrip opt defaultOptions cmdArg1
 
       "show" -> putStrLn  (show (opt))
 
       cmd      -> throw (NoSuchCommand cmd)
-    -- setCurrentDirectory currentDirectory
     putStr (show res)
     -- putStr $ "(ok " ++ showLisp mfs ++ ")"
   where
