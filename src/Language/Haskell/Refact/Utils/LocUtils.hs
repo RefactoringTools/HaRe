@@ -13,7 +13,6 @@ module Language.Haskell.Refact.Utils.LocUtils(
   , ghcSpanStartEnd
   , getStartEndLoc
   , startEndLocGhc
-  , fileNameFromTok -- Must go
   , emptyList, nonEmptyList
   ) where
 
@@ -24,7 +23,6 @@ import qualified GHC           as GHC
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 
 -- ---------------------------------------------------------------------
@@ -104,13 +102,6 @@ startEndLocGhc (GHC.L l _) =
       ((GHC.srcSpanStartLine ss,GHC.srcSpanStartCol ss),
        (GHC.srcSpanEndLine ss,  GHC.srcSpanEndCol ss))
     (GHC.UnhelpfulSpan _) -> ((0,0),(0,0))
-
--- ---------------------------------------------------------------------
-
--- Temporary reprieve, used in the RefactGhc monad at the moment
-fileNameFromTok :: PosToken -> GHC.FastString
-fileNameFromTok (GHC.L (GHC.RealSrcSpan srcspan) _,_) = GHC.srcSpanFile srcspan
-fileNameFromTok (GHC.L _ _,_) = GHC.mkFastString "f"
 
 -- ---------------------------------------------------------------------
 

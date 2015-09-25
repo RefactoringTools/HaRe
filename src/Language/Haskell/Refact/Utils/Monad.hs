@@ -73,13 +73,11 @@ data VerboseLevel = Debug | Normal | Off
             deriving (Eq,Show)
 
 data RefactSettings = RefSet
-        { rsetGhcOpts      :: ![String]
-        , rsetImportPaths :: ![FilePath]
-        , rsetExpandSplice :: Bool
-        , rsetLineSeparator :: GM.LineSeparator
-        , rsetMainFile     :: Maybe [FilePath]
-        , rsetCheckTokenUtilsInvariant :: !Bool
-        , rsetVerboseLevel :: !VerboseLevel
+        {
+        -- , rsetMainFile     :: Maybe [FilePath]
+           -- TODO: re-instate rsetMainFile for when there is no cabal
+           -- file.
+          rsetVerboseLevel :: !VerboseLevel
         , rsetEnabledTargets :: (Bool,Bool,Bool,Bool)
         } deriving (Show)
 
@@ -87,13 +85,9 @@ data RefactSettings = RefSet
 
 defaultSettings :: RefactSettings
 defaultSettings = RefSet
-    { rsetGhcOpts = []
-    , rsetImportPaths = []
-    , rsetExpandSplice = False
-    , rsetLineSeparator = GM.LineSeparator "\0"
-    , rsetMainFile = Nothing
-    , rsetCheckTokenUtilsInvariant = False
-    , rsetVerboseLevel = Normal
+    {
+    -- , rsetMainFile = Nothing
+      rsetVerboseLevel = Normal
     -- , rsetEnabledTargets = (True,False,True,False)
     , rsetEnabledTargets = (True,True,True,True)
     }
@@ -128,8 +122,8 @@ data RefactFlags = RefFlags
        { rsDone :: !Bool -- ^Current traversal has already made a change
        } deriving (Show)
 
--- | State for refactoring a single file. Holds/hides the token
--- stream, which gets updated transparently at key points.
+-- | State for refactoring a single file. Holds/hides the ghc-exactprint
+-- annotations, which get updated transparently at key points.
 data RefactState = RefSt
         { rsSettings   :: !RefactSettings -- ^Session level settings
         , rsUniqState  :: !Int -- ^ Current Unique creator value, incremented
@@ -140,9 +134,6 @@ data RefactState = RefSt
                                        -- traversals
         , rsStorage    :: !StateStorage -- ^Temporary storage of values while
                                         -- refactoring takes place
-        -- , rsGraph         :: ![TargetGraph] -- TODO:deprecate this in favour of rsCabalGraph
-        , rsCabalGraph    :: ![CabalGraph] -- TODO:AZ: Needed?
-        , rsModuleGraph   :: ![([FilePath],GHC.ModuleGraph)] -- TODO:AZ: Needed?
         , rsCurrentTarget :: !(Maybe TargetModule) -- TODO:AZ: push this into rsModule
         , rsModule        :: !(Maybe RefactModule) -- ^The current module being refactored
         } deriving (Show)
@@ -274,77 +265,7 @@ instance ExceptionMonad (StateT RefactState IO) where
 
 -- ---------------------------------------------------------------------
 
-{-
--- | Load a module graph into the GHC session, starting from main
-loadModuleGraphGhc ::
-  Maybe [FilePath] -> RefactGhc ()
-loadModuleGraphGhc maybeTargetFiles = do
-  case maybeTargetFiles of
-    Just targetFiles -> do
-      ---- from ghc-mod Target
-      crdl <- cradle
-      opts <- getTargetGhcOptions crdl (Set.fromList $ map Left targetFiles)
-      let opts' = opts ++ ["-O0"] --  ++ ghcUserOptions
-
-      initGmlSession opts' $
-          setModeSimple >>> setEmptyLogger >>> setDynFlags
-      ----------------------------------
-
-      css <- cabalComponentSets
-      let css' = fmap toComponentFpSets css
-          toComponentFpSets cs = Set.fromList $ map mpPath $ Set.toList cs
--- data ModulePath
---   = ModulePath {mpModule :: GHC.ModuleName, mpPath :: FilePath}
---   	-- Defined in ‘ghc-mod-0:Language.Haskell.GhcMod.Types’
-      -- logm $ "loadModuleGraphGhc:(css,css')=" ++  show (css,css')
-
-      targetFilesAbsolute <- liftIO $ mapM canonicalizePath targetFiles
-      -- check for targetFiles in each css, and expand the targets to the whole
-      -- set if there is any hit.
-      let fullTargets = foldl inTarget Set.empty css'
-          inTarget acc new =
-            if any (\tf -> tf `elem` new) targetFilesAbsolute
-              then Set.union acc new
-              else acc
-      logm $ "loadModuleGraphGhc:fullTargets=" ++  show fullTargets
-
-      let targets = if Set.null fullTargets
-                       then targetFiles
-                       else Set.toList fullTargets
-
-      -- loadTarget targetFiles
-      loadTarget targets
-
-      graph <- GHC.getModuleGraph
-      cgraph <- canonicalizeGraph graph
-      logm $ "loadModuleGraphGhc:(maybeTargetFiles,graph)=" ++  showGhc (maybeTargetFiles,graph)
-
-      let canonMaybe filepath = ghandle handler (canonicalizePath filepath)
-            where
-              handler :: SomeException -> IO FilePath
-              handler _e = return filepath
-
-      ctargetFiles <- liftIO $ mapM canonMaybe targetFiles
-
-      settings <- get
-      put $ settings {
-                       -- rsGraph         = (rsGraph settings)       ++ [(ctargetFiles,cgraph)]
-                       rsModuleGraph   = (rsModuleGraph settings) ++ [(ctargetFiles,graph)]
-                     , rsCurrentTarget = maybeTargetFiles
-                     }
-
-      logm $ "loadModuleGraphGhc:cgraph=" ++ show (map fst cgraph)
-      logm $ "loadModuleGraphGhc:cgraph=" ++ showGhc graph
-
-      return ()
-    Nothing -> return ()
-  return ()
--}
-
--- ---------------------------------------------------------------------
-
 cabalModuleGraphs :: RefactGhc [GM.GmModuleGraph]
--- cabalModuleGraphs = RefactGhc (GM.GmlT GM.cabalModuleGraphs)
 cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
   where
     doCabalModuleGraphs :: (GM.IOish m) => GM.GhcModT m [GM.GmModuleGraph]

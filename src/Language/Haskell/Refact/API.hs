@@ -91,12 +91,10 @@ module Language.Haskell.Refact.API
                      , getLocatedEnd
                      , getStartEndLoc
                      , startEndLocGhc
-                     , fileNameFromTok
                      , emptyList, nonEmptyList
 
  -- * from `Language.Haskell.Refact.Utils.TypeSyn`
     , InScopes
-    , PosToken
     , ghead
     , glast
     , gtail

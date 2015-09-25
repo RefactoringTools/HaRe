@@ -4,7 +4,6 @@ module TestUtils
        , parsedFileGhc
        , parsedFileGhcCd
        , parseSourceFileTest
-       -- , getTestDynFlags
        , runLogTestGhc
        , runTestGhc
        , runRefactGhcState
@@ -19,10 +18,7 @@ module TestUtils
        , annsFromState
        , defaultTestSettings
        , logTestSettings
-       , testSettingsMainfile
-       , logTestSettingsMainfile
        , testOptions
-       , testCradle
        , catchException
        , mkTokenCache
        , hex
@@ -36,6 +32,7 @@ module TestUtils
        , parseToAnnotated
        , parseDeclToAnnotated
        , ss2span
+       , PosToken
        ) where
 
 
@@ -60,7 +57,6 @@ import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Utils
 import Numeric
 import System.Directory
@@ -71,6 +67,8 @@ import qualified Data.Map as Map
 -- import Control.Monad.IO.Class
 
 -- ---------------------------------------------------------------------
+
+type PosToken = (GHC.Located GHC.Token, String)
 
 pwd :: IO FilePath
 pwd = getCurrentDirectory
@@ -165,9 +163,6 @@ initialState = RefSt
   , rsSrcSpanCol = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
-  -- , rsGraph = []
-  , rsCabalGraph = []
-  , rsModuleGraph = []
   , rsCurrentTarget = Nothing
   , rsModule = Nothing
   }
@@ -181,9 +176,6 @@ initialLogOnState = RefSt
   , rsSrcSpanCol = 1
   , rsFlags = RefFlags False
   , rsStorage = StorageNone
-  -- , rsGraph = []
-  , rsCabalGraph = []
-  , rsModuleGraph = []
   , rsCurrentTarget = Nothing
   , rsModule = Nothing
   }
@@ -228,9 +220,6 @@ runRefactGhcStateLog comp fileName logOn  = do
         , rsSrcSpanCol = 1
         , rsFlags = RefFlags False
         , rsStorage = StorageNone
-        -- , rsGraph = []
-        , rsCabalGraph = []
-        , rsModuleGraph = []
         , rsCurrentTarget = Nothing
         , rsModule = Nothing
         }
@@ -255,43 +244,11 @@ testOptions = GM.defaultOptions {
 
 -- ---------------------------------------------------------------------
 
-testCradle :: GM.Cradle
-testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing "./dist"
--- testCradle = GM.Cradle GM.CabalProject "./test/testdata/" "./test/testdata/" "/tmp" Nothing
-{-
--- | The environment where this library is used.
-data Cradle = Cradle {
-    cradleProjectType:: ProjectType
-  -- | The directory where this library is executed.
-  , cradleCurrentDir :: FilePath
-  -- | The project root directory.
-  , cradleRootDir    :: FilePath
-  -- | Per-Project temporary directory
-  , cradleTempDir    :: FilePath
-  -- | The file name of the found cabal file.
-  , cradleCabalFile  :: Maybe FilePath
-  -- | The build info directory.
-  , cradleDistDir    :: FilePath
-  } deriving (Eq, Show)
--}
--- ---------------------------------------------------------------------
-
 defaultTestSettings :: RefactSettings
-defaultTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
-                                      , rsetCheckTokenUtilsInvariant = True
-                                      , rsetVerboseLevel = Normal }
+defaultTestSettings = defaultSettings { rsetVerboseLevel = Normal }
 
 logTestSettings :: RefactSettings
-logTestSettings = defaultSettings { rsetImportPaths = ["./test/testdata/"]
-                                  , rsetCheckTokenUtilsInvariant = True
-                                  , rsetVerboseLevel = Debug
-                                  }
-
-testSettingsMainfile :: FilePath -> RefactSettings
-testSettingsMainfile mainFile = defaultTestSettings { rsetMainFile = Just [mainFile] }
-
-logTestSettingsMainfile :: FilePath -> RefactSettings
-logTestSettingsMainfile mainFile = logTestSettings { rsetMainFile = Just [mainFile] }
+logTestSettings = defaultSettings { rsetVerboseLevel = Debug }
 
 -- ---------------------------------------------------------------------
 

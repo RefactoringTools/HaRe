@@ -19,8 +19,8 @@ spec = do
 
   describe "Renaming" $ do
     it "renames in D1 B1 C1 A1 6 6" $ do
-     r <- ct $ rename (testSettingsMainfile "./Renaming/A1.hs") testOptions "./Renaming/D1.hs" "AnotherTree" (6,6)
-     -- r <- ct $ rename (logTestSettingsMainfile "./Renaming/A1.hs") testOptions "./Renaming/D1.hs" "AnotherTree" (6,6)
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/D1.hs" "AnotherTree" (6,6)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/D1.hs" "AnotherTree" (6,6)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
@@ -49,8 +49,8 @@ spec = do
     -- ---------------------------------
 
     it "renames in D2 B2 C2 A2 6 24" $ do
-     r <- ct $ rename (testSettingsMainfile "./Renaming/A2.hs") testOptions "./Renaming/D2.hs" "SubTree" (6,24)
-     -- ct $ rename logTestSettings testOptions (Just "./Renaming/A2.hs") "./Renaming/D2.hs" "SubTree" (6,24)
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/D2.hs" "SubTree" (6,24)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/D2.hs" "SubTree" (6,24)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
@@ -80,8 +80,8 @@ spec = do
 
     it "renames in D3 B3 C3 A3 12 7" $ do
      --     (["D3.hs","B3.hs","C3.hs","A3.hs"],["Same","12","7"]),
-     r <- ct $ rename (testSettingsMainfile "./Renaming/A3.hs") testOptions "./Renaming/D3.hs" "Same" (12,7)
-     -- ct $ rename (logTestSettingsMainfile "./Renaming/A3.hs") testOptions "./Renaming/D3.hs" "Same" (12,7)
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/D3.hs" "Same" (12,7)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/D3.hs" "Same" (12,7)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
@@ -111,8 +111,8 @@ spec = do
 
     it "renames in D4 B4 C4 A4 13 4" $ do
      --     (["D4.hs","B4.hs","C4.hs","A4.hs"],["isSameOrNot","13","4"]),
-     r <- ct $ rename (testSettingsMainfile "./Renaming/A4.hs") testOptions "./Renaming/D4.hs" "isSameOrNot" (13,4)
-     -- ct $ rename logTestSettings testOptions (Just "./Renaming/A4.hs") "./Renaming/D4.hs" "isSameOrNot" (13,4)
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/D4.hs" "isSameOrNot" (13,4)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/D4.hs" "isSameOrNot" (13,4)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
@@ -142,9 +142,8 @@ spec = do
 
     it "renames in D5 B5 C5 A5 24 1" $ do
      --     (["D5.hs","B5.hs","C5.hs","A5.hs"],["sum","24","1"]),
-     r <- ct $ rename (testSettingsMainfile "./Renaming/A5.hs") testOptions "./Renaming/D5.hs" "sum" (24,1)
-     -- ct $ rename (logTestSettingsMainfile "./Renaming/A5.hs") testOptions "./Renaming/D5.hs" "sum" (24,1)
-     -- ct $ rename logTestSettings testOptions "./Renaming/D5.hs" "sum" (24,1)
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/D5.hs" "sum" (24,1)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/D5.hs" "sum" (24,1)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
@@ -174,8 +173,8 @@ spec = do
 
     it "renames in D7 C7  10 1" $ do
      --     (["D7.hs","C7.hs"],["myFringe","10","1"]),
-     r <- ct $ rename (testSettingsMainfile "./Renaming/C7.hs") testOptions "./Renaming/D7.hs" "myFringe" (10,1)
-     -- ct $ rename logTestSettings testOptions (Just "./Renaming/C7.hs") "./Renaming/D7.hs" "myFringe" (10,1)
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/D7.hs" "myFringe" (10,1)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/D7.hs" "myFringe" (10,1)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
@@ -486,7 +485,8 @@ spec = do
     it "ConflictExports" $ do
      --     (["ConflictExport.hs","D6.hs"],["fringe","7","1"])]
      -- rename (logTestSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1)
-     res <- catchException (ct $ rename (testSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1))
+     -- res <- catchException (ct $ rename (testSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1))
      (show res) `shouldBe` "Just \"The new name will cause conflicting exports, please select another new name!\""
 
 {-

@@ -10,7 +10,6 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
 
 -- ---------------------------------------------------------------------
 
@@ -61,7 +60,5 @@ parsedFileDd1Ghc = ct $ parsedFileGhc "./DupDef/Dd1.hs"
 
 parsedFileDemoteGhc :: IO (ParseResult,[PosToken],Targets)
 parsedFileDemoteGhc = ct $ parsedFileGhc "./MoveDef/Demote.hs"
-
-
 
 -- EOF

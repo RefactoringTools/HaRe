@@ -141,13 +141,6 @@ main = flip catches handlers $ do
         printUsage
 
     printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
-{-
-    withFile cmd file = do
-        exist <- doesFileExist file
-        if exist
-            then cmd file
-            else throw (FileNotExist file)
--}
     xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
@@ -177,7 +170,6 @@ catchException f = do
 ----------------------------------------------------------------
 
 parseSimpPos :: String -> String -> SimpPos
--- parseSimpPos str1 str2 = case (parse rowCol "" (T.pack (str1 ++ " " ++ str2))) of
 parseSimpPos str1 str2 = case (parse rowCol "" ((str1 ++ " " ++ str2))) of
                           Left err -> throw (CmdArg [(show err)])
                           Right val -> val
@@ -191,12 +183,6 @@ rowCol = do
 
 type P = Parsec String ()
 
-{-
-instance (Monad m) => Stream String m Char where
-    -- uncons = return . T.uncons
-    uncons [] = return Nothing
-    uncons s  = return $ Just (head s,tail s)
--}
 
 number :: String -> P Integer
 number expectedStr = do { ds <- many1 digit; return (read ds) } <?> expectedStr

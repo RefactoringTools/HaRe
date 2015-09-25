@@ -8,7 +8,6 @@ module Language.Haskell.Refact.HaRe
  , SimpPos
 
  -- * Refactorings
- -- |Note: the 'Cradle' in the type signatures is the one from ghc-mod
  , ifToCase
  , duplicateDef
  , liftToTopLevel

@@ -286,9 +286,6 @@ runRefacSession settings opt targets comp = do
         , rsSrcSpanCol    = 1
         , rsFlags         = RefFlags False
         , rsStorage       = StorageNone
-        -- , rsGraph         = []
-        , rsCabalGraph    = []
-        , rsModuleGraph   = []
         , rsCurrentTarget = Nothing
         , rsModule        = Nothing
         }
