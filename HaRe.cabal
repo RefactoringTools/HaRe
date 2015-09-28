@@ -70,7 +70,7 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.3
+                                , ghc-exactprint >= 0.4.1
                                 , monad-control
                                 , Cabal >= 1.22
                                 -- , uniplate
@@ -162,7 +162,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.3
+                                , ghc-exactprint >= 0.4.1
                                 , monad-control
                                 , Cabal >= 1.22
                                 -- , uniplate
@@ -236,7 +236,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , ghc-exactprint >= 0.3
+    , ghc-exactprint >= 0.4.1
     , monad-control
     , Cabal >= 1.22
     -- , uniplate

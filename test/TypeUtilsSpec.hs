@@ -2411,9 +2411,6 @@ spec = do
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
          newDecl <- addDecl tlDecl Nothing ([decl],Just declAnns)
-         -- (newDecl,_) <- modifyLocalDecl (GHC.getLoc tlDecl) tlDecl $ \_m declsp -> do
-         --   declsp' <- addDecl declsp Nothing ([decl],Just declAnns) False
-         --   return (declsp',Nothing)
 
          logm $ "test:addDecl done"
 
