@@ -56,9 +56,9 @@ install:
  - cabal --version
  - echo "$(ghc --version) [$(ghc --print-project-git-commit-id 2> /dev/null || echo '?')]"
  - travis_retry cabal update
- - |
-   git clone https://github.com/alanz/ghc-exactprint.git
-   (cd ghc-exactprint && git checkout wip && cabal install)
+ # - |
+ #   git clone https://github.com/alanz/ghc-exactprint.git
+ #   (cd ghc-exactprint && git checkout wip && cabal install)
    # (cd ghc-exactprint && git checkout wip-generic && cabal install)
    # (cd ghc-exactprint && git checkout wrapped-decl2 && cabal install)
  - |
