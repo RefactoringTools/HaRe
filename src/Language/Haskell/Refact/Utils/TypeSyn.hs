@@ -18,11 +18,7 @@ type HsDeclP   = GHC.LHsDecl GHC.RdrName
 
 type HsDeclsP = GHC.HsGroup GHC.Name
 
--- type InScopes=((Relations.Rel Names.QName (Ents.Ent PosName.Id)))
 type InScopes = [GHC.Name]
-
--- Additions for GHC
--- type PosToken = (GHC.Located GHC.Token, String)
 
 type Export = GHC.LIE GHC.RdrName
 

@@ -43,8 +43,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactNameMap
 
        -- * New ghc-exactprint interfacing
-       -- , replaceRdrName
-       -- , refactRunTransform
        , liftT
 
        -- * State flags for managing generic traversals
@@ -168,12 +166,6 @@ putRefactParsed parsed newAnns = do
   put $ st {rsModule = Just rm'}
 
 -- ---------------------------------------------------------------------
--- addRefactAnns :: Anns -> RefactGhc ()
--- addRefactAnns newAnns = liftT $ modifyAnnsT (mergeAnns newAnns)
-
--- | Combine the new with old, such that the new take priority
--- unionAnns :: Anns -> Anns -> Anns
--- unionAnns = mergeAnns
 
 -- |Internal low level interface to access the current annotations from the
 -- RefactGhc state.
@@ -268,28 +260,6 @@ replaceRdrName (GHC.L l newName) = do
 -}
 
 -- ---------------------------------------------------------------------
-{-
-refactReplaceDecls :: (HasDecls a) => a -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc a
-refactReplaceDecls t decls = do
-  liftT (replaceDecls t decls)
--}
-
-{-
--- |Run a transformation in the ghc-exactprint Transform monad, updating the
--- current annotations and unique SrcSpan value.
-refactRunTransform :: TransformT RefactGhc a -> RefactGhc a
-refactRunTransform transform = do
-  u <- gets rsUniqState
-  ans <- getRefactAnns
-  -- let (a,(ans',u'),logLines) = runTransformFrom u ans transform
-  (a,(ans',u'),logLines) <- runTransformFromT u ans transform
-  -- logm $ "refactRunTransform:ans'=" ++ showGhc ans'
-  putUnique u'
-  setRefactAnns ans'
-  when (not (null logLines)) $ do
-    logm $ intercalate "\n" logLines
-  return a
--}
 
 refactRunTransformId :: Transform a -> RefactGhc a
 refactRunTransformId transform = do
@@ -301,9 +271,6 @@ refactRunTransformId transform = do
   when (not (null logLines)) $ do
     logm $ intercalate "\n" logLines
   return a
-
--- liftT :: Transform a -> RefactGhc a
--- liftT = refactRunTransform
 
 -- ---------------------------------------------------------------------
 
@@ -333,8 +300,6 @@ getRefactFileName = do
   mtm <- gets rsModule
   case mtm of
     Nothing  -> return Nothing
-    -- Just tm -> do toks <- fetchOrigToks
-    --                return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
     Just tm -> return $ Just (fileNameFromModSummary $ GHC.pm_mod_summary
                               $ GHC.tm_parsed_module $ rsTypecheckedMod tm)
 
@@ -590,3 +555,4 @@ parseDeclWithAnns src = do
       return decl
 
 -- EOF
+

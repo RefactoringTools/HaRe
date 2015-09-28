@@ -17,8 +17,7 @@ import qualified Data.Generics as SYB
 import Language.Haskell.GHC.ExactPrint.Types
 
 import qualified Data.Map as Map
--- ---------------------------------------------------------------------
- 
+
 -- ---------------------------------------------------------------------
 
 replaceAnnKey :: (SYB.Data old,SYB.Data new)

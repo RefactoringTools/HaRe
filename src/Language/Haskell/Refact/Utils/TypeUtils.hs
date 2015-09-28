@@ -170,7 +170,6 @@ import qualified Data.Map as Map
 import Data.Generics.Strafunski.StrategyLib.StrategyLib hiding (liftIO,MonadPlus,mzero)
 
 -- ---------------------------------------------------------------------
--- ---------------------------------------------------------------------
 -- |Process the inscope relation returned from the parsing and module
 -- analysis pass, and return a list of four-element tuples. Each tuple
 -- contains an identifier name, the identifier's namespace info, the
@@ -296,10 +295,6 @@ mkNewToplevelName modid name defLoc = do
   put s { rsUniqState = (u+1) }
 
   let un = GHC.mkUnique 'H' (u+1) -- H for HaRe :)
-      -- n = GHC.mkSystemName un (GHC.mkVarOcc name)
-      -- n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc name)
-
-        -- mkExternalName :: Unique -> Module -> OccName -> SrcSpan -> Name
       n = GHC.mkExternalName un modid (GHC.mkVarOcc name) defLoc
   return n
 
@@ -1632,11 +1627,6 @@ doRmDecl decls1 decls2
       unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
       unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
 
-      -- decl in the middle of a list
-      -- when   (not (null decls1) && not (null decls2')) $ do liftT $ transferEntryDPT (last decls1) (head decls2')
-
-      -- Removing first decl
-      -- when (null decls1 && not (null decls2')) $ do liftT $ transferEntryDPT declToRemove (head decls2')
       when (not (null decls2') && null decls1) $ do liftT $ transferEntryDPT declToRemove (head decls2')
       when (not (null decls2') && not (null decls1) && not (isTypeSigDecl (last decls1)))
         $ do liftT $ transferEntryDPT declToRemove (head decls2')
@@ -1667,7 +1657,7 @@ rmTypeSig :: (SYB.Data t) =>
       -> RefactGhc (t,Maybe (GHC.LSig GHC.RdrName))
                      -- ^ The result and removed signature, if there
                      -- was one
-                     
+
                      -- NOTE: It may have originated from a SigD, it is up
                      -- to the calling function to insert this if required
 rmTypeSig pn t
@@ -1699,11 +1689,6 @@ rmTypeSig pn t
 
    inPatDecl x = return x
 
-   -- inPatBind ::GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
-   -- inPatBind x@(GHC.L _ (GHC.PatBind _ _ _ _ _))
-   --    = doRmTypeSig x
-   -- inPatBind x = return x
-
    -- ----------------------------------
 
    doRmTypeSig :: (HasDecls t) => t -> RefactGhc t
@@ -1719,7 +1704,6 @@ rmTypeSig pn t
      if isDone
        then return decls
        else do
-         -- decls <- liftT $ hsDecls parent
          -- logDataWithAnns "doRmTypeSig:decls" decls
          nameMap <- getRefactNameMap
          let (decls1,decls2)= break (definesSigDRdr nameMap pn) decls
@@ -1744,13 +1728,11 @@ rmTypeSig pn t
                       liftT $ modifyAnnsT (copyAnn sig oldSig)
                       setStateStorage (StorageSigRdr oldSig)
 
-                      -- parent' <- liftT $ replaceDecls parent (decls1++[newSig]++gtail "doRmTypeSig" decls2)
                       return (decls1++[newSig]++gtail "doRmTypeSig" decls2)
                   else do
                       let [oldSig] = decl2Sig sig
                       setStateStorage (StorageSigRdr oldSig)
                       decls' <- doRmDecl decls1 decls2
-                      -- parent' <- liftT $ replaceDecls parent decls'
                       return decls'
             else do
               return decls
@@ -1792,8 +1774,6 @@ qualifyToplevelName :: GHC.Name -> RefactGhc ()
 qualifyToplevelName n = do
     -- renamed <- getRefactRenamed
     parsed <- getRefactParsed
-    -- logm $ "qualifyToplevelName:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed)
-    -- _ <- renamePN n n True renamed
     parsed' <- renamePN' n n True parsed
     putRefactParsed parsed' emptyAnns
     return ()
@@ -2026,10 +2006,6 @@ renamePN' oldPN newName useQual t = do
                   `SYB.extM` (renameImportDecl  useQual')
                   `SYB.extM` (renameFunBind     useQual')
                    ) t')
-  -- ans <- getRefactAnns
-  -- let (t',(ans',_),logOut) = runTransform ans (renameTransform useQual t)
-  -- logm $ "renamePN':transform:\n" ++ unlines logOut
-  -- setRefactAnns ans'
   t' <- liftT (renameTransform useQual t)
   return t'
 
@@ -2285,27 +2261,5 @@ patToPNT _ = Nothing
 pNtoPat :: name -> GHC.Pat name
 pNtoPat pname = GHC.VarPat pname
 
--- ---------------------------------------------------------------------
-
--- | Remove at most `offset` whitespaces from each line in the tokens
-
--- TODO: move this function to LocUtils.hs
--- TODO: add a test for this
-{-
-removeOffset :: Int -> [PosToken] -> [PosToken]
--- removeOffset offset toks = error $ "removeOffset:offset=" ++ (show offset) -- ++AZ++
-removeOffset offset toks = map (\(t,s) -> (adjust t,s)) toks
-  where
-    adjust (GHC.L l t) = (GHC.L l' t)
-      where
-        l' =  case l of
-          GHC.RealSrcSpan ss ->
-            let
-              locs = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanStartLine ss) ((GHC.srcSpanStartCol ss) - offset)
-              loce = GHC.mkSrcLoc (GHC.srcSpanFile ss) (GHC.srcSpanEndLine ss) ((GHC.srcSpanEndCol ss) - offset)
-              -- loc = GHC.mkSrcLoc (GHC.srcSpanFile ss) (1 + GHC.srcSpanEndLine ss) 0
-            in
-              GHC.mkSrcSpan locs loce
-          _ -> l
--}
+-- EOF
 

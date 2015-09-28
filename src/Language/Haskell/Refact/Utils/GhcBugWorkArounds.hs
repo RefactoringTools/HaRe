@@ -28,23 +28,6 @@ import System.FilePath
 import qualified Data.Map as Map
 import qualified Data.Set as Set
 
--- import Language.Haskell.GHC.ExactPrint.Types
--- import Language.Haskell.Refact.Utils.TypeSyn
-
--- ---------------------------------------------------------------------
-{-
--- http://hackage.haskell.org/trac/ghc/ticket/7351
-bypassGHCBug7351 :: [PosToken] -> [PosToken]
-bypassGHCBug7351 ts = map go ts
-  where
-   go :: (GHC.Located GHC.Token, String) -> (GHC.Located GHC.Token, String)
-   go rt@(GHC.L (GHC.UnhelpfulSpan _) _t,_s) = rt
-   go    (GHC.L (GHC.RealSrcSpan l) t,s) = (GHC.L (fixCol l) t,s)
-
-   fixCol l = GHC.mkSrcSpan (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanStartLine l) ((GHC.srcSpanStartCol l) - 1))
-                            (GHC.mkSrcLoc (GHC.srcSpanFile l) (GHC.srcSpanEndLine l) ((GHC.srcSpanEndCol l) - 1))
--}
--- ---------------------------------------------------------------------
 
 -- | Replacement for original 'getRichTokenStream' which will return
 -- the tokens for a file processed by CPP.
