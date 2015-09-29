@@ -17,11 +17,13 @@ import qualified Language.Haskell.GhcMod.Internal as GM (mpModule)
 
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Refactoring.Renaming
+import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
+import Language.Haskell.Refact.Utils.Variables
 
 import System.Directory
 
@@ -103,7 +105,7 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"./src/Foo/Bar.hs\","
+      (show r') `shouldBe` "[\"src/Foo/Bar.hs\","
                           ++"\"src/main.hs\"]"
 
 
@@ -132,7 +134,7 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"./src/Foo/Bar.hs\","++
+      (show r') `shouldBe` "[\"src/Foo/Bar.hs\","++
                             "\"src/main1.hs\","++
                             "\"src/main2.hs\"]"
 
@@ -164,7 +166,7 @@ spec = do
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"./src/main1.hs\"]"
+      (show r') `shouldBe` "[\"src/main1.hs\"]"
 
 
   -- -----------------------------------
@@ -311,8 +313,7 @@ spec = do
       modNameStr `shouldBe` "TypeUtils.B"
 
     it "returns Nothing for the module name otherwise" $ do
-      -- modInfo@((_, _, mod), toks) <- parsedFileNoMod
-      (t, _toks,_) <- parsedFileNoMod
+      (t, _toks,_) <- ct $ parsedFileGhc "./NoMod.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       getModuleName modu `shouldBe` Nothing
 
@@ -571,33 +572,31 @@ spec = do
 
       (show (v1',v2',v3')) `shouldBe` "(False,False,True)"
 
+  -- -------------------------------------------------------------------
+
+  describe "directoryManagement" $ do
+    it "loads a file from a sub directory" $ do
+      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
+      let renamed = fromJust $ GHC.tm_renamed_source t
+      let
+        comp = do
+          getModuleGhc "./FreeAndDeclared/DeclareS.hs"
+          r <- hsFreeAndDeclaredPNs renamed
+          return r
+      ((res),_s) <- cdAndDo "./test/testdata/FreeAndDeclared" $
+                     runRefactGhcCd comp tgt initialState testOptions
+
+      -- Free Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[]"
+
+      -- Declared Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` "[(FreeAndDeclared.DeclareS.c, (6, 1))]"
 
 -- ---------------------------------------------------------------------
 -- Helper functions
 
--- bFileName :: GHC.FastString
--- bFileName = GHC.mkFastString "./test/testdata/TypeUtils/B.hs"
-
--- parsedFileBGhc :: IO (ParseResult,[PosToken],Targets)
--- parsedFileBGhc = ct $ parsedFileGhc "./TypeUtils/B.hs"
-
--- parsedFileMGhc :: IO (ParseResult,[PosToken],Targets)
--- parsedFileMGhc = parsedFileGhc "./test/testdata/M.hs"
-
--- parseFileBGhc :: RefactGhc (ParseResult, [PosToken],Targets)
--- parseFileBGhc = parseSourceFileTest fileName
---   where
---     fileName = "./test/testdata/TypeUtils/B.hs"
-
--- parseFileMGhc :: RefactGhc (ParseResult, [PosToken],Targets)
--- parseFileMGhc = parseSourceFileTest fileName
---   where
---     fileName = "./M.hs"
-
-parsedFileNoMod :: IO (ParseResult,[PosToken],Targets)
-parsedFileNoMod = ct $ parsedFileGhc "./NoMod.hs"
-
-
+-- parsedFileNoMod :: IO (ParseResult,[PosToken],Targets)
+-- parsedFileNoMod = ct $ parsedFileGhc "./NoMod.hs"
 
 -- ---------------------------------------------------------------------
 

@@ -13,6 +13,8 @@ import Language.Haskell.Refact.API
 import Data.Generics.Schemes
 
 import Language.Haskell.GHC.ExactPrint.Types
+import System.Directory
+
 
 
 -- TODO: replace args with specific parameters
@@ -21,7 +23,8 @@ swapArgs settings opts args
   = do let fileName = args!!0
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
-       runRefacSession settings opts [Left fileName] (comp fileName (row,col))
+       absFileName <- canonicalizePath fileName
+       runRefacSession settings opts [Left absFileName] (comp absFileName (row,col))
 
 
 comp :: String -> SimpPos

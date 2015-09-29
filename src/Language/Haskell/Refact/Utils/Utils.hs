@@ -19,6 +19,7 @@ module Language.Haskell.Refact.Utils.Utils
 
        -- * The bits that do the work
        , runRefacSession
+       , runRefactGhcCd
        , applyRefac
        , refactDone
 
@@ -33,14 +34,15 @@ module Language.Haskell.Refact.Utils.Utils
        , initGhcSession
        ) where
 
+import Control.Exception
 import Control.Monad.State
 import Data.List
 
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
 
-import qualified Language.Haskell.GhcMod          as GM (Options(..))
-import qualified Language.Haskell.GhcMod.Internal as GM (ModulePath(..),GmModuleGraph(..))
+import qualified Language.Haskell.GhcMod          as GM
+import qualified Language.Haskell.GhcMod.Internal as GM
 
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -251,9 +253,11 @@ parseSourceFileGhc targetFile = do
         Just modSum -> getModuleDetails modSum
   -}
   opts <- getTargetGhcOptions [Left targetFile]
-  -- logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ showGhc (targetFile,opts)
+  logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ show (targetFile,opts)
   loadTarget opts [targetFile]
+  logm $ "parseSourceFileGhc:targetFile loaded"
   graph  <- GHC.getModuleGraph
+  logm $ "parseSourceFileGhc:module graph loaded"
   cgraph <- canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath targetFile
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
@@ -278,7 +282,9 @@ runRefacSession ::
                                     -- refactoring. Normally created
                                     -- via 'applyRefac'
     -> IO [FilePath]
-runRefacSession settings opt targets comp = do
+runRefacSession settings opt targetsRel comp = do
+  -- targets <- canonicalizeTargets targetsRel
+  -- putStrLn $ "runRefacSession:targets=" ++ show targets
   let
     initialState = RefSt
         { rsSettings      = settings
@@ -290,13 +296,67 @@ runRefacSession settings opt targets comp = do
         , rsModule        = Nothing
         }
 
-    comp' = initGhcSession targets >> comp
-    -- comp' = gmSetLogLevel GmError >> comp
-  (refactoredMods,_s) <- runRefactGhc comp' targets initialState opt
+    -- comp' = runInCradleDir (initGhcSession targets >> comp)
+    -- comp' = initGhcSession targets >> comp
+    -- -- comp' = gmSetLogLevel GmError >> comp
+    -- fullComp = runRefactGhc comp' targets initialState opt
 
+    -- handler (GM.GMEWrongWorkingDirectory projDir curDir) = do
+    --   cdAndDo projDir fullComp
+
+  -- (refactoredMods,_s) <- runRefactGhc comp' targets initialState opt
+  (refactoredMods,_s) <- runRefactGhcCd comp targetsRel initialState opt
+  -- (refactoredMods,_s) <- runMain fullComp
+
+  -- putStrLn $ "runMain done"
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
   return $ modifiedFiles refactoredMods
+
+-- ---------------------------------------------------------------------
+
+runRefactGhcCd ::
+  RefactGhc a -> Targets -> RefactState -> GM.Options -> IO (a, RefactState)
+runRefactGhcCd comp targetsRel initialState opt = do
+  targets <- canonicalizeTargets targetsRel
+
+  let
+    comp' = initGhcSession targets >> comp
+    fullComp = runRefactGhc comp' targets initialState opt
+
+  runMain fullComp
+
+-- ---------------------------------------------------------------------
+
+runMain :: IO a -> IO a
+runMain progMain = do
+  catches progMain [
+    Handler $ \(GM.GMEWrongWorkingDirectory projDir _curDir) -> do
+      -- runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
+      -- putStrLn $ "runMain:(projDir,curDir)" ++ show (projDir,curDir)
+      cdAndDo projDir progMain
+    ]
+
+-- ---------------------------------------------------------------------
+
+cdAndDo :: FilePath -> IO a -> IO a
+cdAndDo path fn = do
+  -- putStrLn $ "cdAndDo starting"
+  old <- getCurrentDirectory
+  r <- GHC.gbracket (setCurrentDirectory path) (\_ -> setCurrentDirectory old)
+          $ \_ -> fn
+  -- putStrLn $ "cdAndDo done"
+  return r
+
+-- ---------------------------------------------------------------------
+
+canonicalizeTargets :: Targets-> IO Targets
+canonicalizeTargets tgts = do
+  cur <- getCurrentDirectory
+  let
+    canonicalizeTarget (Left path)     = Left <$> canonicalizePath (cur </> path)
+    canonicalizeTarget (Right modname) = return $ Right modname
+  mapM canonicalizeTarget tgts
 
 -- ---------------------------------------------------------------------
 -- TODO: the module should be stored in the state, and returned if it

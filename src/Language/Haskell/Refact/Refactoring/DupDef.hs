@@ -21,13 +21,16 @@ import Language.Haskell.Refact.API
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Transform
 
+import System.Directory
+
 -- ---------------------------------------------------------------------
 -- | This refactoring duplicates a definition (function binding or
 -- simple pattern binding) at the same level with a new name provided by
 -- the user. The new name should not cause name clash/capture.
 duplicateDef :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
-duplicateDef settings opts fileName newName (row,col) =
-  runRefacSession settings opts [Left fileName] (comp fileName newName (row,col))
+duplicateDef settings opts fileName newName (row,col) = do
+  absFileName <- canonicalizePath fileName
+  runRefacSession settings opts [Left absFileName] (comp absFileName newName (row,col))
 
 comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]

@@ -14,17 +14,20 @@ import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
 
 import Data.Maybe
+import System.Directory
+
 -- import Debug.Trace
 
 -- ---------------------------------------------------------------------
 
 -- | Convert an if expression to a case expression
 removeBracket :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
-removeBracket settings opts fileName beginPos endPos =
+removeBracket settings opts fileName beginPos endPos = do
+  absFileName <- canonicalizePath fileName
   let applied = (:[]) . fst <$> applyRefac
-                  (removeBracketTransform fileName beginPos endPos)
-                  (RSFile fileName) in
-  runRefacSession settings opts [Left fileName] applied
+                  (removeBracketTransform absFileName beginPos endPos)
+                  (RSFile absFileName)
+  runRefacSession settings opts [Left absFileName] applied
 
 type HsExpr a = GHC.Located (GHC.HsExpr a)
 pattern HsPar l s = GHC.L l (GHC.HsPar s)

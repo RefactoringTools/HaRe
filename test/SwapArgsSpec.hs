@@ -11,6 +11,8 @@ import Language.Haskell.Refact.Refactoring.SwapArgs
 
 import TestUtils
 
+import System.Directory
+
 -- ---------------------------------------------------------------------
 
 main :: IO ()
@@ -31,7 +33,8 @@ spec = do
     it "swaps arguments for a definition at the top level" $ do
      r <- ct $ swapArgs defaultTestSettings testOptions ["./SwapArgs/B.hs","9","1"]
      -- r <- ct $ swapArgs logTestSettings testOptions ["./SwapArgs/B.hs","9","1"]
-     (show r) `shouldBe` "[\"./SwapArgs/B.hs\"]"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"SwapArgs/B.hs\"]"
      pendingWith "need to complete this"
      -- diff <- compareFiles "./test/testdata/SwapArgs/B.refactored.hs"
      --                      "./test/testdata/SwapArgs/B.hs.expected"

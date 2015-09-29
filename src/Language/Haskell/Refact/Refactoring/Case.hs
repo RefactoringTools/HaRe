@@ -15,6 +15,7 @@ import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
+import System.Directory
 import qualified Data.Map as Map
 -- import Debug.Trace
 
@@ -22,8 +23,9 @@ import qualified Data.Map as Map
 
 -- | Convert an if expression to a case expression
 ifToCase :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
-ifToCase settings opts fileName beginPos endPos =
-  runRefacSession settings opts [Left fileName] (comp fileName beginPos endPos)
+ifToCase settings opts fileName beginPos endPos = do
+  absFileName <- canonicalizePath fileName
+  runRefacSession settings opts [Left absFileName] (comp absFileName beginPos endPos)
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
