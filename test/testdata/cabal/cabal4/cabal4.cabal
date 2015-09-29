@@ -1,0 +1,28 @@
+
+name:                cabal4
+version:             0.1.0.0
+-- synopsis:            
+-- description:         
+license:             PublicDomain
+-- license-file:        LICENSE
+author:              Alan Zimmerman
+maintainer:          alan.zimm@gmail.com
+-- copyright:           
+-- category:            
+build-type:          Simple
+-- extra-source-files:  
+cabal-version:       >=1.10
+
+library
+  build-depends:       base >=4.6 && <5
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+  exposed-modules:     Foo.Bar
+
+executable cabal4
+  main-is:             main4.hs
+  build-depends:       base >=4.6 && <5
+                     , parsec >= 3.1.6
+  hs-source-dirs:      src
+  default-language:    Haskell2010
+

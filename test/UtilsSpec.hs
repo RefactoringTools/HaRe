@@ -168,6 +168,29 @@ spec = do
 
       (show r') `shouldBe` "[\"src/main1.hs\"]"
 
+  -- -----------------------------------
+
+    it "loads a series of files based on cabal4, with different dependencies" $ do
+
+      currentDir <- getCurrentDirectory
+      setCurrentDirectory "./test/testdata/cabal/cabal4/src"
+
+      let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
+                                     -- , rsetVerboseLevel = Debug
+                                     }
+
+      let handler = [Handler handler1]
+          handler1 :: GHC.SourceError -> IO [String]
+          handler1 e = do
+             setCurrentDirectory currentDir
+             return [show e]
+
+      r <- catches (rename settings testOptions "./Foo/Bar.hs" "baz1" (3, 1)) handler
+      setCurrentDirectory currentDir
+
+      r' <- mapM makeRelativeToCurrentDirectory r
+
+      (show r') `shouldBe` "[\"src/main4.hs\"]"
 
   -- -----------------------------------
 {- TODO: this test fails on travis, due to missing hspec-discover
