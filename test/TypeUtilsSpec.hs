@@ -1679,7 +1679,8 @@ spec = do
          name1 <- mkNewGhcName Nothing "foo"
          name2 <- mkNewGhcName Nothing "bar"
          return (name1,name2)
-      ((n1,n2),_s) <- ct $ runRefactGhcState comp "./DupDef/Dd1.hs"
+      -- ((n1,n2),_s) <- ct $ runRefactGhcState comp "./DupDef/Dd1.hs"
+      ((n1,n2),_s) <- ct $ runRefactGhcState comp
       GHC.getOccString n1 `shouldBe` "foo"
       showGhcQual n1 `shouldBe` "foo"
       GHC.getOccString n2 `shouldBe` "bar"
