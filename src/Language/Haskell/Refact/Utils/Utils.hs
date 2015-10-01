@@ -31,7 +31,7 @@ module Language.Haskell.Refact.Utils.Utils
        , serverModsAndFiles
 
        -- * For testing
-       , initGhcSession
+       -- , initGhcSession
        ) where
 
 import Control.Exception
@@ -67,43 +67,6 @@ import qualified Data.Set      as Set
 -- import Debug.Trace
 
 -- ---------------------------------------------------------------------
-{-
--- | From file name to module name.
-fileNameToModName :: FilePath -> RefactGhc GHC.ModuleName
-fileNameToModName fileName = do
-  mm <- getModuleMaybe fileName
-  case mm of
-    Nothing -> error $ "Can't find module name"
-    Just ms ->  return $ GHC.moduleName $ GHC.ms_mod ms
--}
--- ---------------------------------------------------------------------
-{-
-getModuleMaybe :: FilePath -> RefactGhc (Maybe GHC.ModSummary)
-getModuleMaybe fileName = do
-  cfileName <- liftIO $ canonicalizePath fileName
-  logm $ "getModuleMaybe for (fileName,cfileName):" ++ show (fileName,cfileName)
-
-  graphs <- gets rsGraph
-  currentTgt <- gets rsCurrentTarget
-  logm $ "getModuleMaybe " ++ show fileName ++ ":" ++ show (length graphs,currentTgt)
-
-  let cgraph = concatMap (\(_,cg) -> cg) graphs
-  -- graph <- GHC.getModuleGraph
-  -- cgraph <- liftIO $ canonicalizeGraph graph
-
-  logm $ "getModuleMaybe: [mfn]=" ++ show (map (\(mfn,_ms) -> mfn) cgraph)
-
-  let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
-  logm $ "getModuleMaybe: mm=" ++ show mm
-
-  case mm of
-    [] -> return Nothing
-    _ -> do
-      let (_mfn,ms) = (ghead "getModuleMaybe" mm)
-      -- activateModule (fromJust mfn,ms)
-      return $ Just ms
--}
--- ---------------------------------------------------------------------
 
 -- | Extract the module name from the parsed source, if there is one
 getModuleName :: GHC.ParsedSource -> Maybe (GHC.ModuleName,String)
@@ -126,142 +89,11 @@ getModuleGhc :: FilePath -> RefactGhc ()
 getModuleGhc = parseSourceFileGhc
 
 -- ---------------------------------------------------------------------
-{- ++AZ++ try something else
--- | Parse a single source file into a GHC session
-parseSourceFileGhc :: FilePath -> RefactGhc ()
-parseSourceFileGhc targetFile = do
-  logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
-  (t,modSum) <- parseModuleGhc targetFile
-  logm $ "getModuleDetails:setting context.."
-  -- TODO:AZ: reinstate this, else inscope queries will fail. Or is there a better way to do those?
-  setGhcContext modSum
-  logm $ "getModuleDetails:context set"
-
-  (mfp,_modSum) <- canonicalizeModSummary modSum
-  newTargetModule <- case mfp of
-    Nothing -> error $ "HaRe:no file path for module:" ++ showGhc modSum
-    Just fp -> return $ GM.ModulePath (GHC.moduleName $ GHC.ms_mod modSum) fp
-
-  oldTargetModule <- gets rsCurrentTarget
-  let
-    putModule = do
-      putParsedModule t
-      settings <- get
-      put $ settings { rsCurrentTarget = Just newTargetModule }
-
-  mtm <- gets rsModule
-  case mtm of
-    Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
-                  && oldTargetModule == Just newTargetModule)
-                 then do
-                   -- logm $ "getModuleDetails:not calling putParsedModule for targetModule=" ++ show newTargetModule
-                   return ()
-                 else if rsStreamModified tm == RefacUnmodifed
-                        then putModule
-                        else error $ "getModuleDetails: trying to load a module without finishing with active one."
-
-    Nothing -> putModule
-  return ()
-
--- | Parse a single source file into a GHC session
-parseModuleGhc :: FilePath -> RefactGhc (GHC.TypecheckedModule, GHC.ModSummary)
--- parseModuleGhc targetFile = assert False undefined
-parseModuleGhc targetFile = RefactGhc $ GM.runGmlT [Left targetFile] (action targetFile)
-  -- where
-     -- runGmlT :: IOish m => [Either FilePath ModuleName] -> GmlT m a -> GhcModT m a
-
-    -- action :: GM.IOish m => GM.GmlT m ()
-    -- action :: GM.GmlT (StateT RefactState IO) (GHC.TypecheckedModule, GHC.ModSummary)
-    -- action = GM.GmlT $ do
-      -- opts <- getTargetGhcOptions [Left targetFile]
-      -- logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ show (targetFile,opts)
-      -- GHC.setTargets [] -- Clear prior targets
-      -- void $ GHC.load GHC.LoadAllTargets
-      -- GM.resetTargets
-
-      -- loadTarget opts [targetFile]
-      -- logm $ "parseSourceFileGhc:targetFile loaded"
-      -- error $ "in parseModuleGhc"
-      {-
-      graph  <- GHC.getModuleGraph
-      -- logm $ "parseSourceFileGhc:module graph loaded"
-      cgraph <- canonicalizeGraph graph
-      cfileName <- liftIO $ canonicalizePath targetFile
-      let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
-      case mm of
-        [(_,modSum)] -> getModuleDetails modSum
-        _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
-      -}
-
-action :: FilePath
-       -> GM.GmlT (StateT RefactState IO) (GHC.TypecheckedModule, GHC.ModSummary)
-action targetFile = GM.GmlT $ do
-      -- opts <- getTargetGhcOptions [Left targetFile]
-      -- logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ show (targetFile,opts)
-      -- GHC.setTargets [] -- Clear prior targets
-      -- void $ GHC.load GHC.LoadAllTargets
-      -- GM.resetTargets
-
-      -- loadTarget opts [targetFile]
-      -- logm $ "parseSourceFileGhc:targetFile loaded"
-      graph  <- GHC.getModuleGraph
-      -- error $ "in parseModuleGhc"
-      -- logm $ "parseSourceFileGhc:module graph loaded"
-      cgraph <- canonicalizeGraph graph
-      cfileName <- liftIO $ canonicalizePath targetFile
-      let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
-      case mm of
-        [(_,modSum)] -> getModuleDetails modSum
-        _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
-
--- ---------------------------------------------------------------------
-
--- | In the existing GHC session, put the requested TypeCheckedModule
--- into the RefactGhc monad
-
--- TODO: rename this function, it is not clear in a refactoring what
--- it does
-getModuleDetails :: (GHC.GhcMonad m) => GHC.ModSummary -> m (GHC.TypecheckedModule, GHC.ModSummary)
-getModuleDetails modSum = do
-  -- logm $ "getModuleDetails:modSum=" ++ show modSum
-  p <- GHC.parseModule modSum
-  t <- GHC.typecheckModule p
-  return (t,modSum)
-
-  -- oldTargetModule <- gets rsCurrentTarget
-  -- let
-  --   putModule = do
-  --     putParsedModule t
-  --     settings <- get
-  --     put $ settings { rsCurrentTarget = Just newTargetModule }
-
-  -- mtm <- gets rsModule
-  -- case mtm of
-  --   Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
-  --                 && oldTargetModule == Just newTargetModule)
-  --                then do
-  --                  -- logm $ "getModuleDetails:not calling putParsedModule for targetModule=" ++ show newTargetModule
-  --                  return ()
-  --                else if rsStreamModified tm == RefacUnmodifed
-  --                       then putModule
-  --                       else error $ "getModuleDetails: trying to load a module without finishing with active one."
-
-  --   Nothing -> putModule
-++AZ++ try something else ends -}
-
--- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
   logm $ "parseSourceFileGhc:(targetFile)=" ++ show (targetFile)
-  -- opts <- getTargetGhcOptions [Left targetFile]
-  -- logm $ "parseSourceFileGhc:(targetFile,opts)=" ++ show (targetFile,opts)
-  -- GHC.setTargets [] -- Clear prior targets
-  -- void $ GHC.load GHC.LoadAllTargets
-  -- GM.resetTargets
-
-  -- loadTarget opts [targetFile]
   setTargetSession targetFile
   logm $ "parseSourceFileGhc:targetFile loaded"
   graph  <- GHC.getModuleGraph
@@ -276,7 +108,6 @@ parseSourceFileGhc targetFile = do
 -- ---------------------------------------------------------------------
 
 setTargetSession :: FilePath -> RefactGhc ()
--- setTargetSession targetFile = RefactGhc $ GM.runGmlT [Left targetFile] (return ())
 setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] setDynFlags (return ())
 
 setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
@@ -345,8 +176,6 @@ runRefacSession ::
                                     -- via 'applyRefac'
     -> IO [FilePath]
 runRefacSession settings opt targetsRel comp = do
-  -- targets <- canonicalizeTargets targetsRel
-  -- putStrLn $ "runRefacSession:targets=" ++ show targets
   let
     initialState = RefSt
         { rsSettings      = settings
@@ -358,19 +187,8 @@ runRefacSession settings opt targetsRel comp = do
         , rsModule        = Nothing
         }
 
-    -- comp' = runInCradleDir (initGhcSession targets >> comp)
-    -- comp' = initGhcSession targets >> comp
-    -- -- comp' = gmSetLogLevel GmError >> comp
-    -- fullComp = runRefactGhc comp' targets initialState opt
-
-    -- handler (GM.GMEWrongWorkingDirectory projDir curDir) = do
-    --   cdAndDo projDir fullComp
-
-  -- (refactoredMods,_s) <- runRefactGhc comp' targets initialState opt
   (refactoredMods,_s) <- runRefactGhcCd comp targetsRel initialState opt
-  -- (refactoredMods,_s) <- runMain fullComp
 
-  -- putStrLn $ "runMain done"
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
   return $ modifiedFiles refactoredMods
@@ -394,8 +212,6 @@ runMain :: IO a -> IO a
 runMain progMain = do
   catches progMain [
     Handler $ \(GM.GMEWrongWorkingDirectory projDir _curDir) -> do
-      -- runGmOutT globalOptions $ exitError $ renderStyle ghcModStyle (gmeDoc e)
-      -- putStrLn $ "runMain:(projDir,curDir)" ++ show (projDir,curDir)
       cdAndDo projDir progMain
     ]
 
@@ -403,11 +219,9 @@ runMain progMain = do
 
 cdAndDo :: FilePath -> IO a -> IO a
 cdAndDo path fn = do
-  -- putStrLn $ "cdAndDo starting"
   old <- getCurrentDirectory
   r <- GHC.gbracket (setCurrentDirectory path) (\_ -> setCurrentDirectory old)
           $ \_ -> fn
-  -- putStrLn $ "cdAndDo done"
   return r
 
 -- ---------------------------------------------------------------------
@@ -449,11 +263,7 @@ applyRefac refac source = do
 
     res <- refac  -- Run the refactoring, updating the state as required
 
-    -- mod'   <- getRefactRenamed
     mod'   <- getRefactParsed
-    -- toks'  <- fetchToksFinal
-    -- let toks' = []
-    -- pprVal <- fetchPprFinal
     anns <- fetchAnnsFinal
     m    <- getRefactStreamModified
 
@@ -481,52 +291,6 @@ modifiedFiles refactResult = map (\((s,_),_) -> s)
 --   This should never be called directly.
 initGhcSession :: Targets -> RefactGhc ()
 initGhcSession tgts = do
-    {-
-    settings <- getRefacSettings
-    df <- GHC.getSessionDynFlags
-    let df2 = GHC.gopt_set df GHC.Opt_KeepRawTokenStream
-    void $ GHC.setSessionDynFlags df2
-
-    -- liftIO $ putStrLn "initGhcSession:entered (IO)"
-    logm $ "initGhcSession:entered2"
-    cr <- cradle
-    logm $ "initGhcSession:cr=" ++ show cr
-    case cradleCabalFile cr of
-      Just _ -> do
-        (cabalGraph,targets) <- cabalAllTargets cr
-        logm $ "initGhcSession:targets=" ++ show targets
-
-        -- TODO: Cannot load multiple main modules, must try to load
-        -- each main module and retrieve its module graph, and then
-        -- set the targets to this superset.
-
-        let targets' = getEnabledTargets settings targets
-
-        case targets' of
-          ([],[]) -> return ()
-          (libTgts,exeTgts) -> do
-                     -- liftIO $ warningM "HaRe" $ "initGhcSession:tgts=" ++ (show (libTgts,exeTgts))
-                     logm $ "initGhcSession:(libTgts,exeTgts)=" ++ (show (libTgts,exeTgts))
-                     -- setTargetFiles tgts
-                     -- void $ GHC.load GHC.LoadAllTargets
-
-                     -- AZ: carry on here, store cabalGraph instead of loadModuleGraphGhc
-                     mapM_ loadModuleGraphGhc $ map (\t -> Just [t]) exeTgts
-
-                     -- Load the library last, most likely in context
-                     case libTgts of
-                       [] -> return ()
-                       _ -> loadModuleGraphGhc (Just libTgts)
-
-                     -- moduleGraph <- gets rsModuleGraph
-                     -- logm $ "initGhcSession:rsModuleGraph=" ++ (show moduleGraph)
-
-      Nothing -> do
-          let maybeMainFile = rsetMainFile settings
-          loadModuleGraphGhc maybeMainFile
-          return()
-    -}
-    -- load the first target is specified
     case tgts of
       [] -> return ()
       _ -> case head tgts of
@@ -675,44 +439,6 @@ clientModsAndFiles m = do
     r = go (Set.empty, [m])
   return $ Set.toList r
 
-{-
--- TODO: deal with an anonymous main module, by taking Maybe GHC.ModuleName
-clientModsAndFiles :: GHC.ModuleName -> RefactGhc [TargetModule]
-clientModsAndFiles m = do
-  modsum <- GHC.getModSummary m
-
-  -- ms' <- GHC.getModuleGraph
-  ms' <- gets rsModuleGraph
-  -- target <- gets rsCurrentTarget
-
-  let getClients ms = clientMods
-        where
-          mg = getModulesAsGraph False ms Nothing
-          rg = GHC.transposeG mg
-          maybeModNode = find (\(msum',_,_) -> mycomp msum' modsum) (GHC.verticesG rg)
-          clientMods = case maybeModNode of
-                         Nothing -> []
-                         Just modNode ->
-                           filter (\msum' -> not (mycomp msum' modsum))
-                           $ map summaryNodeSummary $ GHC.reachableG rg modNode
-
-  let clients = concatMap (\(f,mg) -> zip (repeat f) (getClients mg)) ms'
-  -- Need to strip out duplicates, based on the snd of the tuple
-      clients' = nubBy cc clients
-      cc (_,mg1) (_,mg2)
-        = if (show $ GHC.ms_mod mg1) == "Main" || (show $ GHC.ms_mod mg2) == "Main"
-            then False
-            else mycomp mg1 mg2
-      cms (fps,ms) = do
-        -- ms1 <- canonicalizeModSummary ms
-        -- return (fps,ms1)
-        let ms1 = GHC.moduleName $ GHC.ms_mod ms
-        return (GM.ModulePath ms1 (ghead "clientModsAndFiles" fps))
-  logm $ "clientModsAndFiles:clients=" ++ show clients
-  logm $ "clientModsAndFiles:clients'=" ++ show clients'
-  clients'' <- mapM cms clients'
-  return clients''
--}
 
 -- TODO : find decent name and place for this.
 mycomp :: GHC.ModSummary -> GHC.ModSummary -> Bool

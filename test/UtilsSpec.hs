@@ -403,7 +403,6 @@ spec = do
 
       let
         comp = do
-         initGhcSession [Left "./src/main1.hs"]
          getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
          tm <- getRefactTargetModule
          -- g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
