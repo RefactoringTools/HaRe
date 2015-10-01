@@ -37,7 +37,7 @@ spec :: Spec
 spec = do
 
   describe "locToExp on ParsedSource" $ do
-    it "finds the largest leftmost expression contained in a given region #1" $ do
+    it "p:finds the largest leftmost expression contained in a given region #1" $ do
       (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -45,7 +45,7 @@ spec = do
       getLocatedStart expr `shouldBe` (7,9)
       getLocatedEnd   expr `shouldBe` (7,42)
 
-    it "finds the largest leftmost expression contained in a given region #2" $ do
+    it "p:finds the largest leftmost expression contained in a given region #2" $ do
       -- ((_, _, mod), toks) <- parsedFileBGhc
       (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -64,7 +64,7 @@ spec = do
       getLocatedEnd   expr `shouldBe` (7,19)
 
   describe "locToExp on RenamedSource" $ do
-    it "finds the largest leftmost expression contained in a given region #1" $ do
+    it "r:finds the largest leftmost expression contained in a given region #1" $ do
       -- ((_, Just renamed, _), toks) <- parsedFileBGhc
       (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -173,7 +173,8 @@ spec = do
     it "loads a series of files based on cabal4, with different dependencies" $ do
 
       currentDir <- getCurrentDirectory
-      setCurrentDirectory "./test/testdata/cabal/cabal4/src"
+      -- setCurrentDirectory "./test/testdata/cabal/cabal4/src"
+      setCurrentDirectory "./test/testdata/cabal/cabal4"
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
                                      -- , rsetVerboseLevel = Debug
@@ -185,12 +186,13 @@ spec = do
              setCurrentDirectory currentDir
              return [show e]
 
-      r <- catches (rename settings testOptions "./Foo/Bar.hs" "baz1" (3, 1)) handler
+      r <- catches (rename settings testOptions "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
+      -- r <- catches (rename settings testOptions "./src/main4.hs" "baz1" (3, 1)) handler
       setCurrentDirectory currentDir
 
       r' <- mapM makeRelativeToCurrentDirectory r
 
-      (show r') `shouldBe` "[\"src/main4.hs\"]"
+      (show r') `shouldBe` "[\"src/Foo/Bar.hs\",\"src/main4.hs\"]"
 
   -- -----------------------------------
 {- TODO: this test fails on travis, due to missing hspec-discover
@@ -424,7 +426,7 @@ spec = do
       -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
-         -- (_p,_toks) <- parseFileMGhc -- Load the main file first
+         getModuleGhc "./M.hs" -- Load the file first
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       -- (mg,_s) <- ct $ runRefactGhcState comp
@@ -436,7 +438,7 @@ spec = do
       -- (t,toks,tgt) <- ct $ parsedFileGhc "./M3.hs"
       let
         comp = do
-         -- (_p,_toks) <- parseFileMGhc -- Load the main file first
+         getModuleGhc "./M3.hs" -- Load the file first
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
       -- (mg,_s) <- ct $ runRefactGhcState comp
@@ -545,6 +547,7 @@ spec = do
        comp = do
         s <- get
         -- (_t, _toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
+        getModuleGhc "./TypeUtils/B.hs"
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
@@ -553,9 +556,10 @@ spec = do
         put (s {rsUniqState = 100})
         return (show gs)
 
-      -- (_,s) <- runRefactGhcState comp
       (_,s) <- ct $ runRefactGhc comp [Left "TypeUtils/B.hs"] (initialState { rsModule = Nothing }) testOptions
       (rsUniqState s) `shouldBe` 100
+
+    -- ---------------------------------
 
     it "contains the GhcT monad" $ do
       -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/TypeUtils/B.hs"
@@ -563,6 +567,7 @@ spec = do
        comp = do
         s <- get
         -- (_t, _toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
+        getModuleGhc "./TypeUtils/B.hs"
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
@@ -573,8 +578,8 @@ spec = do
 
       -- (r,_) <- runRefactGhcState comp
       (r,_) <- ct $ runRefactGhc comp [Left "TypeUtils/B.hs"] (initialState { rsModule = Nothing }) testOptions
-      r `shouldBe` ("[\"TypeUtils.C      ( TypeUtils/C.hs, nothing )\","
-                   ++"\"TypeUtils.B      ( TypeUtils/B.hs, nothing )\"]")
+      r `shouldBe` ("[\"TypeUtils.B      ( TypeUtils/B.hs, nothing )\","
+                   ++"\"TypeUtils.C      ( TypeUtils/C.hs, nothing )\"]")
 
   -- -------------------------------------------------------------------
 

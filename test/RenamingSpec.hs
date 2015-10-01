@@ -468,6 +468,27 @@ spec = do
 
     -- ---------------------------------
 
+    it "renames in lib and in main" $ do
+     let ct4 = cdAndDo "./test/testdata/cabal/cabal4"
+     r <- ct4 $ rename defaultTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
+     -- r <- ct4 $ rename logTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
+
+     r' <- ct4 $ mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` ["src/Foo/Bar.hs",
+                    "src/main4.hs"
+                  ]
+
+     diffD <- ct4 $ compareFiles "./src/Foo/Bar.expected.hs"
+                                 "./src/Foo/Bar.refactored.hs"
+     diffD `shouldBe` []
+
+     diffC <- ct4 $ compareFiles "./src/main4.expected.hs"
+                                 "./src/main4.refactored.hs"
+     diffC `shouldBe` []
+
+    -- ---------------------------------
+
 {-
     it "rename gives noRebindableInfo MoveDef" $ do
      -- ct $ rename logTestSettings testOptions "./src/Language/Haskell/Refact/MoveDef.hs" "t2" (1105,20)

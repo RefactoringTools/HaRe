@@ -31,7 +31,7 @@ module Language.Haskell.Refact.Utils.Monad
        , logSettings
 
        , getTargetGhcOptions
-       , loadTarget
+       -- , loadTarget
        , cabalModuleGraphs
        , canonicalizeGraph
        , canonicalizeModSummary
@@ -66,6 +66,8 @@ import qualified Data.Set as Set
 
 -- Monad transformer stuff
 import Control.Monad.Trans.Control ( control, liftBaseOp, liftBaseOp_)
+
+import Debug.Trace
 
 -- ---------------------------------------------------------------------
 
@@ -189,7 +191,8 @@ instance Show StateStorage where
 -- StateT and GhcT stack
 
 newtype RefactGhc a = RefactGhc
-    { unRefactGhc :: GM.GmlT (StateT RefactState IO) a
+    -- { unRefactGhc :: GM.GmlT (StateT RefactState IO) a
+    { unRefactGhc :: GM.GhcModT (StateT RefactState IO) a
     } deriving ( Functor
                , Applicative
                , Alternative
@@ -200,6 +203,8 @@ newtype RefactGhc a = RefactGhc
                , GM.GmOut
                , GM.MonadIO
                , ExceptionMonad
+               -- , GHC.GhcMonad
+               -- , GHC.HasDynFlags
                )
 
 -- ---------------------------------------------------------------------
@@ -207,36 +212,51 @@ newtype RefactGhc a = RefactGhc
 runRefactGhc ::
   RefactGhc a -> Targets -> RefactState -> GM.Options -> IO (a, RefactState)
 runRefactGhc comp targets initState opt = do
-    ((merr,_log),s) <- runStateT (GM.runGhcModT opt (GM.runGmlT' targets setDynFlags (unRefactGhc comp))) initState
+    -- ((merr,_log),s) <- runStateT (GM.runGhcModT opt (GM.runGmlT' targets setDynFlags (unRefactGhc comp))) initState
+    ((merr,_log),s) <- runStateT (GM.runGhcModT opt (unRefactGhc comp)) initState
     case merr of
       Left err -> error (show err)
       Right a  -> return (a,s)
 
-setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
-setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
-
 -- ---------------------------------------------------------------------
-
 instance GM.GmOut (StateT RefactState IO) where
 
+{-
 instance GM.GmLog RefactGhc where
     gmlJournal v = RefactGhc (GM.gmlJournal v)
     gmlHistory   = RefactGhc GM.gmlHistory
     gmlClear     = RefactGhc GM.gmlClear
-
+-}
 instance GM.MonadIO (StateT RefactState IO) where
   liftIO = liftIO
 
 instance MonadState RefactState RefactGhc where
-    get   = RefactGhc (lift get)
-    put s = RefactGhc (lift (put s))
+    get   = RefactGhc (lift $ lift get)
+    put s = RefactGhc (lift $ lift (put s))
 
 instance GHC.GhcMonad RefactGhc where
-  getSession     = RefactGhc GM.gmlGetSession
-  setSession env = RefactGhc (GM.gmlSetSession env)
+  getSession     = RefactGhc $ GM.unGmlT GM.gmlGetSession
+  setSession env = RefactGhc $ GM.unGmlT (GM.gmlSetSession env)
+  -- setSession env = trace "RefactGhc.setSession" (GHC.setSession env)
+
+
+-- instance GHC.GhcMonad (GM.GmT (GM.GmOutT (StateT RefactState IO))) where
+--   -- getSession     = trace "other.getSession" GHC.getSession
+--   -- setSession env = trace "other.setSession" (GHC.setSession env)
+  -- getSession  s   = GM.gmlGetSession
+--   setSession env = _ $ GM.gmlSetSession env
+
+-- deriving instance GHC.GhcMonad (GM.GmT (GM.GmOutT (StateT RefactState IO)))
+
+-- deriving instance GHC.HasDynFlags (GM.GmT (GM.GmOutT (StateT RefactState IO)))
+-- instance GHC.HasDynFlags (GM.GmT (GM.GmOutT (StateT RefactState IO))) where
+--   getDynFlags = GHC.hsc_dflags <$> GHC.getSession
 
 instance GHC.HasDynFlags RefactGhc where
-  getDynFlags = RefactGhc (GHC.hsc_dflags <$> GM.gmlGetSession)
+  getDynFlags = GHC.hsc_dflags <$> GHC.getSession
+{-
+instance GHC.HasDynFlags RefactGhc where
+  getDynFlags = RefactGhc (GHC.hsc_dflags <$> GHC.getSession)
 
 
 instance (MonadState RefactState (GHC.GhcT (StateT RefactState IO))) where
@@ -253,7 +273,7 @@ instance (Applicative m) => Alternative (GHC.GhcT m) where
 instance (MonadPlus m,ExceptionMonad m) => MonadPlus (GHC.GhcT m) where
   mzero = GHC.GhcT $ \_s -> mzero
   x `mplus` y = GHC.GhcT $ \_s -> (GHC.runGhcT (Just GHC.libdir) x) `mplus` (GHC.runGhcT (Just GHC.libdir) y)
-
+-}
 -- ---------------------------------------------------------------------
 
 instance ExceptionMonad (StateT RefactState IO) where
@@ -266,7 +286,9 @@ instance ExceptionMonad (StateT RefactState IO) where
 -- ---------------------------------------------------------------------
 
 cabalModuleGraphs :: RefactGhc [GM.GmModuleGraph]
-cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
+-- cabalModuleGraphs = RefactGhc $ GM.unGmlT doCabalModuleGraphs
+cabalModuleGraphs = RefactGhc doCabalModuleGraphs
+-- cabalModuleGraphs = RefactGhc foo
   where
     doCabalModuleGraphs :: (GM.IOish m) => GM.GhcModT m [GM.GmModuleGraph]
     doCabalModuleGraphs = do
@@ -274,33 +296,52 @@ cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
       let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
       return $ graph
 
+
+{-
+cabalModuleGraphs = RefactGhc (GM.GmlT doCabalModuleGraphs)
+  where
+    doCabalModuleGraphs :: (GM.IOish m) => GM.GhcModT m [GM.GmModuleGraph]
+    doCabalModuleGraphs = do
+      mcs <- GM.cabalResolvedComponents
+      let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
+      return $ graph
+-}
+
 -- ---------------------------------------------------------------------
 
 getTargetGhcOptions :: [Either FilePath GHC.ModuleName]
                   -> RefactGhc [GM.GHCOption]
+getTargetGhcOptions mfns = assert False undefined
+{-
 getTargetGhcOptions mfns = do
   crdl <- GM.cradle
   getOpts crdl (Set.fromList mfns)
   where
     getOpts crdl mfns'
       = RefactGhc (GM.GmlT $ GM.targetGhcOptions crdl mfns')
+-}
 
 -- ---------------------------------------------------------------------
 
 -- |Hand the loading of targets over to ghc-mod
-loadTarget :: [GM.GHCOption] -> [FilePath] -> RefactGhc ()
-loadTarget opts targetFiles = RefactGhc (GM.loadTargets opts targetFiles)
+-- loadTarget :: [GM.GHCOption] -> [FilePath] -> RefactGhc ()
+-- loadTarget opts targetFiles = RefactGhc (GM.loadTargets opts targetFiles)
+
+-- GHC Mod version
+-- loadTargets :: IOish m => [GHCOption] -> [FilePath] -> GmlT m ()
 
 -- ---------------------------------------------------------------------
 
-canonicalizeGraph ::
-  [GHC.ModSummary] -> RefactGhc [(Maybe FilePath, GHC.ModSummary)]
+-- canonicalizeGraph ::
+--   [GHC.ModSummary] -> RefactGhc [(Maybe FilePath, GHC.ModSummary)]
 canonicalizeGraph graph = do
   mm' <- mapM canonicalizeModSummary graph
   return mm'
 
-canonicalizeModSummary ::
-  GHC.ModSummary -> RefactGhc (Maybe FilePath, GHC.ModSummary)
+-- canonicalizeModSummary ::
+--   GHC.ModSummary -> RefactGhc (Maybe FilePath, GHC.ModSummary)
+canonicalizeModSummary :: (MonadIO m) =>
+  GHC.ModSummary -> m (Maybe FilePath, GHC.ModSummary)
 canonicalizeModSummary modSum = do
   let modSum'  = (\m -> (GHC.ml_hs_file $ GHC.ms_location m, m)) modSum
       canon ((Just fp),m) = do
