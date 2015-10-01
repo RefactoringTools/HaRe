@@ -200,8 +200,8 @@ newtype RefactGhc a = RefactGhc
 -- ---------------------------------------------------------------------
 
 runRefactGhc ::
-  RefactGhc a -> Targets -> RefactState -> GM.Options -> IO (a, RefactState)
-runRefactGhc comp targets initState opt = do
+  RefactGhc a -> RefactState -> GM.Options -> IO (a, RefactState)
+runRefactGhc comp initState opt = do
     ((merr,_log),s) <- runStateT (GM.runGhcModT opt (unRefactGhc comp)) initState
     case merr of
       Left err -> error (show err)

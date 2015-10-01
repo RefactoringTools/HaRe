@@ -30,8 +30,6 @@ module Language.Haskell.Refact.Utils.Utils
        , clientModsAndFiles
        , serverModsAndFiles
 
-       -- * For testing
-       -- , initGhcSession
        ) where
 
 import Control.Exception
@@ -187,7 +185,7 @@ runRefacSession settings opt targetsRel comp = do
         , rsModule        = Nothing
         }
 
-  (refactoredMods,_s) <- runRefactGhcCd comp targetsRel initialState opt
+  (refactoredMods,_s) <- runRefactGhcCd comp initialState opt
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
@@ -196,13 +194,11 @@ runRefacSession settings opt targetsRel comp = do
 -- ---------------------------------------------------------------------
 
 runRefactGhcCd ::
-  RefactGhc a -> Targets -> RefactState -> GM.Options -> IO (a, RefactState)
-runRefactGhcCd comp targetsRel initialState opt = do
-  targets <- canonicalizeTargets targetsRel
+  RefactGhc a -> RefactState -> GM.Options -> IO (a, RefactState)
+runRefactGhcCd comp initialState opt = do
 
   let
-    comp' = initGhcSession targets >> comp
-    fullComp = runRefactGhc comp' targets initialState opt
+    fullComp = runRefactGhc comp initialState opt
 
   runMain fullComp
 
@@ -284,20 +280,6 @@ refactDone rs = any (\((_,d),_) -> d == RefacModified) rs
 modifiedFiles :: [ApplyRefacResult] -> [String]
 modifiedFiles refactResult = map (\((s,_),_) -> s)
                            $ filter (\((_,b),_) -> b == RefacModified) refactResult
-
--- ---------------------------------------------------------------------
-
--- | Initialise the GHC session, when starting a refactoring.
---   This should never be called directly.
-initGhcSession :: Targets -> RefactGhc ()
-initGhcSession tgts = do
-    case tgts of
-      [] -> return ()
-      _ -> case head tgts of
-             Left filename -> getModuleGhc filename
-             Right modname -> getModuleGhc (GHC.moduleNameString modname)
-
-    return ()
 
 -- ---------------------------------------------------------------------
 {-

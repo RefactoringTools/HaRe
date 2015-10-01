@@ -192,7 +192,7 @@ mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 runTestInternal :: RefactGhc a -> FilePath -> RefactState -> GM.Options
                 -> IO (a, RefactState)
 runTestInternal comp fileName st opts =
-  runRefactGhc comp [Left fileName] st opts
+  runRefactGhc comp st opts
 
 -- ---------------------------------------------------------------------
 

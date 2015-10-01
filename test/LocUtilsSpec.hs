@@ -25,21 +25,21 @@ spec = do
 
   describe "getSrcSpan" $ do
     it "Finds the top SrcSpan" $ do
-      (t, _toks,tgt) <- parsedFileDd1Ghc
+      (t, _toks,_tgt) <- parsedFileDd1Ghc
       let
         comp = do
          parsed <- getRefactParsed
          decls <- liftT $ hsDecls parsed
          let ss = getSrcSpan decls
          return (decls,ss)
-      ((d,ss'),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((d,ss'),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual d) `shouldBe` "[toplevel :: Integer -> Integer, toplevel x = c * x,\n c, d :: Integer, c = 7, d = 9, tup :: (Int, Int), h :: Int,\n t :: Int,\n tup@(h, t)\n   = head $ zip [1 .. 10] [3 .. ff]\n   where\n       ff :: Int\n       ff = 15,\n data D = A | B String | C,\n ff y\n   = y + zz\n   where\n       zz = 1,\n l z = let ll = 34 in ll + z,\n dd q\n   = do { let ss = 5;\n          return (ss + q) }]"
       (showGhcQual ss') `shouldBe` "Just DupDef/Dd1.hs:3:1-30"
 
     -- -------------------------------
 
     it "Finds the SrcSpan for a top level decl" $ do
-      (t, _toks,tgt) <- parsedFileDemoteGhc
+      (t, _toks,_tgt) <- parsedFileDemoteGhc
       let
         comp = do
          parsed <- getRefactParsed
@@ -47,7 +47,7 @@ spec = do
          let decl = head $ drop 2 decls
              ss = getSrcSpan decl
          return (decl,ss)
-      ((d,ss'),_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((d,ss'),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t }) testOptions
       (showGhcQual d) `shouldBe` "c = 7"
       (showGhcQual ss') `shouldBe` "Just MoveDef/Demote.hs:7:1-5"
 

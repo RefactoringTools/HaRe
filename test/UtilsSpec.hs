@@ -369,8 +369,8 @@ spec = do
          -- g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          g <- clientModsAndFiles tm
          return g
-      (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
-      -- (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialLogOnState testOptions
+      (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
+      -- (mg,_s) <- ct $ runRefactGhc comp initialLogOnState testOptions
       showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
 
     ------------------------------------
@@ -386,7 +386,7 @@ spec = do
          -- g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          g <- clientModsAndFiles tm
          return g
-      (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
+      (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
       showGhc (map GM.mpModule mg) `shouldBe` "[Main]"
 
     ------------------------------------
@@ -408,9 +408,8 @@ spec = do
          -- g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
          g <- clientModsAndFiles tm
          return g
-      -- (mg,_s) <- runRefactGhcState comp
-      -- (mg,_s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
-      (mg,_s) <- runRefactGhc comp [Left "./src/main1.hs"] (initialState { rsModule = Nothing }) testOptions
+      -- (mg,_s) <- runRefactGhc comp initialState testOptions
+      (mg,_s) <- runRefactGhc comp initialState testOptions
       showGhc (map GM.mpModule mg) `shouldBe` "[Main, Main]"
 
       setCurrentDirectory currentDir
@@ -429,8 +428,8 @@ spec = do
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
       -- (mg,_s) <- ct $ runRefactGhcState comp
-      (mg,_s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
-      -- (mg,_s) <- ct $ runRefactGhc comp tgt (initialLogOnState { rsModule = initRefactModule t }) testOptions
+      (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
+      -- (mg,_s) <- ct $ runRefactGhc comp initialLogOnState testOptions
       showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
 
     it "gets modules which are directly or indirectly imported by a module #2" $ do
@@ -440,8 +439,7 @@ spec = do
          getModuleGhc "./M3.hs" -- Load the file first
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
-      -- (mg,_s) <- ct $ runRefactGhcState comp
-      (mg,_s) <- ct $ runRefactGhc comp [Left "./M3.hs"] initialState testOptions
+      (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
       showGhc (map GHC.ms_mod mg) `shouldBe` "[M2, S1]"
 
 
@@ -492,7 +490,7 @@ spec = do
 
           return (pr,g)
 
-      ( (t, mg), _s) <- ct $ runRefactGhc comp [Left "./M.hs"] initialState testOptions
+      ( (t, mg), _s) <- ct $ runRefactGhc comp initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
@@ -511,7 +509,7 @@ spec = do
           g <- clientModsAndFiles tm
 
           return (pr,g)
-      ((t, mg ), _s) <- ct $ runRefactGhc comp [Left "./S1.hs"] initialState testOptions
+      ((t, mg ), _s) <- ct $ runRefactGhc comp initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
@@ -531,7 +529,7 @@ spec = do
           g <- clientModsAndFiles tm
 
           return (pr,g)
-      ((t, mg), _s) <- ct $ runRefactGhc comp [Left "DupDef/Dd2.hs"] initialState testOptions
+      ((t, mg), _s) <- ct $ runRefactGhc comp  initialState testOptions
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"DupDef.Dd1\",\"DupDef.Dd1\")"
       showGhc (map GM.mpModule mg) `shouldBe` "[DupDef.Dd2, DupDef.Dd3]"
@@ -555,7 +553,7 @@ spec = do
         put (s {rsUniqState = 100})
         return (show gs)
 
-      (_,s) <- ct $ runRefactGhc comp [Left "TypeUtils/B.hs"] (initialState { rsModule = Nothing }) testOptions
+      (_,s) <- ct $ runRefactGhc comp (initialState { rsModule = Nothing }) testOptions
       (rsUniqState s) `shouldBe` 100
 
     -- ---------------------------------
@@ -576,7 +574,7 @@ spec = do
         return (show gs)
 
       -- (r,_) <- runRefactGhcState comp
-      (r,_) <- ct $ runRefactGhc comp [Left "TypeUtils/B.hs"] (initialState { rsModule = Nothing }) testOptions
+      (r,_) <- ct $ runRefactGhc comp initialState testOptions
       r `shouldBe` ("[\"TypeUtils.B      ( TypeUtils/B.hs, nothing )\","
                    ++"\"TypeUtils.C      ( TypeUtils/C.hs, nothing )\"]")
 
@@ -584,7 +582,7 @@ spec = do
 
   describe "RefactFlags" $ do
     it "puts the RefactDone flag through its paces" $ do
-      (t,_toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
+      (t,_toks,_tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
       let
         comp = do
           v1 <- getRefactDone
@@ -594,8 +592,7 @@ spec = do
           v3 <- getRefactDone
 
           return (v1,v2,v3)
-      -- ((v1',v2',v3'), _s) <- runRefactGhcState comp
-      ((v1',v2',v3'), _s) <- runRefactGhc comp tgt (initialState { rsModule = initRefactModule t }) testOptions
+      ((v1',v2',v3'), _s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t }) testOptions
 
       (show (v1',v2',v3')) `shouldBe` "(False,False,True)"
 
@@ -603,7 +600,7 @@ spec = do
 
   describe "directoryManagement" $ do
     it "loads a file from a sub directory" $ do
-      (t, _toks,tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
+      (t, _toks,_tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let
         comp = do
@@ -611,19 +608,13 @@ spec = do
           r <- hsFreeAndDeclaredPNs renamed
           return r
       ((res),_s) <- cdAndDo "./test/testdata/FreeAndDeclared" $
-                     runRefactGhcCd comp tgt initialState testOptions
+                     runRefactGhcCd comp initialState testOptions
 
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[]"
 
       -- Declared Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` "[(FreeAndDeclared.DeclareS.c, (6, 1))]"
-
--- ---------------------------------------------------------------------
--- Helper functions
-
--- parsedFileNoMod :: IO (ParseResult,[PosToken],Targets)
--- parsedFileNoMod = ct $ parsedFileGhc "./NoMod.hs"
 
 -- ---------------------------------------------------------------------
 
