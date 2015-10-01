@@ -168,12 +168,11 @@ getModuleDetails modSum = do
 runRefacSession ::
        RefactSettings
     -> GM.Options                   -- ^ ghc-mod options
-    -> Targets                      -- ^ files/modules to load for the session
     -> RefactGhc [ApplyRefacResult] -- ^ The computation doing the
                                     -- refactoring. Normally created
                                     -- via 'applyRefac'
     -> IO [FilePath]
-runRefacSession settings opt targetsRel comp = do
+runRefacSession settings opt comp = do
   let
     initialState = RefSt
         { rsSettings      = settings

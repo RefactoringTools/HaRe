@@ -25,7 +25,7 @@ import qualified Data.Map as Map
 ifToCase :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 ifToCase settings opts fileName beginPos endPos = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts [Left absFileName] (comp absFileName beginPos endPos)
+  runRefacSession settings opts (comp absFileName beginPos endPos)
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do

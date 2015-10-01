@@ -24,7 +24,7 @@ swapArgs settings opts args
            row = (read (args!!1)::Int)
            col = (read (args!!2)::Int)
        absFileName <- canonicalizePath fileName
-       runRefacSession settings opts [Left absFileName] (comp absFileName (row,col))
+       runRefacSession settings opts (comp absFileName (row,col))
 
 
 comp :: String -> SimpPos

@@ -11,7 +11,7 @@ import System.Directory
 roundTrip :: RefactSettings -> GM.Options -> FilePath -> IO [FilePath]
 roundTrip settings opts fileName = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts [Left absFileName] (comp absFileName)
+  runRefacSession settings opts (comp absFileName)
 
 comp :: FilePath -> RefactGhc [ApplyRefacResult]
 comp fileName = do

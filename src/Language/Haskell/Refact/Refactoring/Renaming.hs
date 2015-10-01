@@ -49,7 +49,7 @@ rename :: RefactSettings -> GM.Options
    -> IO [FilePath]
 rename settings opts fileName newName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts [Left absFileName] (comp absFileName newName (row,col))
+  runRefacSession settings opts (comp absFileName newName (row,col))
 
 -- | Body of the refactoring
 comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]

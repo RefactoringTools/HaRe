@@ -106,7 +106,7 @@ parsedFileGhc fileName = do
        res <- parseSourceFileTest fileName
        -- logm $ "parsedFileGhc:done"
        return res
-  (parseResult,_s) <- runRefactGhcStateLog comp fileName Normal
+  (parseResult,_s) <- runRefactGhcStateLog comp Normal
   -- (parseResult,_s) <- runRefactGhcStateLog comp fileName Debug
   return parseResult
 
@@ -121,7 +121,7 @@ parsedFileGhcCd path fileName = do
        return res
     newDir = setCurrentDirectory path
     oldDir _ = setCurrentDirectory old
-  (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp fileName
+  (parseResult,_s) <- GHC.gbracket newDir oldDir $ \_ -> runRefactGhcState comp
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -189,32 +189,32 @@ mkTokenCache forest = TK (Map.fromList [((TId 0),forest)]) (TId 0)
 
 -- ---------------------------------------------------------------------
 
-runTestInternal :: RefactGhc a -> FilePath -> RefactState -> GM.Options
+runTestInternal :: RefactGhc a -> RefactState -> GM.Options
                 -> IO (a, RefactState)
-runTestInternal comp fileName st opts =
+runTestInternal comp st opts =
   runRefactGhc comp st opts
 
 -- ---------------------------------------------------------------------
 
-runLogTestGhc :: RefactGhc a -> FilePath -> IO (a, RefactState)
-runLogTestGhc comp fileName =
-   runTestInternal comp fileName initialLogOnState testOptions
+runLogTestGhc :: RefactGhc a -> IO (a, RefactState)
+runLogTestGhc comp =
+   runTestInternal comp initialLogOnState testOptions
 
 -- ---------------------------------------------------------------------
 
-runTestGhc :: RefactGhc a -> FilePath -> IO (a, RefactState)
-runTestGhc comp fileName = do
-   runTestInternal comp fileName initialState testOptions
+runTestGhc :: RefactGhc a -> IO (a, RefactState)
+runTestGhc comp = do
+   runTestInternal comp initialState testOptions
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcState :: RefactGhc t -> FilePath -> IO (t, RefactState)
-runRefactGhcState comp fileName = runRefactGhcStateLog comp fileName Normal
+runRefactGhcState :: RefactGhc t -> IO (t, RefactState)
+runRefactGhcState comp = runRefactGhcStateLog comp Normal
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcStateLog :: RefactGhc t -> FilePath -> VerboseLevel -> IO (t, RefactState)
-runRefactGhcStateLog comp fileName logOn  = do
+runRefactGhcStateLog :: RefactGhc t -> VerboseLevel -> IO (t, RefactState)
+runRefactGhcStateLog comp logOn  = do
   let
      initState = RefSt
         { rsSettings = defaultTestSettings { rsetVerboseLevel = logOn }
@@ -227,7 +227,7 @@ runRefactGhcStateLog comp fileName logOn  = do
         }
   -- putStrLn $ "runRefactGhcStateLog:initState=" ++ show initState
   -- putStrLn $ "runRefactGhcStateLog:testOptions=" ++ show testOptions
-  runTestInternal comp fileName initState testOptions
+  runTestInternal comp initState testOptions
 
 -- ---------------------------------------------------------------------
 

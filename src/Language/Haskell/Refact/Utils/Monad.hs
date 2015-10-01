@@ -247,8 +247,8 @@ cabalModuleGraphs = RefactGhc doCabalModuleGraphs
 
 -- ---------------------------------------------------------------------
 
--- canonicalizeGraph ::
---   [GHC.ModSummary] -> RefactGhc [(Maybe FilePath, GHC.ModSummary)]
+canonicalizeGraph ::
+  [GHC.ModSummary] -> RefactGhc [(Maybe FilePath, GHC.ModSummary)]
 canonicalizeGraph graph = do
   mm' <- mapM canonicalizeModSummary graph
   return mm'

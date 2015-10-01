@@ -575,8 +575,8 @@ spec = do
 
       -- (r,_) <- runRefactGhcState comp
       (r,_) <- ct $ runRefactGhc comp initialState testOptions
-      r `shouldBe` ("[\"TypeUtils.B      ( TypeUtils/B.hs, nothing )\","
-                   ++"\"TypeUtils.C      ( TypeUtils/C.hs, nothing )\"]")
+      r `shouldBe` ("[\"TypeUtils.C      ( TypeUtils/C.hs, nothing )\","
+                   ++"\"TypeUtils.B      ( TypeUtils/B.hs, nothing )\"]")
 
   -- -------------------------------------------------------------------
 

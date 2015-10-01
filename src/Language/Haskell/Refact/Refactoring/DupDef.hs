@@ -30,7 +30,7 @@ import System.Directory
 duplicateDef :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 duplicateDef settings opts fileName newName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts [Left absFileName] (comp absFileName newName (row,col))
+  runRefacSession settings opts (comp absFileName newName (row,col))
 
 comp :: FilePath -> String -> SimpPos
      -> RefactGhc [ApplyRefacResult]

@@ -84,7 +84,7 @@ the following six contexts:
 liftToTopLevel :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 liftToTopLevel settings opts fileName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts [Left absFileName] (compLiftToTopLevel absFileName (row,col))
+  runRefacSession settings opts (compLiftToTopLevel absFileName (row,col))
 
 compLiftToTopLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
@@ -210,7 +210,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 liftOneLevel :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 liftOneLevel settings opts fileName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts [Left absFileName] (compLiftOneLevel absFileName (row,col))
+  runRefacSession settings opts (compLiftOneLevel absFileName (row,col))
 
 compLiftOneLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
@@ -553,7 +553,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
 demote :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 demote settings opts fileName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts [Left absFileName] (compDemote absFileName (row,col))
+  runRefacSession settings opts (compDemote absFileName (row,col))
 
 compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]

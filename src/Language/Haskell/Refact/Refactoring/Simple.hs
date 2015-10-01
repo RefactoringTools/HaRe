@@ -27,7 +27,7 @@ removeBracket settings opts fileName beginPos endPos = do
   let applied = (:[]) . fst <$> applyRefac
                   (removeBracketTransform absFileName beginPos endPos)
                   (RSFile absFileName)
-  runRefacSession settings opts [Left absFileName] applied
+  runRefacSession settings opts applied
 
 type HsExpr a = GHC.Located (GHC.HsExpr a)
 pattern HsPar l s = GHC.L l (GHC.HsPar s)
