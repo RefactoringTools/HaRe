@@ -471,7 +471,7 @@ spec = do
     it "renames in lib and in main" $ do
      let ct4 = cdAndDo "./test/testdata/cabal/cabal4"
      r <- ct4 $ rename defaultTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
-     -- r <- ct4 $ rename logTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
+     -- r <- cdAndDo "./test/testdata/cabal/cabal4" $ rename logTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
 
      r' <- ct4 $ mapM makeRelativeToCurrentDirectory r
 
