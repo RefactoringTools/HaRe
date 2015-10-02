@@ -38,7 +38,7 @@ spec = do
 
   describe "locToExp on ParsedSource" $ do
     it "p:finds the largest leftmost expression contained in a given region #1" $ do
-      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
+      t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,43) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -47,7 +47,7 @@ spec = do
 
     it "p:finds the largest leftmost expression contained in a given region #2" $ do
       -- ((_, _, mod), toks) <- parsedFileBGhc
-      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
+      t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just expr) = locToExp (7,7) (7,41) modu :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
@@ -55,8 +55,7 @@ spec = do
       getLocatedEnd   expr `shouldBe` (7,19)
 
     it "finds the largest leftmost expression in RenamedSource" $ do
-      -- ((_, renamed, _), toks) <- parsedFileBGhc
-      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
+      t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,41) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
@@ -66,7 +65,7 @@ spec = do
   describe "locToExp on RenamedSource" $ do
     it "r:finds the largest leftmost expression contained in a given region #1" $ do
       -- ((_, Just renamed, _), toks) <- parsedFileBGhc
-      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
+      t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let (Just expr) = locToExp (7,7) (7,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
@@ -77,11 +76,10 @@ spec = do
 
   describe "loading a file" $ do
     it "loads a file having the LANGUAGE CPP pragma" $ do
-      (_t, toks,_) <- ct $ parsedFileGhc "./BCpp.hs"
+      t <- ct $ parsedFileGhc "./BCpp.hs"
 
-      origStr <- readFile "./test/testdata/BCpp.hs"
-      let toksStr = (GHC.showRichTokenStream toks)
-      (show $ compareStrings toksStr origStr) `shouldBe` "[]"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (showGhc parsed) `shouldBe` "module BCpp where\nbob :: Int -> Int -> Int\nbob x y = x + y"
 
   -- -----------------------------------
 
@@ -314,14 +312,14 @@ spec = do
 
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
-      (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
+      t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just (_modname,modNameStr)) = getModuleName modu
       modNameStr `shouldBe` "TypeUtils.B"
 
     it "returns Nothing for the module name otherwise" $ do
-      (t, _toks,_) <- ct $ parsedFileGhc "./NoMod.hs"
+      t <- ct $ parsedFileGhc "./NoMod.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       getModuleName modu `shouldBe` Nothing
 
@@ -475,7 +473,6 @@ spec = do
     -- ---------------------------------
 
     it "retrieves a module from an existing module graph #2" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/DupDef/Dd2.hs"
       let
         comp = do
           parseSourceFileGhc "./DupDef/Dd1.hs"
@@ -530,7 +527,7 @@ spec = do
 
   describe "RefactFlags" $ do
     it "puts the RefactDone flag through its paces" $ do
-      (t,_toks,_tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
+      t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
       let
         comp = do
           v1 <- getRefactDone
@@ -548,7 +545,7 @@ spec = do
 
   describe "directoryManagement" $ do
     it "loads a file from a sub directory" $ do
-      (t, _toks,_tgt) <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
+      t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let
         comp = do

@@ -98,7 +98,7 @@ compareStrings astr bstr = filter (\c -> not( isBoth c)) $ getGroupedDiff (lines
 
 -- ---------------------------------------------------------------------
 
-parsedFileGhc :: String -> IO (ParseResult,[PosToken],Targets)
+parsedFileGhc :: String -> IO ParseResult
 parsedFileGhc fileName = do
   let
     comp = do
@@ -112,7 +112,7 @@ parsedFileGhc fileName = do
 
 -- ---------------------------------------------------------------------
 
-parsedFileGhcCd :: FilePath -> FilePath -> IO (ParseResult,[PosToken],Targets)
+parsedFileGhcCd :: FilePath -> FilePath -> IO ParseResult
 parsedFileGhcCd path fileName = do
   old <- getCurrentDirectory
   let
@@ -138,13 +138,10 @@ cdAndDo path fn = do
 
 -- ---------------------------------------------------------------------
 
-parseSourceFileTest :: FilePath -> RefactGhc (ParseResult,[PosToken],Targets)
+parseSourceFileTest :: FilePath -> RefactGhc ParseResult
 parseSourceFileTest fileName = do
   parseSourceFileGhc fileName -- Load the file first
-  p <- getTypecheckedModule
-  toks <- fetchOrigToks
-  absFileName <- liftIO $ canonicalizePath fileName
-  return (p,toks,[Left absFileName])
+  getTypecheckedModule
 
 -- ---------------------------------------------------------------------
 

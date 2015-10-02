@@ -48,7 +48,7 @@ spec = do
     -- ---------------------------------
 
     it "Finds a GHC.Name at top level only" $ do
-      (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
+      t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
          renamed <- getRefactRenamed

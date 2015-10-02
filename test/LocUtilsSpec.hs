@@ -23,7 +23,7 @@ spec = do
 
   describe "getSrcSpan" $ do
     it "Finds the top SrcSpan" $ do
-      (t, _toks,_tgt) <- parsedFileDd1Ghc
+      t <- parsedFileDd1Ghc
       let
         comp = do
          parsed <- getRefactParsed
@@ -37,7 +37,7 @@ spec = do
     -- -------------------------------
 
     it "Finds the SrcSpan for a top level decl" $ do
-      (t, _toks,_tgt) <- parsedFileDemoteGhc
+      t <- parsedFileDemoteGhc
       let
         comp = do
          parsed <- getRefactParsed
@@ -51,12 +51,12 @@ spec = do
 
 -- ---------------------------------------------------------------------
 
-parsedFileDd1Ghc :: IO (ParseResult,[PosToken],Targets)
+parsedFileDd1Ghc :: IO ParseResult
 parsedFileDd1Ghc = ct $ parsedFileGhc "./DupDef/Dd1.hs"
 
 -- -----------
 
-parsedFileDemoteGhc :: IO (ParseResult,[PosToken],Targets)
+parsedFileDemoteGhc :: IO ParseResult
 parsedFileDemoteGhc = ct $ parsedFileGhc "./MoveDef/Demote.hs"
 
 -- EOF
