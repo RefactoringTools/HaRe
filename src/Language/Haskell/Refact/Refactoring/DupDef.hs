@@ -38,7 +38,7 @@ comp fileName newName (row, col) = do
   if isVarId newName
     then
       do
-        getModuleGhc fileName
+        parseSourceFileGhc fileName
         renamed <- getRefactRenamed
         parsed  <- getRefactParsed
         targetModule <- getRefactTargetModule

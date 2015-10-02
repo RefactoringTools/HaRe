@@ -2,7 +2,6 @@
 module UtilsSpec (main, spec) where
 
 import           Test.Hspec
--- import           Test.QuickCheck
 
 import           TestUtils
 
@@ -11,6 +10,7 @@ import qualified HscTypes   as GHC
 
 import Control.Exception
 import Control.Monad.State
+import Data.List
 import Data.Maybe
 
 import qualified Language.Haskell.GhcMod.Internal as GM (mpModule)
@@ -88,12 +88,7 @@ spec = do
     it "loads a series of files based on cabal1" $ do
 
       currentDir <- getCurrentDirectory
-      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
       setCurrentDirectory "./test/testdata/cabal/cabal1"
-      -- d <- getCurrentDirectory
-      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
-      -- cradle <- findCradle
-      -- (show cradle) `shouldBe` ""
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,False,False)
                                      -- , rsetVerboseLevel = Debug
@@ -114,10 +109,7 @@ spec = do
     it "loads a series of files based on cabal2, which has 2 exe" $ do
 
       currentDir <- getCurrentDirectory
-      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
       setCurrentDirectory "./test/testdata/cabal/cabal2"
-      -- d <- getCurrentDirectory
-      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal1"
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
                                      -- , rsetVerboseLevel = Debug
@@ -143,13 +135,7 @@ spec = do
     it "loads a series of files based on cabal3, which has a lib and an exe" $ do
 
       currentDir <- getCurrentDirectory
-      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
       setCurrentDirectory "./test/testdata/cabal/cabal3"
-      -- d <- getCurrentDirectory
-      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
-      -- cradle <- findCradle
-      -- (show cradle) `shouldBe` ""
-      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal3"
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
                                      -- , rsetVerboseLevel = Debug
@@ -173,7 +159,6 @@ spec = do
     it "loads a series of files based on cabal4, with different dependencies" $ do
 
       currentDir <- getCurrentDirectory
-      -- setCurrentDirectory "./test/testdata/cabal/cabal4/src"
       setCurrentDirectory "./test/testdata/cabal/cabal4"
 
       let settings = defaultSettings { rsetEnabledTargets = (True,True,True,True)
@@ -329,12 +314,10 @@ spec = do
 
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
-      -- modInfo@((_, _, mod), toks) <- parsedFileBGhc
       (t, _toks,_) <- ct $ parsedFileGhc "./TypeUtils/B.hs"
       let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let (Just (_modname,modNameStr)) = getModuleName modu
-      -- let modNameStr = "foo"
       modNameStr `shouldBe` "TypeUtils.B"
 
     it "returns Nothing for the module name otherwise" $ do
@@ -358,15 +341,10 @@ spec = do
 
     it "gets modules which directly or indirectly import a module #1" $ do
       -- TODO: harvest this commonality
-      -- (t, toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
-         -- (_p,_toks) <- parseSourceFileTest "./M.hs"  -- Load the main file first
-         -- loadModuleGraphGhc $ Just ["./M.hs"]
-         -- getModuleGhc "./M3.hs"
-         getModuleGhc "./S1.hs"
+         parseSourceFileGhc "./S1.hs"
          tm <- getRefactTargetModule
-         -- g <- clientModsAndFiles $ GHC.mkModuleName "S1"
          g <- clientModsAndFiles tm
          return g
       (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
@@ -376,14 +354,10 @@ spec = do
     ------------------------------------
 
     it "gets modules which directly or indirectly import a module #2" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
-         -- (_p,_toks) <- parseSourceFileTest "./M.hs" -- Load the main file first
-         -- loadModuleGraphGhc $ Just ["./M.hs"]
-         getModuleGhc "./M3.hs"
+         parseSourceFileGhc "./M3.hs"
          tm <- getRefactTargetModule
-         -- g <- clientModsAndFiles $ GHC.mkModuleName "M3"
          g <- clientModsAndFiles tm
          return g
       (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
@@ -393,22 +367,14 @@ spec = do
 
     it "gets modules which import a module in different cabal targets" $ do
       currentDir <- getCurrentDirectory
-      -- currentDir `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe"
       setCurrentDirectory "./test/testdata/cabal/cabal2"
-      -- d <- getCurrentDirectory
-      -- d `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
-      -- cradle <- findCradle
-      -- (show cradle) `shouldBe` ""
-      -- (cradleCurrentDir cradle) `shouldBe` "/home/alanz/mysrc/github/alanz/HaRe/test/testdata/cabal/cabal2"
 
       let
         comp = do
-         getModuleGhc "./src/Foo/Bar.hs" -- Load the file first
+         parseSourceFileGhc "./src/Foo/Bar.hs" -- Load the file first
          tm <- getRefactTargetModule
-         -- g <- clientModsAndFiles $ GHC.mkModuleName "Foo.Bar"
          g <- clientModsAndFiles tm
          return g
-      -- (mg,_s) <- runRefactGhc comp initialState testOptions
       (mg,_s) <- runRefactGhc comp initialState testOptions
       showGhc (map GM.mpModule mg) `shouldBe` "[Main, Main]"
 
@@ -421,22 +387,19 @@ spec = do
       pending  -- "write this test"
 
     it "gets modules which are directly or indirectly imported by a module #1" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
-         getModuleGhc "./M.hs" -- Load the file first
+         parseSourceFileGhc "./M.hs" -- Load the file first
          g <- serverModsAndFiles $ GHC.mkModuleName "S1"
          return g
-      -- (mg,_s) <- ct $ runRefactGhcState comp
       (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
       -- (mg,_s) <- ct $ runRefactGhc comp initialLogOnState testOptions
       showGhc (map GHC.ms_mod mg) `shouldBe` "[]"
 
     it "gets modules which are directly or indirectly imported by a module #2" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M3.hs"
       let
         comp = do
-         getModuleGhc "./M3.hs" -- Load the file first
+         parseSourceFileGhc "./M3.hs" -- Load the file first
          g <- serverModsAndFiles $ GHC.mkModuleName "M3"
          return g
       (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
@@ -475,17 +438,13 @@ spec = do
 -}
   -- -------------------------------------------------------------------
 
-  describe "getModuleGhc" $ do
+  describe "parseSourceFileGhc" $ do
     it "retrieves a module from an existing module graph #1" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./M.hs"
       let
         comp = do
-          -- loadModuleGraphGhc $ Just ["./M.hs"]
-          -- getModuleGhc "./test/testdata/S1.hs"
-          getModuleGhc "./S1.hs"
+          parseSourceFileGhc "./S1.hs"
           pr <- getTypecheckedModule
           tm <- getRefactTargetModule
-          -- g <- clientModsAndFiles $ GHC.mkModuleName "S1"
           g <- clientModsAndFiles tm
 
           return (pr,g)
@@ -499,13 +458,11 @@ spec = do
     -- ---------------------------------
 
     it "loads the module and dependents if no existing module graph" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./S1.hs"
       let
         comp = do
-          getModuleGhc "./S1.hs"
+          parseSourceFileGhc "./S1.hs"
           pr <- getTypecheckedModule
           tm <- getRefactTargetModule
-          -- g <- clientModsAndFiles $ GHC.mkModuleName "S1"
           g <- clientModsAndFiles tm
 
           return (pr,g)
@@ -521,11 +478,9 @@ spec = do
       -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/DupDef/Dd2.hs"
       let
         comp = do
-          -- loadModuleGraphGhc $ Just ["./DupDef/Dd2.hs"]
-          getModuleGhc "./DupDef/Dd1.hs"
+          parseSourceFileGhc "./DupDef/Dd1.hs"
           pr <- getTypecheckedModule
           tm <- getRefactTargetModule
-          -- g <- clientModsAndFiles $ GHC.mkModuleName "DupDef.Dd1"
           g <- clientModsAndFiles tm
 
           return (pr,g)
@@ -539,16 +494,13 @@ spec = do
 
   describe "runRefactGhc" $ do
     it "contains a State monad" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/TypeUtils/B.hs"
       let
        comp = do
         s <- get
-        -- (_t, _toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
-        getModuleGhc "./TypeUtils/B.hs"
+        parseSourceFileGhc "./TypeUtils/B.hs"
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
-        -- GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
 
         put (s {rsUniqState = 100})
         return (show gs)
@@ -559,24 +511,20 @@ spec = do
     -- ---------------------------------
 
     it "contains the GhcT monad" $ do
-      -- (t,toks,tgt) <- ct $ parsedFileGhc "./test/testdata/TypeUtils/B.hs"
       let
        comp = do
         s <- get
-        -- (_t, _toks) <- parseSourceFileTest "./test/testdata/TypeUtils/B.hs"
-        getModuleGhc "./TypeUtils/B.hs"
+        parseSourceFileGhc "./TypeUtils/B.hs"
 
         g <- GHC.getModuleGraph
         gs <- mapM GHC.showModule g
-        -- GHC.liftIO (putStrLn $ "modulegraph=" ++ (show gs))
 
         put (s {rsUniqState = 100})
-        return (show gs)
+        return (gs)
 
-      -- (r,_) <- runRefactGhcState comp
       (r,_) <- ct $ runRefactGhc comp initialState testOptions
-      r `shouldBe` ("[\"TypeUtils.C      ( TypeUtils/C.hs, nothing )\","
-                   ++"\"TypeUtils.B      ( TypeUtils/B.hs, nothing )\"]")
+      (sort r) `shouldBe` ["TypeUtils.B      ( TypeUtils/B.hs, nothing )",
+                           "TypeUtils.C      ( TypeUtils/C.hs, nothing )"]
 
   -- -------------------------------------------------------------------
 
@@ -604,7 +552,7 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
       let
         comp = do
-          getModuleGhc "./FreeAndDeclared/DeclareS.hs"
+          parseSourceFileGhc "./FreeAndDeclared/DeclareS.hs"
           r <- hsFreeAndDeclaredPNs renamed
           return r
       ((res),_s) <- cdAndDo "./test/testdata/FreeAndDeclared" $

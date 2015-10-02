@@ -33,14 +33,9 @@ spec = do
 
   describe "onelayerStaged" $ do
     it "only descends one layer into a structure" $ do
-      -- let s = ([2,1,3,4,5],[6,7,8]) :: ([Int],[Int])
       let s' = (2,[3,4],5) :: (Int,[Int],Int)
-      let -- worker (i :: Int)
-          --  | i == 2 = ["f"]
-          -- worker _ = []
-
+      let
           worker' (i::Int) = [i]
-          -- worker'' (i::[Int]) = [head i]
 
       let g = onelayerStaged SYB.Renamer [] ([] `SYB.mkQ` worker') s'
       let g1 = SYB.gmapQ ([] `SYB.mkQ` worker') s'
@@ -56,8 +51,6 @@ spec = do
       (t, _toks, tgt) <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
-         -- (t, toks) <- parseSourceFileTest "./test/testdata/DupDef/Dd1.hs"
-         -- putParsedModule t toks
          renamed <- getRefactRenamed
 
          let mn = locToName (4,1) renamed
@@ -97,9 +90,5 @@ spec = do
       r2 `shouldBe` True
       rx `shouldBe` False
       rx2 `shouldBe` True
-
-
-
-
 
 -- ---------------------------------------------------------------------

@@ -14,9 +14,7 @@ import Language.Haskell.Refact.Utils.MonadFunctions
 -- ---------------------------------------------------------------------
 
 main :: IO ()
-main = do
-  -- setLogger
-  hspec spec
+main = hspec spec
 
 spec :: Spec
 spec = do

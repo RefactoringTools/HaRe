@@ -30,7 +30,7 @@ swapArgs settings opts args
 comp :: String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName (row, col) = do
-       getModuleGhc fileName
+       parseSourceFileGhc fileName
        renamed <- getRefactRenamed
 
        let name = locToName (row, col) renamed

@@ -557,7 +557,6 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes a definition from the top level D1" $ do
-     -- doDemote ["./test/testdata/Demote/D1.hs","9","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/Demote/D1.hs" (9,1)
      -- r <- demote logTestSettings testOptions "./test/testdata/Demote/D1.hs" (9,1)
      (show r) `shouldBe` "[\"test/testdata/Demote/D1.hs\"]"
@@ -568,7 +567,6 @@ negative=[(["PatBindIn2.hs"],["17","7"]),
     -- -----------------------------------------------------------------
 
     it "demotes WhereIn1 12 1" $ do
-     -- r <- doDemote ["./test/testdata/Demote/WhereIn1.hs","12","1"]
      r <- demote defaultTestSettings testOptions "./test/testdata/Demote/WhereIn1.hs" (12,1)
      (show r) `shouldBe` "[\"test/testdata/Demote/WhereIn1.hs\"]"
      diff <- compareFiles "./test/testdata/Demote/WhereIn1.refactored.hs"

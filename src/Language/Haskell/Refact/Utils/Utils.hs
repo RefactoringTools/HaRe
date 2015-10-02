@@ -11,11 +11,8 @@
 module Language.Haskell.Refact.Utils.Utils
        (
        -- * Managing the GHC / project environment
-         getModuleGhc
-       , getTargetGhc
+         getTargetGhc
        , parseSourceFileGhc
-       -- , activateModule
-       , getModuleDetails
 
        -- * The bits that do the work
        , runRefacSession
@@ -76,31 +73,20 @@ getModuleName (GHC.L _ modn) =
 -- ---------------------------------------------------------------------
 
 getTargetGhc :: TargetModule -> RefactGhc ()
-getTargetGhc (GM.ModulePath _mn fp) = getModuleGhc fp
-
--- ---------------------------------------------------------------------
-
--- | Once the module graph has been loaded, load the given module into
--- the RefactGhc monad
--- TODO: rename this to something like loadModuleGhc
-getModuleGhc :: FilePath -> RefactGhc ()
-getModuleGhc = parseSourceFileGhc
+getTargetGhc (GM.ModulePath _mn fp) = parseSourceFileGhc fp
 
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
-  logm $ "parseSourceFileGhc:(targetFile)=" ++ show (targetFile)
   setTargetSession targetFile
-  logm $ "parseSourceFileGhc:targetFile loaded"
   graph  <- GHC.getModuleGraph
-  logm $ "parseSourceFileGhc:module graph loaded"
   cgraph <- canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath targetFile
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
   case mm of
-    [(_,modSum)] -> getModuleDetails modSum
+    [(_,modSum)] -> loadFromModSummary modSum
     _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
 
 -- ---------------------------------------------------------------------
@@ -115,19 +101,14 @@ setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
 
 -- | In the existing GHC session, put the requested TypeCheckedModule
 -- into the RefactGhc monad
-
--- TODO: rename this function, it is not clear in a refactoring what
--- it does
-getModuleDetails :: GHC.ModSummary -> RefactGhc ()
-getModuleDetails modSum = do
-  logm $ "getModuleDetails:modSum=" ++ show modSum
+loadFromModSummary :: GHC.ModSummary -> RefactGhc ()
+loadFromModSummary modSum = do
+  logm $ "loadFromModSummary:modSum=" ++ show modSum
   p <- GHC.parseModule modSum
   t <- GHC.typecheckModule p
 
-  logm $ "getModuleDetails:setting context.."
-  -- TODO:AZ: reinstate this, else inscope queries will fail. Or is there a better way to do those?
+  -- required for inscope queries. Is there a better way to do those?
   setGhcContext modSum
-  logm $ "getModuleDetails:context set"
 
   (mfp,_modSum) <- canonicalizeModSummary modSum
   newTargetModule <- case mfp of
@@ -146,11 +127,11 @@ getModuleDetails modSum = do
     Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
                   && oldTargetModule == Just newTargetModule)
                  then do
-                   logm $ "getModuleDetails:not calling putParsedModule for targetModule=" ++ show newTargetModule
+                   logm $ "loadFromModSummary:not calling putParsedModule for targetModule=" ++ show newTargetModule
                    return ()
                  else if rsStreamModified tm == RefacUnmodifed
                         then putModule
-                        else error $ "getModuleDetails: trying to load a module without finishing with active one."
+                        else error $ "loadFromModSummary: trying to load a module without finishing with active one."
 
     Nothing -> putModule
 
@@ -197,18 +178,16 @@ runRefactGhcCd ::
 runRefactGhcCd comp initialState opt = do
 
   let
+    runMain :: IO a -> IO a
+    runMain progMain = do
+      catches progMain [
+        Handler $ \(GM.GMEWrongWorkingDirectory projDir _curDir) -> do
+          cdAndDo projDir progMain
+        ]
+
     fullComp = runRefactGhc comp initialState opt
 
   runMain fullComp
-
--- ---------------------------------------------------------------------
-
-runMain :: IO a -> IO a
-runMain progMain = do
-  catches progMain [
-    Handler $ \(GM.GMEWrongWorkingDirectory projDir _curDir) -> do
-      cdAndDo projDir progMain
-    ]
 
 -- ---------------------------------------------------------------------
 
@@ -216,7 +195,7 @@ cdAndDo :: FilePath -> IO a -> IO a
 cdAndDo path fn = do
   old <- getCurrentDirectory
   r <- GHC.gbracket (setCurrentDirectory path) (\_ -> setCurrentDirectory old)
-          $ \_ -> fn
+          $ const fn
   return r
 
 -- ---------------------------------------------------------------------
@@ -247,9 +226,9 @@ applyRefac refac source = do
     -- restore the state. Fix this to store the modules in some kind of cache.
 
     fileName <- case source of
-         RSFile fname    -> do getModuleGhc fname
+         RSFile fname    -> do parseSourceFileGhc fname
                                return fname
-         RSMod  ms       -> do getModuleGhc $ fileNameFromModSummary ms
+         RSMod  ms       -> do parseSourceFileGhc $ fileNameFromModSummary ms
                                return $ fileNameFromModSummary ms
          RSAlreadyLoaded -> do mfn <- getRefactFileName
                                case mfn of
@@ -295,6 +274,9 @@ getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
 -}
 -- ---------------------------------------------------------------------
 
+
+-- ++AZ++ I think the intended function of this class has been superseded by
+-- ghc-exactprint HasDecls.
 class (SYB.Data t, SYB.Data t1) => Update t t1 where
 
   -- | Update the occurrence of one syntax phrase in a given scope by

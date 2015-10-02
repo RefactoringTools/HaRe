@@ -89,7 +89,7 @@ liftToTopLevel settings opts fileName (row,col) = do
 compLiftToTopLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftToTopLevel fileName (row,col) = do
-      getModuleGhc fileName
+      parseSourceFileGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 
@@ -215,7 +215,7 @@ liftOneLevel settings opts fileName (row,col) = do
 compLiftOneLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftOneLevel fileName (row,col) = do
-      getModuleGhc fileName
+      parseSourceFileGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 
@@ -558,7 +558,7 @@ demote settings opts fileName (row,col) = do
 compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]
 compDemote fileName (row,col) = do
-      getModuleGhc fileName
+      parseSourceFileGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
 

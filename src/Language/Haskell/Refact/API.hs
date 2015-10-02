@@ -24,11 +24,9 @@ module Language.Haskell.Refact.API
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
        -- ** Managing the GHC / project environment
-       , getModuleGhc
+       , parseSourceFileGhc
        , getTargetGhc
        , parseSourceFileGhc
-       -- , activateModule
-       , getModuleDetails
 
        -- ** The bits that do the work
        , runRefacSession

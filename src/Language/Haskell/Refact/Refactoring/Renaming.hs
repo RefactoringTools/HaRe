@@ -55,7 +55,7 @@ rename settings opts fileName newName (row,col) = do
 comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row,col) = do
     logm $ "Renaming.comp: (fileName,newName,(row,col))=" ++ show (fileName,newName,(row,col))
-    getModuleGhc fileName
+    parseSourceFileGhc fileName
     renamed <- getRefactRenamed
     parsed  <- getRefactParsed
 

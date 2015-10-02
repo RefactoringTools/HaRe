@@ -79,7 +79,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in D3 B3 C3 A3 12 7" $ do
-     --     (["D3.hs","B3.hs","C3.hs","A3.hs"],["Same","12","7"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/D3.hs" "Same" (12,7)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/D3.hs" "Same" (12,7)
 
@@ -141,7 +140,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in D5 B5 C5 A5 24 1" $ do
-     --     (["D5.hs","B5.hs","C5.hs","A5.hs"],["sum","24","1"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/D5.hs" "sum" (24,1)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/D5.hs" "sum" (24,1)
 
@@ -172,7 +170,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in D7 C7  10 1" $ do
-     --     (["D7.hs","C7.hs"],["myFringe","10","1"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/D7.hs" "myFringe" (10,1)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/D7.hs" "myFringe" (10,1)
 
@@ -216,7 +213,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in Field4 5 23" $ do
-     --     (["Field4.hs"],["value2","5","23"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
      -- ct $ rename logTestSettings Nothing "./Renaming/Field4.hs" "value2" (5,23)
      r `shouldBe` [ "Renaming/Field4.hs"
@@ -228,7 +224,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in IdIn1 11 1" $ do
-     --     (["IdIn1.hs"],["x1","11","1"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/IdIn1.hs" "x1" (11,1)
      -- ct $ rename logTestSettings testOptions "./Renaming/IdIn1.hs" "x1" (11,1)
      r `shouldBe` [ "Renaming/IdIn1.hs"
@@ -240,7 +235,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in IdIn2 15 7" $ do
-     --     (["IdIn2.hs"],["x1","15","7"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/IdIn2.hs" "x1" (15,7)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/IdIn2.hs" "x1" (15,7)
      r `shouldBe` [ "Renaming/IdIn2.hs"
@@ -252,7 +246,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in ClassIn1 7 7" $ do
-     --     (["ClassIn1.hs"],["MyReversable","7","7"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ClassIn1.hs" "MyReversable" (7,7)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ClassIn1.hs" "MyReversable" (7,7)
      r `shouldBe` [ "Renaming/ClassIn1.hs"
@@ -264,7 +257,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in ClassIn2 8 3" $ do
-     --     (["ClassIn2.hs"],["reversable","8","3"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ClassIn2.hs" "reversable" (8,3)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ClassIn2.hs" "reversable" (8,3)
      r `shouldBe` [ "Renaming/ClassIn2.hs"
@@ -276,7 +268,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in ConstructorIn1 8 6" $ do
-     --     (["ConstructorIn1.hs"],["MyBTree","8","6"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
      -- ct $ rename logTestSettings testOptions "./Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
      r `shouldBe` [ "Renaming/ConstructorIn1.hs"
@@ -288,7 +279,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in ConstructorIn2 8 6" $ do
-     --     (["ConstructorIn2.hs"],["Tree","8","24"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn2.hs" "Tree" (8,24)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn2.hs" "Tree" (8,24)
      r `shouldBe` [ "Renaming/ConstructorIn2.hs"
@@ -300,7 +290,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in ConstructorIn3 9 12" $ do
-     --     (["ConstructorIn3.hs"],["b","9","12"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn3.hs" "b" (9,13)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn3.hs" "b" (9,13)
      r `shouldBe` [ "Renaming/ConstructorIn3.hs"
@@ -312,7 +301,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in LayoutIn1 7 17" $ do
-     --     (["LayoutIn1.hs"],["square","7","17"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
      r `shouldBe` [ "Renaming/LayoutIn1.hs"
@@ -324,7 +312,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in LayoutIn2 8 7" $ do
-     --     (["LayoutIn2.hs"],["ls","8","7"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/LayoutIn2.hs" "ls" (8,7)
      r `shouldBe` [ "Renaming/LayoutIn2.hs"
@@ -336,7 +323,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in LayoutIn3 7 13" $ do
-     --     (["LayoutIn3.hs"],["anotherX","7","13"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn3.hs" "anotherX" (7,13)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn3.hs" "anotherX" (7,13)
      r `shouldBe` [ "Renaming/LayoutIn3.hs"
@@ -348,7 +334,6 @@ spec = do
     -- ---------------------------------
 
     it "renames in LayoutIn4 7 8" $ do
-     --     (["LayoutIn4.hs"],["io","7","8"])],
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn4.hs" "io" (7,8)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn4.hs" "io" (7,8)
      r `shouldBe` [ "Renaming/LayoutIn4.hs"
@@ -362,7 +347,6 @@ spec = do
     -- ---------------------------------
 
     it "naming clash at top level IdIn3" $ do
-     -- (["IdIn3.hs"],["foo","10","1"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/IdIn3.hs" "foo" (10,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn3.hs" "foo" (10,1))
      (show res) `shouldBe` "Just \"Name 'foo'  already existed\\n\""
@@ -370,7 +354,6 @@ spec = do
     -- ---------------------------------
 
     it "upper case name for fn fails IdIn4" $ do
-     --     (["IdIn4.hs"],["Foo","12","1"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/IdIn4.hs" "Foo" (12,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn4.hs" "Foo" (12,1))
      (show res) `shouldBe` "Just \"The new name should be an identifier!\""
@@ -378,7 +361,6 @@ spec = do
     -- ---------------------------------
 
     it "naming clash IdIn5" $ do
-     --     (["IdIn5.hs"],["y","10","1"]),
      -- rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1))
      (show res) `shouldBe` "Just \"Name 'y'  already existed, or rename 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
@@ -386,7 +368,6 @@ spec = do
     -- ---------------------------------
 
     it "must rename in home module ClassIn3" $ do
-     --     (["ClassIn3.hs"],["Eq1","16","10"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/ClassIn3.hs" "Eq1" (16,10)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/ClassIn3.hs" "Eq1" (16,10))
      (show res) `shouldBe` "Just \"This identifier is defined in module GHC.Classes, please do renaming in that module!\""
@@ -394,7 +375,6 @@ spec = do
     -- ---------------------------------
 
     it "will not rename existing name Field2" $ do
-     --     (["Field2.hs"], ["absPoint", "5", "18"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/Field2.hs" "absPoint" (5,18)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Field2.hs" "absPoint" (5,18))
      (show res) `shouldBe` "Just \"Name 'absPoint'  already existed\\n\""
@@ -402,7 +382,6 @@ spec = do
     -- ---------------------------------
 
     it "must qualify clashes Qualifier" $ do
-     --     (["Qualifier.hs"],["sum","13","1"]),
      -- rename logTestSettings testOptions "./Renaming/Qualifier.hs" "sum" (13,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Qualifier.hs" "sum" (13,1))
      (show res) `shouldBe` "Just \"The new name will cause ambiguous occurrence problem, please select another new name or qualify the use of ' sum' before renaming!\\n\""
@@ -410,7 +389,6 @@ spec = do
     -- ---------------------------------
 
     it "cannot rename main Main" $ do
-     --     (["Main.hs"],["main1", "11","1"]),
      -- rename logTestSettings testOptions Nothing "./Renaming/Main.hs" "main1" (11,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Main.hs" "main1" (11,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
@@ -504,7 +482,6 @@ spec = do
     -- ---------------------------------
 
     it "ConflictExports" $ do
-     --     (["ConflictExport.hs","D6.hs"],["fringe","7","1"])]
      -- rename (logTestSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1))
      -- res <- catchException (ct $ rename (testSettingsMainfile "./Renaming/ConflictExport.hs") testOptions "./Renaming/ConflictExport.hs" "fringe" (7,1))

@@ -15,7 +15,7 @@ roundTrip settings opts fileName = do
 
 comp :: FilePath -> RefactGhc [ApplyRefacResult]
 comp fileName = do
-  getModuleGhc fileName
+  parseSourceFileGhc fileName
   (r,_) <- applyRefac (setRefactStreamModified RefacModified) RSAlreadyLoaded
   return [r]
 

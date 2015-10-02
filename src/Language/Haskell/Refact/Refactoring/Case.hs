@@ -29,7 +29,7 @@ ifToCase settings opts fileName beginPos endPos = do
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
-       getModuleGhc fileName
+       parseSourceFileGhc fileName
        parsed <- getRefactParsed
        oldAnns <- liftT getAnnsT
        logm $ "Case.comp:parsed=" ++ (showAnnData oldAnns 0 parsed) -- ++AZ++

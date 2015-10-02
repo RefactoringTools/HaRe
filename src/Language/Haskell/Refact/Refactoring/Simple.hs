@@ -34,7 +34,7 @@ pattern HsPar l s = GHC.L l (GHC.HsPar s)
 
 removeBracketTransform  :: FilePath -> SimpPos -> SimpPos -> RefactGhc ()
 removeBracketTransform fileName beginPos endPos = do
-       getModuleGhc fileName
+       parseSourceFileGhc fileName
        parsed <- getRefactParsed
        let expr :: GHC.Located (GHC.HsExpr GHC.RdrName)
            expr = fromJust $ locToExp beginPos endPos parsed

@@ -33,6 +33,3 @@ spec = do
 
 -- ---------------------------------------------------------------------
 
--- parsedFileLayoutIn2 :: IO (ParseResult, [PosToken],Targets)
--- parsedFileLayoutIn2 = parsedFileGhc "./test/testdata/Renaming/LayoutIn2.hs"
-

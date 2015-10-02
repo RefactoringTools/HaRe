@@ -20,7 +20,6 @@ spec = do
     it "checks for a clash of the new name" $ do
      res <- catchException (ct $ duplicateDef defaultTestSettings testOptions "DupDef/Dd1.hs" "c" (4,1))
      -- res <- catchException (ct $ duplicateDef logTestSettings testOptions "DupDef/Dd1.hs" "c" (4,1))
-     -- let res = "foo"
      (show res) `shouldBe` "Just \"The new name'c' will cause name clash/capture or ambiguity problem after duplicating, please select another name!\""
 
     -- ---------------------------------
@@ -128,5 +127,4 @@ spec = do
      diff `shouldBe` []
 
 -- ---------------------------------------------------------------------
--- Helper functions
 
