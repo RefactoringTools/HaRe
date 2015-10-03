@@ -6,6 +6,8 @@ import Language.Haskell.Refact.Refactoring.Case
 
 import TestUtils
 
+import System.Directory
+
 main :: IO ()
 main = do
   hspec spec
@@ -16,7 +18,8 @@ spec = do
     it "converts an if expression to a case expression BSimple" $ do
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/BSimple.hs" (4,7) (4,43)
       -- r <- ct $ ifToCase logTestSettings testOptions  "Case/BSimple.hs" (4,7) (4,43)
-      r `shouldBe` ["Case/BSimple.hs"]
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["Case/BSimple.hs"]
       diff <- compareFiles "./test/testdata/Case/BSimple.refactored.hs"
                            "./test/testdata/Case/BSimpleExpected.hs"
       diff `shouldBe` []
@@ -26,7 +29,8 @@ spec = do
     it "converts an if expression to a case expression Foo" $ do
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/Foo.hs" (4,1) (9,1)
       -- r <- ct $ ifToCase logTestSettings testOptions  "Case/Foo.hs" (4,1) (9,1)
-      r `shouldBe` ["Case/Foo.hs"]
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["Case/Foo.hs"]
       diff <- compareFiles "./test/testdata/Case/Foo.refactored.hs"
                            "./test/testdata/Case/Foo.hs.expected"
       diff `shouldBe` []
@@ -36,7 +40,8 @@ spec = do
     it "converts an if expression to a case expression B" $ do
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/B.hs" (4,7) (4,43)
       -- r <- ct $ ifToCase logTestSettings testOptions  "Case/B.hs" (4,7) (4,43)
-      r `shouldBe` ["Case/B.hs"]
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["Case/B.hs"]
       diff <- compareFiles "./test/testdata/Case/B.refactored.hs"
                            "./test/testdata/Case/B.hs.expected"
       diff `shouldBe` []
@@ -47,7 +52,8 @@ spec = do
 
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/C.hs" (5,7) (10,1)
       -- ct $ ifToCase logTestSettings testOptions "Case/C.hs" (5,7) (10,1)
-      r `shouldBe` ["Case/C.hs"]
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["Case/C.hs"]
       diff <- compareFiles "./test/testdata/Case/C.refactored.hs"
                            "./test/testdata/Case/C.hs.expected"
       diff `shouldBe` []
@@ -57,7 +63,8 @@ spec = do
     it "converts an if expression with comments to a case expression 2 D" $ do
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/D.hs" (5,7) (12,1)
       -- ct $ ifToCase logTestSettings testOptions "Case/D.hs" (5,7) (12,1)
-      r `shouldBe` ["Case/D.hs"]
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["Case/D.hs"]
       diff <- compareFiles "./test/testdata/Case/D.refactored.hs"
                            "./test/testdata/Case/D.hs.expected"
       diff `shouldBe` []
@@ -67,7 +74,8 @@ spec = do
     it "converts in complex sub level expression 2 E" $ do
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/E.hs" (7,8) (13,20)
       -- ct $ ifToCase logTestSettings testOptions "Case/E.hs" (7,8) (13,20)
-      r `shouldBe` ["Case/E.hs"]
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["Case/E.hs"]
       diff <- compareFiles "./test/testdata/Case/E.refactored.hs"
                            "./test/testdata/Case/E.hs.expected"
       diff `shouldBe` []
@@ -77,7 +85,8 @@ spec = do
     it "converts in complex sub level expression F" $ do
       r <- ct $ ifToCase defaultTestSettings testOptions "Case/F.hs" (4,7) (8,20)
       -- ct $ ifToCase logTestSettings testOptions "Case/F.hs" (4,7) (8,20)
-      r `shouldBe` ["Case/F.hs"]
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["Case/F.hs"]
       diff <- compareFiles "./test/testdata/Case/F.refactored.hs"
                            "./test/testdata/Case/F.hs.expected"
       diff `shouldBe` []

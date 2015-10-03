@@ -244,7 +244,8 @@ applyRefac refac source = do
     -- Clear the refactoring state
     clearParsedModule
 
-    return (((fileName,m),(anns, mod')),res)
+    absFileName <- liftIO $ canonicalizePath fileName
+    return (((absFileName,m),(anns, mod')),res)
 
 
 -- ---------------------------------------------------------------------

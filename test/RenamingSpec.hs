@@ -193,7 +193,8 @@ spec = do
     it "renames in Field1 5 18" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field1.hs" "pointx1" (5,18)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/Field1.hs" "pointx1" (5,18)
-     r `shouldBe` [ "Renaming/Field1.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/Field1.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/Field1.hs.expected"
                                "./Renaming/Field1.refactored.hs"
@@ -204,7 +205,9 @@ spec = do
     it "renames in Field3 9 1" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field3.hs" "abs" (9,1)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/Field3.hs" "abs" (9,1)
-     r `shouldBe` [ "Renaming/Field3.hs"
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/Field3.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/Field3.hs.expected"
                                "./Renaming/Field3.refactored.hs"
@@ -215,7 +218,8 @@ spec = do
     it "renames in Field4 5 23" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
      -- ct $ rename logTestSettings Nothing "./Renaming/Field4.hs" "value2" (5,23)
-     r `shouldBe` [ "Renaming/Field4.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/Field4.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/Field4.hs.expected"
                                "./Renaming/Field4.refactored.hs"
@@ -226,7 +230,8 @@ spec = do
     it "renames in IdIn1 11 1" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/IdIn1.hs" "x1" (11,1)
      -- ct $ rename logTestSettings testOptions "./Renaming/IdIn1.hs" "x1" (11,1)
-     r `shouldBe` [ "Renaming/IdIn1.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/IdIn1.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/IdIn1.hs.expected"
                                "./Renaming/IdIn1.refactored.hs"
@@ -237,7 +242,8 @@ spec = do
     it "renames in IdIn2 15 7" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/IdIn2.hs" "x1" (15,7)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/IdIn2.hs" "x1" (15,7)
-     r `shouldBe` [ "Renaming/IdIn2.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/IdIn2.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/IdIn2.hs.expected"
                                "./Renaming/IdIn2.refactored.hs"
@@ -248,7 +254,8 @@ spec = do
     it "renames in ClassIn1 7 7" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ClassIn1.hs" "MyReversable" (7,7)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ClassIn1.hs" "MyReversable" (7,7)
-     r `shouldBe` [ "Renaming/ClassIn1.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/ClassIn1.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/ClassIn1.hs.expected"
                                "./Renaming/ClassIn1.refactored.hs"
@@ -259,7 +266,8 @@ spec = do
     it "renames in ClassIn2 8 3" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ClassIn2.hs" "reversable" (8,3)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ClassIn2.hs" "reversable" (8,3)
-     r `shouldBe` [ "Renaming/ClassIn2.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/ClassIn2.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/ClassIn2.hs.expected"
                                "./Renaming/ClassIn2.refactored.hs"
@@ -270,7 +278,8 @@ spec = do
     it "renames in ConstructorIn1 8 6" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
      -- ct $ rename logTestSettings testOptions "./Renaming/ConstructorIn1.hs" "MyBTree" (8,6)
-     r `shouldBe` [ "Renaming/ConstructorIn1.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/ConstructorIn1.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/ConstructorIn1.hs.expected"
                                "./Renaming/ConstructorIn1.refactored.hs"
@@ -281,7 +290,8 @@ spec = do
     it "renames in ConstructorIn2 8 6" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn2.hs" "Tree" (8,24)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn2.hs" "Tree" (8,24)
-     r `shouldBe` [ "Renaming/ConstructorIn2.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/ConstructorIn2.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/ConstructorIn2.hs.expected"
                                "./Renaming/ConstructorIn2.refactored.hs"
@@ -292,7 +302,8 @@ spec = do
     it "renames in ConstructorIn3 9 12" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn3.hs" "b" (9,13)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn3.hs" "b" (9,13)
-     r `shouldBe` [ "Renaming/ConstructorIn3.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/ConstructorIn3.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/ConstructorIn3.hs.expected"
                                "./Renaming/ConstructorIn3.refactored.hs"
@@ -303,7 +314,8 @@ spec = do
     it "renames in LayoutIn1 7 17" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
-     r `shouldBe` [ "Renaming/LayoutIn1.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/LayoutIn1.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/LayoutIn1.hs.expected"
                                "./Renaming/LayoutIn1.refactored.hs"
@@ -314,7 +326,8 @@ spec = do
     it "renames in LayoutIn2 8 7" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/LayoutIn2.hs" "ls" (8,7)
-     r `shouldBe` [ "Renaming/LayoutIn2.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/LayoutIn2.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/LayoutIn2.hs.expected"
                                "./Renaming/LayoutIn2.refactored.hs"
@@ -325,7 +338,8 @@ spec = do
     it "renames in LayoutIn3 7 13" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn3.hs" "anotherX" (7,13)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn3.hs" "anotherX" (7,13)
-     r `shouldBe` [ "Renaming/LayoutIn3.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/LayoutIn3.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/LayoutIn3.hs.expected"
                                "./Renaming/LayoutIn3.refactored.hs"
@@ -336,7 +350,8 @@ spec = do
     it "renames in LayoutIn4 7 8" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn4.hs" "io" (7,8)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn4.hs" "io" (7,8)
-     r `shouldBe` [ "Renaming/LayoutIn4.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/LayoutIn4.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/LayoutIn4.hs.expected"
                                "./Renaming/LayoutIn4.refactored.hs"
@@ -406,7 +421,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions Nothing "./Renaming/Main2.hs" "baz" (6,1)
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Main2.hs" "baz" (6,1)
 
-     r `shouldBe` [ "Renaming/Main2.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/Main2.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/Main2.hs.expected"
                                "./Renaming/Main2.refactored.hs"
@@ -418,7 +434,8 @@ spec = do
      -- ct $ rename logTestSettings testOptions "./Layout/Do1.hs" "g2" (10,3)
      r <- ct $ rename defaultTestSettings testOptions "./Layout/Do1.hs" "g2" (10,3)
 
-     r `shouldBe` [ "Layout/Do1.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Layout/Do1.hs"
                   ]
      diff <- ct $ compareFiles "./Layout/Do1.hs.expected"
                                "./Layout/Do1.refactored.hs"
@@ -446,7 +463,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "renames in lib and in main" $ do
+    it "renames in lib and in main 1" $ do
      let ct4 = cdAndDo "./test/testdata/cabal/cabal4"
      r <- ct4 $ rename defaultTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
      -- r <- cdAndDo "./test/testdata/cabal/cabal4" $ rename logTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
@@ -465,6 +482,29 @@ spec = do
                                  "./src/main4.refactored.hs"
      diffC `shouldBe` []
 
+    -- ---------------------------------
+
+    it "renames in lib and in main 2" $ do
+     pendingWith "reinstate once wip commit done"
+  {-
+     let ctf = cdAndDo "./test/testdata/cabal/foo"
+     r <- ctf $ rename defaultTestSettings testOptions  "./src/Foo/Bar.hs" "bar1" (3,1)
+     -- r <- cdAndDo "./test/testdata/cabal/foo" $ rename logTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
+
+     r' <- ctf $ mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` ["src/Foo/Bar.hs",
+                    "src/Main.hs"
+                  ]
+
+     diffD <- ctf $ compareFiles "./src/Foo/Bar.expected.hs"
+                                 "./src/Foo/Bar.refactored.hs"
+     diffD `shouldBe` []
+
+     diffC <- ctf $ compareFiles "./src/Main.expected.hs"
+                                 "./src/Main.refactored.hs"
+     diffC `shouldBe` []
+-}
     -- ---------------------------------
 
 {-
@@ -527,7 +567,8 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      -- ct $ rename logTestSettings testOptions "./Renaming/Utils.hs" "parsed1" (5,11)
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Utils.hs" "parsed1" (5,11)
 
-     r `shouldBe` [ "Renaming/Utils.hs"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/Utils.hs"
                   ]
      diff <- ct $ compareFiles "./Renaming/Utils.expected.hs"
                                "./Renaming/Utils.refactored.hs"
@@ -539,7 +580,8 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/RenameInExportedType.hs" "NewType" (6,6)
      -- ct $ rename logTestSettings testOptions "./Renaming/RenameInExportedType.hs" "NewType" (6,6)
 
-     (show r) `shouldBe` "[\"Renaming/RenameInExportedType.hs\"]"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/RenameInExportedType.hs\"]"
      diff <- ct $ compareFiles "./Renaming/RenameInExportedType.refactored.hs"
                                "./Renaming/RenameInExportedType.expected.hs"
      diff `shouldBe` []
@@ -550,7 +592,8 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/RenameInExportedType2.hs" "NewType" (6,24)
      -- ct $ rename logTestSettings testOptions "./Renaming/RenameInExportedType2.hs" "NewType" (6,24)
 
-     (show r) `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
      diff <- ct $ compareFiles "./Renaming/RenameInExportedType2.refactored.hs"
                                "./Renaming/RenameInExportedType2.expected.hs"
      diff `shouldBe` []

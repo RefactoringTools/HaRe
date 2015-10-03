@@ -94,9 +94,8 @@ spec = do
 
       r <- rename settings testOptions "./src/Foo/Bar.hs" "baz1" (3, 1)
       -- r <- rename logTestSettings cradle "./src/Foo/Bar.hs" "baz1" (3, 1)
-      setCurrentDirectory currentDir
-
       r' <- mapM makeRelativeToCurrentDirectory r
+      setCurrentDirectory currentDir
 
       (show r') `shouldBe` "[\"src/Foo/Bar.hs\","
                           ++"\"src/main.hs\"]"
@@ -120,9 +119,9 @@ spec = do
              return [show e]
 
       r <- catches (rename settings testOptions "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
+      r' <- mapM makeRelativeToCurrentDirectory r
       setCurrentDirectory currentDir
 
-      r' <- mapM makeRelativeToCurrentDirectory r
 
       (show r') `shouldBe` "[\"src/Foo/Bar.hs\","++
                             "\"src/main1.hs\","++
@@ -146,9 +145,9 @@ spec = do
              return [show e]
 
       r <- catches (rename settings testOptions "./src/main1.hs" "baz1" (7, 1)) handler
+      r' <- mapM makeRelativeToCurrentDirectory r
       setCurrentDirectory currentDir
 
-      r' <- mapM makeRelativeToCurrentDirectory r
 
       (show r') `shouldBe` "[\"src/main1.hs\"]"
 
@@ -171,9 +170,9 @@ spec = do
 
       r <- catches (rename settings testOptions "./src/Foo/Bar.hs" "baz1" (3, 1)) handler
       -- r <- catches (rename settings testOptions "./src/main4.hs" "baz1" (3, 1)) handler
+      r' <- mapM makeRelativeToCurrentDirectory r
       setCurrentDirectory currentDir
 
-      r' <- mapM makeRelativeToCurrentDirectory r
 
       (show r') `shouldBe` "[\"src/Foo/Bar.hs\",\"src/main4.hs\"]"
 

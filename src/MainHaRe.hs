@@ -122,8 +122,9 @@ main = flip catches handlers $ do
       "show" -> putStrLn  (show (opt))
 
       cmd      -> throw (NoSuchCommand cmd)
-    putStr (show res)
+    -- putStr (show res)
     -- putStr $ "(ok " ++ showLisp mfs ++ ")"
+    return ()
   where
     handlers = [Handler handler1, Handler handler2]
 
