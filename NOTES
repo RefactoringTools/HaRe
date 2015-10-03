@@ -121,3 +121,73 @@ The d actions would be
 
 
 
+------------------------------------------------------------------------
+
+Requirements for IDE/GHC interfacing (ghc-mod or similar)
+-----------------------------------------------------
+
+BIOS level (downward)
+---------------------
+
+0. Overall goal
+
+Provide a set of features to enable tool writers to focus on the tool, rather
+than the myriad details of interfacing with the environment.
+
+1. Identify current project environment
+
+This includes if it is a cabal project, whether it has a sandbox, is it
+configured, etc, abstracting O/S dependencies inthe process.
+
+Example: ghc-mod Cradle.
+
+
+2. Identify possible build targets
+
+Provide a list of all libraries, exes, benchmarks, tests in the cabal file, or
+just the file concerned if no cabal file.
+
+
+3. Provide a shared cache of the loaded module graph for particular components.
+
+There is no point in having each tool separately load the module graph.
+
+
+4. Potentially: provide a monad transformer stack for GHC API interaction
+
+As in ghc-mod. This should be geared towards error handling and logging, with a
+clear separation of errors/warnings in the code being operated on by the tool
+and those in the tool infrastructure.
+
+
+
+IDE (upward)
+------------
+
+Provide a common means to communicate with IDE's to interact with tooling. This
+should probably be a simple protocol definition for commands and responses, and
+a set of transport definitions for the protocol.
+
+Possible transports
+  - RPC
+  - direct API call
+  - HTTP or similar
+
+It should be possible to run the tooling environment on a separate host from the
+IDE, whether in a docker container on the same host, or remotely, possibly even
+in a cross-compilation environment.
+
+
+
+Plugin level
+------------
+
+Provide a set of facilities to allow tools to be written that can easily make
+use of the IDE and GHC interfaces above.
+
+This could be a set of APIs that are statically linked into the tool in a
+standalone fashion, or some way of having a project session running with
+multiple tools all plugged into it.
+
+E.g a future GHC based hlint, HaRe, a future GHC based hindent.
+

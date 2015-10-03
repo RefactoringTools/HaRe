@@ -6,7 +6,7 @@ bob a b = x
   where x = 3
 
 bib a b = x
-  where 
+  where
     x = 3
 
 

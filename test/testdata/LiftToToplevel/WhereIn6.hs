@@ -5,12 +5,12 @@ module LiftToToplevel.WhereIn6 where
 
 --In this example, lift 'pow' defined in  'sq'
 
-sumSquares x y = sq x + sq y        
-           where 
+sumSquares x y = sq x + sq y
+           where
                  sq::Int->Int
                  sq 0 = 0
                  sq z = z^pow
-                      where pow=2                
+                      where pow=2
 
 anotherFun 0 y = sq y
      where sq x=x^2

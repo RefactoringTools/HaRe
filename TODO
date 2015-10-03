@@ -37,10 +37,10 @@ Can a lense be used to present the pfe parse tree as if it were the
 
 From "Technical Report - Porting HaRe to the GHC API":
 
-The porting process was centered on four modules, 
+The porting process was centered on four modules,
   RefacLocUtils.hs,
-  RefacUtils.hs, 
-  RefacTypeSyn.hs and 
+  RefacUtils.hs,
+  RefacTypeSyn.hs and
   RefacUtils.hs
 
   RefacTypeUtils?
@@ -55,7 +55,7 @@ Dependencies
 
 ghc-mod
   ghc api
-  
+
 haskell-src-exts
   buildwrapper (also ghc-api)
 
@@ -161,7 +161,7 @@ full_tdTU (corresponds to)
 From GHC.SYB.Utils (ghc-syb-utils-0.2.1.0)
 everythingStaged :: Stage -> (r -> r -> r) -> r -> GenericQ r -> GenericQ rSource
    Like everything, but avoid known potholes, based on the Stage that
-   generated the Ast. 
+   generated the Ast.
 
 
 ------------------------------------------------------------------------
@@ -246,14 +246,14 @@ data ParsedModule Source
   The result of successful parsing.
 
   Constructors
-    ParsedModule	 
+    ParsedModule
 
      pm_mod_summary :: ModSummary
      pm_parsed_source :: ParsedSource
      pm_extra_src_files :: [FilePath]
 
 ---
- 
+
 The ModSummary holds compiler housekeeping information
 
 We will work with the ParsedSource, so it is always Located.
@@ -292,11 +292,11 @@ HsBind RdrName = HsBindLR RdrName RdrName
 RenamedSource
   (HsGroup Name, [LImportDecl Name], Maybe [LIE Name], Maybe LHsDocString)
 
-HsGroup has 
+HsGroup has
   hs_valds :: HsValBinds Name
 
 HsValBinds has
-  ValBindsIn (LHsBindsLR Name Name) [LSig Name]	 
+  ValBindsIn (LHsBindsLR Name Name) [LSig Name]
   ValBindsOut [(RecFlag, LHsBinds Name)] [LSig Name]
 
 LHsBindsLR Name Name = Bag (LHsBindLR Name Name)
@@ -311,7 +311,7 @@ HsBindLR Name Name has
 
 --
 
-Look at using 
+Look at using
 
   modInfoLookupName :: GhcMonad m => ModuleInfo -> Name -> m (Maybe TyThing)
 

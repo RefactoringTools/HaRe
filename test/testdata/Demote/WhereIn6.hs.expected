@@ -8,7 +8,8 @@ module Demote.WhereIn6 where
 --This example also aims to test the removing of parameters and parentheses.
 
 fun x y z =inc addthree
-       where inc a =a +1
+       where addthree=x+y+z
 
-             addthree      =x+y+z
+             inc a =a +1
+
 

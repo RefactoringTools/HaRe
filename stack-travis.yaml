@@ -1,0 +1,23 @@
+flags: {}
+packages:
+- '.'
+- location:
+    git: https://github.com/alanz/ghc-mod.git
+    commit: e325b5db30b0381c7c9ab1ef8acf9e5a2b5dd61d
+  extra-dep: true
+- location:
+    git: https://github.com/DanielG/cabal-helper.git
+    commit: c2f6a2e5bf40f9e4cb9276bcc9b58ec3627f727a
+  extra-dep: true
+# - location:
+#     git: https://github.com/alanz/ghc-exactprint.git
+#     commit: 29d9b6e27addf732d5fe8277ec8ed16573f6d47b
+#   extra-dep: true
+extra-deps:
+- Strafunski-StrategyLib-5.0.0.8
+- cabal-helper-0.6.0.0
+# - ghc-mod-5.4.0.0
+- rosezipper-0.2
+- syz-0.2.0.0
+- ghc-exactprint-0.4.1.0
+resolver: lts-3.7

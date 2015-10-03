@@ -13,6 +13,17 @@
 
 Note: The current version (0.7.2.8) does not install with GHC 7.8.x
 
+Note 2: GHC 7.10 RC2 is very fresh, not all the required dependencies
+are on hackage.
+
+The best guideline to getting going is to use the `mkdeps.sh` script
+in this directory, which assumes that
+
+  * https://github.com/alanz/hslogger [master branch]
+  * https://github.com/alanz/ghc-mod  [ghc-7.10 branch]
+
+have been cloned in the relative paths specified.
+
 ## Roadmap
 
 The token management utilities [haskell-token-utils](https://github.com/alanz/haskell-token-utils)
@@ -24,6 +35,7 @@ basis of the new token management, based on
 
 For coming changes in GHC 7.10, see
 
+  * https://ghc.haskell.org/trac/ghc/wiki/ApiAnnotations
   * https://ghc.haskell.org/trac/ghc/wiki/GhcApi
   * https://ghc.haskell.org/trac/ghc/wiki/GhcAstAnnotations
 

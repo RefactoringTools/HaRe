@@ -10,9 +10,7 @@ foo a = (baz x a)
     y :: Int -> Int -> Int
     y a b = undefined
 
+baz :: Int -> Int -> Int
+baz x a = x  + a
 
-
-
-baz:: Int -> Int ->Int
-baz x a= x  + a
 

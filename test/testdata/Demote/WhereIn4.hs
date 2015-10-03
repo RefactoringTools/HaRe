@@ -8,7 +8,7 @@ module Demote.WhereIn4 where
 --In this case (there is single matches), if possible,
 --the parameters will be folded after demoting and type sigature will be removed.
 
-sumSquares x y = sq p x + sq p y       
+sumSquares x y = sq p x + sq p y
          where p=2  {-There is a comment-}
 
 sq::Int->Int->Int

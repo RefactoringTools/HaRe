@@ -16,4 +16,3 @@ h :: Int
 t :: Int
 tup :: (Int,Int)
 tup@(h,t) = head $ zip [1..10] [3..15]
-

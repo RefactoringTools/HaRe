@@ -1,10 +1,10 @@
 module LiftToToplevel.D3 where
 
-{-lift 'sq' to top level. This refactoring only affects the 
+{-lift 'sq' to top level. This refactoring only affects the
   current module. -}
- 
+
 sumSquares (x:xs) = sq x + sumSquares xs
-  where 
+  where
      sq x = x ^ pow
 
 sumSquares [] = 0

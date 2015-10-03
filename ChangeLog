@@ -1,3 +1,6 @@
+2015-09-25 v0.8.0.0
+	* Major rework, replacing haskell-token-utils with ghc-exactprint
+	* Now supports GHC 7.10.2 and up. ONLY.
 2014-10-13 v0.7.2.8
 	lower bounds on parsec and haskell-token-utils
 2014-08-20 v0.7.2.7
@@ -87,18 +90,18 @@
 	* Now able to get tokens for a file pre-processed with CPP. But it
 	is the pre-processed output, so the CPP directives are stripped
 	out when writing out the refactored source.
-	
+
 2013-09-11  v0.7.0.4
 	* Correct Haddock compile error. Close #4
 	* hsWithBndrs only exists for GHC > 7.4.x
 2013-09-10  v0.7.0.3
-	
+
 	* Fix elisp, would not commit refactoring due to missing methods
-	
+
 2013-09-08  v0.7.0.2
 
 	* Fix issue #3: ifToCase formatting
-	
+
 2013-09-05  v0.7.0.1
 
 	* Fix issue #2: elisp

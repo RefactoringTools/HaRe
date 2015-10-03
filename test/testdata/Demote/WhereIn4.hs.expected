@@ -8,10 +8,10 @@ module Demote.WhereIn4 where
 --In this case (there is single matches), if possible,
 --the parameters will be folded after demoting and type sigature will be removed.
 
-sumSquares x y = sq   x + sq   y
-         where p=2  {-There is a comment-}
+sumSquares x y = sq x + sq y
+         where sq z = z^p  --there is a comment
 
-               sq z     = z^p    --there is a comment
+               p=2  {-There is a comment-}
 
 anotherFun 0 y = sq y
      where  sq x = x^2
