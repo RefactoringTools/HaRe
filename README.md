@@ -1,4 +1,4 @@
-# <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
+## <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
 
 HaRe can rename symbols, lift definitions, convert equivalent Haskell
 constructs like ifs and cases and more while preserving program
@@ -22,7 +22,7 @@ Note:
   * GHC version 7.8.x is NOT supported, and never will be
   * GHC version 7.10.2 and up is supported for HaRe >= 0.8.0.0
 
-## Limitations
+### Limitations
 
 HaRe will only work for projects using GHC 7.10.2 for compilation. Compiling
 HaRe with 7.10.2 and then using it against projects using an earlier compiler
@@ -30,7 +30,7 @@ will not work, as HaRe needs to be able to invoke GHC to the type checker stage
 on the project using GHC 7.10.2.
 
 
-## Getting Started
+### Getting Started
 
     cabal install HaRe
 
@@ -41,7 +41,7 @@ Check that it works from the command line
 
 Running the bare command lists available refactorings and their parameters
 
-### Emacs integration
+#### Emacs integration
 
 Currently only emacs integration is offered. Add the following to your
 ~/.emacs using the load-path entry that matches the installation on
@@ -102,7 +102,7 @@ This allows a sequence of refactorings to be undone manually if
 required. In theory.
 
 
-## Development & Support
+### Development & Support
 
 Join in at `#haskell-refactorer` on freenode.
 
@@ -110,7 +110,7 @@ Note: (2015-10-04) HaRe cannot be tested using stack. It can be built, but the t
 fail, as HaRe makes use of ghc-mod as a library and the interaction between
 stack, ghc-mod and cabal-helper does not work for the tests.
 
-### Running test suite
+#### Running test suite
 
 To run the test suite do:
 
@@ -124,7 +124,7 @@ See <http://hspec.github.com/> for details on hspec
 
 see <http://travis-ci.org/#alanz/HaRe> for continuous build results
 
-## Resources
+### Resources
 
   * [GHC chapter](http://aosabook.org/en/ghc.html) of
     [AOSA](http://aosabook.org "Architecture of Open Source
@@ -135,12 +135,12 @@ see <http://travis-ci.org/#alanz/HaRe> for continuous build results
     The background to how the dual tree data structure used for token
     output works
 
-## Coding style
+### Coding style
 
 Contributors: please try to follow https://github.com/tibbe/haskell-style-guide
 Note:A consistent coding layout style is more important than what specific on is used.
 
-## Contributors
+### Contributors
 
  * Simon Thompson
  * Christopher Brown
@@ -149,7 +149,7 @@ Note:A consistent coding layout style is more important than what specific on is
 
 Please put a pull request for this list if you are missing.
 
-## Logo
+### Logo
 
 <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg"
 width="400" height="300" />
