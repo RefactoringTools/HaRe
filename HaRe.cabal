@@ -39,6 +39,9 @@ Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
+
+tested-with:                    GHC == 7.10.2
+
 data-files:                     elisp/*.el
                                 configure.sh
                                 test/testdata/*.cabal
@@ -104,7 +107,8 @@ data-Dir:                       .
 extra-source-files:             ChangeLog
 
 Library
-        Build-Depends:          base >= 4.0  && < 4.9
+        -- GHC 7.10.2 ships with base 4.8.1.0
+        Build-Depends:          base >= 4.8.1.0  && < 4.9
                                 , containers
                                 , directory
 
@@ -194,7 +198,8 @@ Executable ghc-hare
            , Language.Haskell.Refact.Utils.Variables
            , Paths_HaRe
 
-        Build-Depends:          base >= 4.0  && < 4.9
+        -- GHC 7.10.2 ships with base 4.8.1.0
+        Build-Depends:          base >= 4.8.1.0  && < 4.9
                                 , array
                                 , containers
                                 , directory
@@ -262,7 +267,8 @@ test-suite spec
     , TypeUtilsSpec
     , UtilsSpec
   build-depends:
-      base        >= 4.0  && < 4.9
+      -- GHC 7.10.2 ships with base 4.8.1.0
+      base        >= 4.8.1.0  && < 4.9
     , Diff >= 0.3.0
     , HUnit
     , QuickCheck  >= 2.5
