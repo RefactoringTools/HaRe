@@ -3713,7 +3713,7 @@ spec = do
 
   describe "name predicates" $ do
     it "classifies names" $ do
-      t <- ct $ parsedFileGhc "./Con.hs"
+      t <- ct $ parsedFileGhc "./Cons.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let Just (GHC.L _ n1) = locToName (3,6) renamed
       let Just (GHC.L _ n2) = locToName (3,12) renamed
