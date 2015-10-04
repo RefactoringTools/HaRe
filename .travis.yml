@@ -21,12 +21,14 @@ addons:
   apt:
     sources:
     - hvr-ghc
+    - cassou-emacs
     packages:
     - libgmp-dev
     - cabal-install-1.22
     - happy-1.19.4
     - alex-3.1.3
     - ghc-7.10.2
+    - emacs24
 
 # matrix:
 #   allow_failures:
@@ -81,6 +83,8 @@ script:
  - cabal haddock
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
+ - emacs --version
+ - emacs -Q --batch -L elisp -l elisp/tests/hare-tests.el -f ert-run-tests-batch-and-exit
 
 # The following scriptlet checks that the resulting source distribution can be built & installed
  # - export SRC_TGZ=$(cabal info . | awk '{print $2 ".tar.gz";exit}') ;
