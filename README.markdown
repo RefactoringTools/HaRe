@@ -1,4 +1,9 @@
-# HaRe : The Haskell Refactorer
+# <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
+
+HaRe can rename symbols, lift definitions, convert equivalent Haskell
+constructs like ifs and cases and more while preserving program
+semantics, types and correctly handling indentation. Only HaRe can
+execute identity transformation!
 
 [![Available on Hackage][badge-hackage]][hackage]
 [![License BSD3][badge-license]][license]
