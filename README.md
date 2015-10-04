@@ -145,7 +145,7 @@ Note:A consistent coding layout style is more important than what specific on is
  * Alan Zimmerman
  * Christopher Brown
  * Francisco Soares
- * Gracjan Polack
+ * Gracjan Polak
  * Harald Jagenteufel
  * Huiqing Li
  * Matthew Pickering
