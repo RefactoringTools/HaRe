@@ -168,7 +168,8 @@ Library
            , Language.Haskell.Refact.Utils.Utils
            , Language.Haskell.Refact.Utils.Variables
            , Paths_HaRe
-
+        if impl (ghc < 7.10.2)
+            buildable: False
 
 
 Executable ghc-hare
@@ -233,7 +234,8 @@ Executable ghc-hare
                                 -- , Paths_HaRe
                                 , HaRe >= 0.8
         Extensions:      CPP
-
+        if impl (ghc < 7.10.2)
+            buildable: False
 
 test-suite spec
   type:
@@ -309,7 +311,8 @@ test-suite spec
     -- , haskell-token-utils >= 0.0.0.6
     , HaRe >= 0.8
   Extensions:      CPP
-
+  if impl (ghc < 7.10.2)
+    buildable: False
 
 -- test-suite doctests
 --   type:          exitcode-stdio-1.0
