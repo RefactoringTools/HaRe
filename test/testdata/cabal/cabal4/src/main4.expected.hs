@@ -8,4 +8,4 @@ import Text.Parsec.Char
 
 main = putStrLn "foo"
 
-baz = 3 + B.baz
+baz = 3 + B.baz1

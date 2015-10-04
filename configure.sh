@@ -11,3 +11,4 @@ cabal clean && cabal configure  --enable-tests --disable-optimization
 (cd test/testdata/cabal/cabal2 && cabal clean && cabal configure)
 (cd test/testdata/cabal/cabal3 && cabal clean && cabal configure)
 (cd test/testdata/cabal/cabal4 && cabal clean && cabal configure)
+(cd test/testdata/cabal/foo    && cabal clean && cabal configure)

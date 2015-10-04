@@ -485,11 +485,9 @@ spec = do
     -- ---------------------------------
 
     it "renames in lib and in main 2" $ do
-     pendingWith "reinstate once wip commit done"
-  {-
      let ctf = cdAndDo "./test/testdata/cabal/foo"
      r <- ctf $ rename defaultTestSettings testOptions  "./src/Foo/Bar.hs" "bar1" (3,1)
-     -- r <- cdAndDo "./test/testdata/cabal/foo" $ rename logTestSettings testOptions  "./src/Foo/Bar.hs" "baz1" (3,1)
+     -- r <- cdAndDo "./test/testdata/cabal/foo" $ rename logTestSettings testOptions  "./src/Foo/Bar.hs" "bar1" (3,1)
 
      r' <- ctf $ mapM makeRelativeToCurrentDirectory r
 
@@ -504,7 +502,7 @@ spec = do
      diffC <- ctf $ compareFiles "./src/Main.expected.hs"
                                  "./src/Main.refactored.hs"
      diffC `shouldBe` []
--}
+
     -- ---------------------------------
 
 {-

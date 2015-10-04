@@ -26,7 +26,6 @@ module Language.Haskell.Refact.API
        -- ** Managing the GHC / project environment
        , parseSourceFileGhc
        , getTargetGhc
-       , parseSourceFileGhc
 
        -- ** The bits that do the work
        , runRefacSession
@@ -104,6 +103,7 @@ module Language.Haskell.Refact.API
     -- ** Imports and exports
    , inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    , isExported, isExplicitlyExported, modIsExported
+   , equivalentNameInNewMod
 
     -- *** Variable analysis
     , isFieldName

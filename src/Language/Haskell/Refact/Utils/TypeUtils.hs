@@ -42,6 +42,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Imports and exports
     inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    , isExported, isExplicitlyExported, modIsExported
+   , equivalentNameInNewMod
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
@@ -234,7 +235,14 @@ isInScopeAndUnqualifiedGhc n maybeExising = do
 
 -- ---------------------------------------------------------------------
 
-inScopeNames :: String         -- ^ The identifier name.
+-- |Return all 'GHC.Name's that correspond to the given string, in the current
+-- module.
+
+-- Note: this returns a list because TH constructor names do not have the
+-- correct namespace so the two variants are returned, constructor and
+-- non-constructor. I suspect that when this is looked up only one will ever
+-- come through. Hence we should only ever see 0 or 1 names here.
+inScopeNames :: String               -- ^ The identifier name.
              -> RefactGhc [GHC.Name] -- ^ The result.
 inScopeNames n = do
   names <- ghandle handler (GHC.parseName n)
@@ -246,6 +254,21 @@ inScopeNames n = do
     handler e = do
       logm $ "inScopeNames.handler e=" ++ (show e)
       return []
+
+-- ---------------------------------------------------------------------
+
+-- |Given a 'GHC.Name' defined in one module, find the equivalent one in the
+-- currently loaded module. This is required otherwise name equality checking
+-- based on 'GHC.nameUnique' will fail.
+equivalentNameInNewMod :: GHC.Name -> RefactGhc [GHC.Name]
+equivalentNameInNewMod old = do
+  -- we have to do it this way otherwise names imported qualified will not be
+  -- detected
+  gnames <- GHC.getNamesInScope
+  let clientModule = GHC.nameModule old
+  let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
+  let newNames = filter (\n -> showGhcQual n == showGhcQual old) clientInscopes
+  return newNames
 
 -- ---------------------------------------------------------------------
 -- | Show a PName in a format like: 'pn'(at row:r, col: c).

@@ -3252,6 +3252,48 @@ spec = do
 
   -- ---------------------------------------------
 
+  describe "equivalentNameInNewMod" $ do
+    it "finds equivalent name for normal import" $ do
+      let
+        ctc = cdAndDo "./test/testdata/cabal/foo"
+      let
+        comp = do
+          parseSourceFileGhc "./src/Foo/Bar.hs"
+          renamed <- getRefactRenamed
+          let Just ((GHC.L _l old)) = locToName (3,1) renamed
+          parseSourceFileGhc "./src/Main.hs"
+          [equiv] <- equivalentNameInNewMod old
+          return (old,equiv)
+
+      ((o,e),_s) <- ctc $ runRefactGhc comp initialState testOptions
+      (showGhcQual (o,e)) `shouldBe` "(Foo.Bar.bar, Foo.Bar.bar)"
+      -- (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)) `shouldBe` ""
+      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
+
+    -- ---------------------------------
+
+    it "finds equivalent name for qualified import" $ do
+      let
+        ctc = cdAndDo "./test/testdata/cabal/cabal4"
+      let
+        comp = do
+          parseSourceFileGhc "./src/Foo/Bar.hs"
+          renamed <- getRefactRenamed
+          let Just ((GHC.L _l old)) = locToName (3,1) renamed
+          parseSourceFileGhc "./src/main4.hs"
+          [equiv] <- equivalentNameInNewMod old
+
+          parsed <- getRefactParsed
+          let Just ((GHC.L _l new)) = locToRdrName (11,12) parsed
+          return (old,equiv,new)
+
+      ((o,e,n),_s) <- ctc $ runRefactGhc comp initialState testOptions
+      (showGhcQual (o,e,n)) `shouldBe` "(Foo.Bar.baz, Foo.Bar.baz, B.baz)"
+      -- (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)) `shouldBe` ""
+      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
+
+  -- ---------------------------------------------
+
   describe "usedWithoutQualR" $ do
     it "Returns True if the identifier is used unqualified" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"

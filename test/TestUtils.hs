@@ -145,16 +145,6 @@ parseSourceFileTest fileName = do
 
 -- ---------------------------------------------------------------------
 
-fetchOrigToks :: RefactGhc [PosToken]
-fetchOrigToks = do
-  mtm <- gets rsModule
-  case mtm of
-    Nothing  -> return []
-    Just tm -> getRichTokenStreamWA $ GHC.ms_mod $ GHC.pm_mod_summary
-                                    $ GHC.tm_parsed_module $ rsTypecheckedMod tm
-
--- ---------------------------------------------------------------------
-
 initialState :: RefactState
 initialState = RefSt
   { rsSettings = defaultTestSettings
