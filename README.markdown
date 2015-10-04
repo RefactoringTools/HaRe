@@ -17,6 +17,14 @@ Note:
   * GHC version 7.8.x is NOT supported, and never will be
   * GHC version 7.10.2 and up is supported for HaRe >= 0.8.0.0
 
+## Limitations
+
+HaRe will only work for projects using GHC 7.10.2 for compilation. Compiling
+HaRe with 7.10.2 and then using it against projects using an earlier compiler
+will not work, as HaRe needs to be able to invoke GHC to the type checker stage
+on the project using GHC 7.10.2.
+
+
 ## Getting Started
 
     cabal install HaRe
