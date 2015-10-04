@@ -142,10 +142,14 @@ Note:A consistent coding layout style is more important than what specific on is
 
 ### Contributors
 
- * Simon Thompson
- * Christopher Brown
- * Huiqing Li
  * Alan Zimmerman
+ * Christopher Brown
+ * Francisco Soares
+ * Gracjan Polack
+ * Harald Jagenteufel
+ * Huiqing Li
+ * Matthew Pickering
+ * Simon Thompson
 
 Please put a pull request for this list if you are missing.
 
