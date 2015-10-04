@@ -14,7 +14,6 @@ cache:
 # See also https://github.com/hvr/multi-ghc-travis for more information
 env:
  - CABALVER=1.22 GHCVER=7.10.2
- # - CABALVER=head GHCVER=7.10.2
  # - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
 
 addons:
@@ -36,24 +35,8 @@ addons:
 
 # Note: the distinction between `before_install` and `install` is not important.
 before_install:
- # - travis_retry sudo add-apt-repository -y ppa:hvr/ghc
- # - travis_retry sudo apt-get update
- # - travis_retry sudo apt-get install cabal-install-$CABALVER ghc-$GHCVER # see note about happy/alex
- # - |
- #   if [ $GHCVER = "head" ] || [ ${GHCVER%.*} = "7.8" ] || [ ${GHCVER%.*} = "7.10" ]; then
- #     travis_retry sudo apt-get install happy-1.19.4 alex-3.1.3
  - export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:$PATH
- #   else
- #     travis_retry sudo apt-get install happy alex
- #   fi
  - export PATH=/opt/ghc/$GHCVER/bin:/opt/cabal/$CABALVER/bin:$PATH
- # - |
- #   if [ $GHCVER = "head" ] || [ ${GHCVER%.*} = "7.8" ] || [ ${GHCVER%.*} = "7.10" ]; then
- #     travis_retry sudo apt-get install happy-1.19.4 alex-3.1.3
- #     export PATH=/opt/alex/3.1.3/bin:/opt/happy/1.19.4/bin:/opt/cabal/1.22/bin/cabal:$PATH
- #   else
- #     travis_retry sudo apt-get install happy alex
- #   fi
 
 install:
  - cabal --version
@@ -62,12 +45,10 @@ install:
  # - |
  #   git clone https://github.com/alanz/ghc-exactprint.git
  #   (cd ghc-exactprint && git checkout wip && cabal install)
-   # (cd ghc-exactprint && git checkout wip-generic && cabal install)
-   # (cd ghc-exactprint && git checkout wrapped-decl2 && cabal install)
- - |
-   # git clone https://github.com/alanz/ghc-mod.git
-   # (cd ghc-mod && git checkout master && cabal install)
-   # (cd ghc-mod && git checkout az-temp && cabal install)
+ # - |
+ #   git clone https://github.com/alanz/ghc-mod.git
+ #   (cd ghc-mod && git checkout master && cabal install)
+ #   (cd ghc-mod && git checkout az-temp && cabal install)
  - pwd
  - cabal install --dependencies-only --enable-tests
 
@@ -79,8 +60,8 @@ script:
  # GHC 7.10.2 times out on compilation if optimisation is not disabled
  - cabal configure --disable-optimization --enable-tests --enable-benchmarks -v2  # -v2 provides useful information for debugging
  - cabal build   # this builds all libraries and executables (including tests/benchmarks)
- - cabal test --show-details=streaming
  - cabal haddock
+ - cabal test --show-details=streaming
  - cabal check
  - cabal sdist   # tests that a source-distribution can be generated
  - emacs --version
