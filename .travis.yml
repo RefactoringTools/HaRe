@@ -8,6 +8,7 @@ cache:
   # - $HOME/.stack
   - $HOME/.ghc
   - $HOME/.cabal
+  - $HOME/.ghc-mod
   # - /opt
 
 # See also https://github.com/hvr/multi-ghc-travis for more information

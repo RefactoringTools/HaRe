@@ -1,6 +1,7 @@
-2015-09-25 v0.8.0.0
+2015-10-04 v0.8.0.0
 	* Major rework, replacing haskell-token-utils with ghc-exactprint
 	* Now supports GHC 7.10.2 and up. ONLY.
+	* Functionally equivalent to v0.7.2.8
 2014-10-13 v0.7.2.8
 	lower bounds on parsec and haskell-token-utils
 2014-08-20 v0.7.2.7

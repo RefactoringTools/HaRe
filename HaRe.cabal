@@ -13,7 +13,7 @@ Description:
    .
    Version 0.7.2.8 supports up to GHC 7.6.3.
    .
-   There is not support for GHC 7.8.x.
+   There is no support for GHC 7.8.x. There will never be support for GHC 7.8.x
    .
    From version 0.8.0.0, GHC 7.10.2 is supported.
    .
@@ -165,9 +165,8 @@ Executable ghc-hare
                                 , ghc-exactprint >= 0.4.1
                                 , monad-control
                                 , Cabal >= 1.22
-                                -- , uniplate
                                 -- , Paths_HaRe
-                                -- , HaRe >= 0.8
+                                , HaRe >= 0.8
         Extensions:      CPP
 
 

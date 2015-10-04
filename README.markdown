@@ -11,33 +11,11 @@
 [badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
 [license]: https://github.com/alanz/HaRe/blob/master/LICENSE
 
-Note: The current version (0.7.2.8) does not install with GHC 7.8.x
+Note:
 
-Note 2: GHC 7.10 RC2 is very fresh, not all the required dependencies
-are on hackage.
-
-The best guideline to getting going is to use the `mkdeps.sh` script
-in this directory, which assumes that
-
-  * https://github.com/alanz/hslogger [master branch]
-  * https://github.com/alanz/ghc-mod  [ghc-7.10 branch]
-
-have been cloned in the relative paths specified.
-
-## Roadmap
-
-The token management utilities [haskell-token-utils](https://github.com/alanz/haskell-token-utils)
-are too brittle, and will not be updated for GHC 7.8.x and beyond.
-
-There are substantial changes coming in GHC 7.10, which will form the
-basis of the new token management, based on
-[ghc-exactprint](https://github.com/alanz/ghc-exactprint)
-
-For coming changes in GHC 7.10, see
-
-  * https://ghc.haskell.org/trac/ghc/wiki/ApiAnnotations
-  * https://ghc.haskell.org/trac/ghc/wiki/GhcApi
-  * https://ghc.haskell.org/trac/ghc/wiki/GhcAstAnnotations
+  * GHC versions up to 7.6.3 are supported via HaRe version 0.7.2.8
+  * GHC version 7.8.x is NOT supported, and never will be
+  * GHC version 7.10.2 and up is supported for HaRe >= 0.8.0.0
 
 ## Getting Started
 
@@ -46,7 +24,7 @@ For coming changes in GHC 7.10, see
 Check that it works from the command line
 
     $ ghc-hare --version
-    0.7.2.x
+    0.8.0.x
 
 Running the bare command lists available refactorings and their parameters
 
@@ -56,10 +34,7 @@ Currently only emacs integration is offered. Add the following to your
 ~/.emacs using the load-path entry that matches the installation on
 your machine.
 
-    (add-to-list 'load-path
-        "~/.cabal/share/HaRe-0.7.2.2/elisp")
-    (add-to-list 'load-path
-        "~/.cabal/share/i386-linux-ghc-7.6.3/HaRe-0.7.2.2/elisp")
+    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.0.0/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 
@@ -118,19 +93,19 @@ required. In theory.
 
 Join in at `#haskell-refactorer` on freenode.
 
-### Developing in sandbox with haskell-token-utils locally
-
-    cabal clean
-    cabal sandbox init
-    # Next line assumes haskell-token-utils checked out at same level
-    cabal sandbox add-source ../haskell-token-utils/
-    cabal install --dependencies-only
+Note: (2015-10-04) HaRe cannot be tested using stack. It can be built, but the tests will
+fail, as HaRe makes use of ghc-mod as a library and the interaction between
+stack, ghc-mod and cabal-helper does not work for the tests.
 
 ### Running test suite
 
 To run the test suite do:
 
-    cabal configure --enable-tests && cabal build && cabal test
+    ./configure.sh
+    cabal test
+
+The `configure.sh` script simply makes sure that all the cabal projects used in
+the tests are also configured.
 
 See <http://hspec.github.com/> for details on hspec
 
