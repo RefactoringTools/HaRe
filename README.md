@@ -37,7 +37,7 @@ on the project using GHC 7.10.2.
 Check that it works from the command line
 
     $ ghc-hare --version
-    0.8.0.x
+    0.8.x.y
 
 Running the bare command lists available refactorings and their parameters
 
@@ -47,7 +47,7 @@ Currently only emacs integration is offered. Add the following to your
 ~/.emacs using the load-path entry that matches the installation on
 your machine.
 
-    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.0.0/elisp")
+    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.1.0/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 
