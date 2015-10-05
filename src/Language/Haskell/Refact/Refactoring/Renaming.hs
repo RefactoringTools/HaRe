@@ -215,34 +215,37 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
       -- logm $ "renameInClientMod:(newNamesUnqual,oldPN)=" ++ showGhcQual (newNamesUnqual,oldPN)
       -- logm $ "renameInClientMod:(newNames,oldPN)=" ++ showGhcQual (newNames,oldPN)
       -- logm $ "renameInClientMod:(uniques:newNames,oldPN)=" ++ showGhcQual (map GHC.nameUnique newNames,GHC.nameUnique oldPN)
-      let oldNameGhc = case newNames of
-            [n] -> n
-            ns  -> error $ "HaRe:renameInClientMod:could not find name to replace,got:" ++ showGhcQual ns
+      case newNames of
+        []        -> return []
+        [oldName] -> doRenameInClientMod oldName modName renamed
+        ns  -> error $ "HaRe:renameInClientMod:could not find name to replace,got:" ++ showGhcQual ns
 
-      -- There are two different tests we need to do here
-      -- 1. Does the new name clash with some existing name in the
-      --    client mod, in which case it must be qualified
-      -- 2. Is the new name module imported qualified, and so needs to
-      --    be qualified in the replacement, according to the import
-      isInScopeUnqual    <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
-      isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName              Nothing
-      logm $ "renameInClientMod: (isInScopeAndUnqual,isInScopeUnqualNew)=" ++ (show (isInScopeUnqual,isInScopeUnqualNew)) -- ++AZ++
-      if isInScopeUnqualNew -- ++AZ++: should this be negated?
-       then
-        do
-           -- (refactoredMod,_) <- applyRefac (refactRenameSimple oldPN newName newNameGhc True) RSAlreadyLoaded
-           (refactoredMod,_) <- applyRefac (refactRenameSimple oldNameGhc newName newNameGhc True) RSAlreadyLoaded
-           return [refactoredMod]
-       else
-        do
-           if causeNameClashInExports oldPN newNameGhc modName renamed
-             then error $"The new name will cause conflicting exports in module "++ show newName ++ ", please select another name!"
-             else do
-               -- (refactoredMod,_) <- applyRefac (refactRenameComplex oldPN newName newNameGhc) RSAlreadyLoaded
-               (refactoredMod,_) <- applyRefac (refactRenameComplex oldNameGhc newName newNameGhc) RSAlreadyLoaded
-               -- TODO: implement rest of this
-               return [refactoredMod]
   where
+     doRenameInClientMod oldNameGhc modName renamed = do
+        -- There are two different tests we need to do here
+        -- 1. Does the new name clash with some existing name in the
+        --    client mod, in which case it must be qualified
+        -- 2. Is the new name module imported qualified, and so needs to
+        --    be qualified in the replacement, according to the import
+        isInScopeUnqual    <- isInScopeAndUnqualifiedGhc (nameToString oldPN) Nothing
+        isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName              Nothing
+        logm $ "renameInClientMod: (isInScopeAndUnqual,isInScopeUnqualNew)=" ++ (show (isInScopeUnqual,isInScopeUnqualNew)) -- ++AZ++
+        if isInScopeUnqualNew -- ++AZ++: should this be negated?
+         then
+          do
+             -- (refactoredMod,_) <- applyRefac (refactRenameSimple oldPN newName newNameGhc True) RSAlreadyLoaded
+             (refactoredMod,_) <- applyRefac (refactRenameSimple oldNameGhc newName newNameGhc True) RSAlreadyLoaded
+             return [refactoredMod]
+         else
+          do
+             if causeNameClashInExports oldPN newNameGhc modName renamed
+               then error $"The new name will cause conflicting exports in module "++ show newName ++ ", please select another name!"
+               else do
+                 -- (refactoredMod,_) <- applyRefac (refactRenameComplex oldPN newName newNameGhc) RSAlreadyLoaded
+                 (refactoredMod,_) <- applyRefac (refactRenameComplex oldNameGhc newName newNameGhc) RSAlreadyLoaded
+                 -- TODO: implement rest of this
+                 return [refactoredMod]
+
      refactRenameSimple :: GHC.Name -> String -> GHC.Name -> Bool -> RefactGhc ()
      refactRenameSimple old newStr new useQual = do
        logm $ "refactRenameSimple:(old,newStr,new,useQual)=" ++ showGhc (old,newStr,new,useQual)
