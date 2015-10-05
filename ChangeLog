@@ -1,3 +1,9 @@
+2015-10-05 v0.8.1.0
+	* Reinstate processing of CPP directives as comments #36
+	* Fix problem in renaming in a client module when the old name is
+	not in scope in the client module. #35
+	* No longer mark a client module as refactored if no renaming
+	takes place in it.
 2015-10-04 v0.8.0.0
 	* Major rework, replacing haskell-token-utils with ghc-exactprint
 	* Now supports GHC 7.10.2 and up. ONLY.
