@@ -401,7 +401,7 @@ spec = do
          return g
       (mg,_s) <- runRefactGhc comp initialState testOptions
       -- (mg,_s) <- runRefactGhc comp initialLogOnState testOptions
-      showGhc (map GM.mpModule mg) `shouldBe` "[Main, Main, Language.Haskell.Refact.API,\n Language.Haskell.Refact.HaRe,\n Language.Haskell.Refact.Refactoring.Case,\n Language.Haskell.Refact.Refactoring.DupDef,\n Language.Haskell.Refact.Refactoring.MoveDef,\n Language.Haskell.Refact.Refactoring.Renaming,\n Language.Haskell.Refact.Refactoring.RoundTrip,\n Language.Haskell.Refact.Refactoring.SwapArgs,\n Language.Haskell.Refact.Refactoring.Simple, CaseSpec, DupDefSpec,\n GhcUtilsSpec, MoveDefSpec, RenamingSpec, RoundTripSpec, SimpleSpec,\n SwapArgsSpec, TypeUtilsSpec, UtilsSpec]"
+      show (sort $ map GM.mpModule mg) `shouldBe` "[ModuleName \"Language.Haskell.Refact.API\",ModuleName \"Language.Haskell.Refact.HaRe\",ModuleName \"Language.Haskell.Refact.Refactoring.Case\",ModuleName \"Language.Haskell.Refact.Refactoring.DupDef\",ModuleName \"Language.Haskell.Refact.Refactoring.MoveDef\",ModuleName \"Language.Haskell.Refact.Refactoring.Renaming\",ModuleName \"Language.Haskell.Refact.Refactoring.RoundTrip\",ModuleName \"Language.Haskell.Refact.Refactoring.SwapArgs\",ModuleName \"Language.Haskell.Refact.Refactoring.Simple\",ModuleName \"MoveDefSpec\",ModuleName \"Main\",ModuleName \"Main\",ModuleName \"CaseSpec\",ModuleName \"DupDefSpec\",ModuleName \"GhcUtilsSpec\",ModuleName \"RenamingSpec\",ModuleName \"RoundTripSpec\",ModuleName \"SimpleSpec\",ModuleName \"SwapArgsSpec\",ModuleName \"TypeUtilsSpec\",ModuleName \"UtilsSpec\"]"
 
 
   -- -------------------------------------------------------------------
