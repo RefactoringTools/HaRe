@@ -21,7 +21,6 @@ module Language.Haskell.Refact.Utils.Utils
        , refactDone
 
        , Update(..)
-       -- , fileNameToModName
        , fileNameFromModSummary
        , getModuleName
        , clientModsAndFiles
@@ -251,7 +250,7 @@ applyRefac refac source = do
 
     res <- refac  -- Run the refactoring, updating the state as required
 
-    mod'   <- getRefactParsed
+    mod' <- getRefactParsed
     anns <- fetchAnnsFinal
     m    <- getRefactStreamModified
 

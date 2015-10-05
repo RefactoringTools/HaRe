@@ -55,7 +55,6 @@ spec = do
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
      r' `shouldBe` [ "Renaming/D2.hs"
-                   , "Renaming/A2.hs"
                    , "Renaming/B2.hs"
                    , "Renaming/C2.hs"
                    ]
@@ -72,10 +71,6 @@ spec = do
                                 "./Renaming/B2.refactored.hs"
      diffB `shouldBe` []
 
-     -- diffA <- ct $ compareFiles "./Renaming/A2.hs.expected"
-     --                            "./Renaming/A2.refactored.hs"
-     -- diffA `shouldBe` []
-
     -- ---------------------------------
 
     it "renames in D3 B3 C3 A3 12 7" $ do
@@ -85,7 +80,6 @@ spec = do
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
      r' `shouldBe` [ "Renaming/D3.hs"
-                   , "Renaming/A3.hs"
                    , "Renaming/B3.hs"
                    , "Renaming/C3.hs"
                    ]
@@ -101,10 +95,6 @@ spec = do
      diffB <- ct $ compareFiles "./Renaming/B3.hs.expected"
                                 "./Renaming/B3.refactored.hs"
      diffB `shouldBe` []
-
-     -- diffA <- ct $ compareFiles "./Renaming/A3.hs.expected"
-     --                            "./Renaming/A3.refactored.hs"
-     -- diffA `shouldBe` []
 
     -- ---------------------------------
 
@@ -596,7 +586,17 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
                                "./Renaming/RenameInExportedType2.expected.hs"
      diff `shouldBe` []
 
+    -- -----------------------------------------------------------------
 
+{-
+    it "renames in slack-api" $ do
+     let cts = cdAndDo "/home/alanz/tmp/hackage/slack-api-0.6"
+     r <- cts $ rename defaultTestSettings testOptions "./src/Web/Slack/Utils.hs" "anyName" (14,1)
+     -- cdAndDo "/home/alanz/tmp/hackage/slack-api-0.6" $ rename logTestSettings testOptions "./src/Web/Slack/Utils.hs" "anyName" (14,1)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
+-}
 
 -- ---------------------------------------------------------------------
 -- Helper functions

@@ -118,6 +118,7 @@ getRefactStreamModified = do
 -- |For testing
 setRefactStreamModified :: RefacResult -> RefactGhc ()
 setRefactStreamModified rr = do
+  logm $ "setRefactStreamModified:rr=" ++ show rr
   st <- get
   let (Just tm) = rsModule st
   put $ st { rsModule = Just (tm { rsStreamModified = rr })}
@@ -153,6 +154,7 @@ getRefactParsed = do
 
 putRefactParsed :: GHC.ParsedSource -> Anns -> RefactGhc ()
 putRefactParsed parsed newAnns = do
+  logm $ "putRefactParsed:setting rsStreamModified"
   st <- get
   mrm <- gets rsModule
   let rm = gfromJust "putRefactParsed" mrm
@@ -183,6 +185,7 @@ setRefactAnns anns = modifyRefactAnns (const anns)
 -- RefactGhc state.
 modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do
+  logm $ "modifyRefactAnns:setting rsStreamModified"
   st <- get
   mrm <- gets rsModule
   let rm = gfromJust "modifyRefactAnns" mrm

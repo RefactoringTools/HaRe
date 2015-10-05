@@ -188,6 +188,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                                r' <- getRefactRenamed
                                                return r'
 
+-- ---------------------------------------------------------------------
 
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
                   -> RefactGhc [ApplyRefacResult]
@@ -217,7 +218,12 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
       -- logm $ "renameInClientMod:(uniques:newNames,oldPN)=" ++ showGhcQual (map GHC.nameUnique newNames,GHC.nameUnique oldPN)
       case newNames of
         []        -> return []
-        [oldName] -> doRenameInClientMod oldName modName renamed
+        [oldName] ->
+          if findPN oldName renamed
+             then doRenameInClientMod oldName modName renamed
+             else do
+               logm $ "renameInClientMod:name not present in module, returning"
+               return []
         ns  -> error $ "HaRe:renameInClientMod:could not find name to replace,got:" ++ showGhcQual ns
 
   where
