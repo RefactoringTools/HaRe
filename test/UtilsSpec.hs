@@ -401,7 +401,7 @@ spec = do
          return g
       (mg,_s) <- runRefactGhc comp initialState testOptions
       -- (mg,_s) <- runRefactGhc comp initialLogOnState testOptions
-      showGhc (map GM.mpModule mg) `shouldBe` "[Language.Haskell.Refact.API, Language.Haskell.Refact.HaRe,\n Language.Haskell.Refact.Refactoring.Case,\n Language.Haskell.Refact.Refactoring.DupDef,\n Language.Haskell.Refact.Refactoring.MoveDef,\n Language.Haskell.Refact.Refactoring.Renaming,\n Language.Haskell.Refact.Refactoring.RoundTrip,\n Language.Haskell.Refact.Refactoring.SwapArgs,\n Language.Haskell.Refact.Refactoring.Simple, UtilsSpec, Main, Main,\n CaseSpec, DupDefSpec, GhcUtilsSpec, MoveDefSpec, RenamingSpec,\n RoundTripSpec, SimpleSpec, SwapArgsSpec, TypeUtilsSpec]"
+      showGhc (map GM.mpModule mg) `shouldBe` "[Main, Main, Language.Haskell.Refact.API,\n Language.Haskell.Refact.HaRe,\n Language.Haskell.Refact.Refactoring.Case,\n Language.Haskell.Refact.Refactoring.DupDef,\n Language.Haskell.Refact.Refactoring.MoveDef,\n Language.Haskell.Refact.Refactoring.Renaming,\n Language.Haskell.Refact.Refactoring.RoundTrip,\n Language.Haskell.Refact.Refactoring.SwapArgs,\n Language.Haskell.Refact.Refactoring.Simple, CaseSpec, DupDefSpec,\n GhcUtilsSpec, MoveDefSpec, RenamingSpec, RoundTripSpec, SimpleSpec,\n SwapArgsSpec, TypeUtilsSpec, UtilsSpec]"
 
 
   -- -------------------------------------------------------------------
