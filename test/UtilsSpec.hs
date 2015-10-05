@@ -25,6 +25,8 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
+import Language.Haskell.Refact.Refactoring.RoundTrip
+
 import System.Directory
 
 -- ---------------------------------------------------------------------
@@ -81,7 +83,18 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (showGhc parsed) `shouldBe` "module BCpp where\nbob :: Int -> Int -> Int\nbob x y = x + y"
 
-  -- -----------------------------------
+     -- ---------------------------------
+
+    it "refactors a file having the LANGUAGE CPP pragma" $ do
+      r <- ct $ roundTrip defaultTestSettings testOptions "BCpp.hs"
+      -- r <- ct $ roundTrip logTestSettings testOptions "BCpp.hs"
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["BCpp.hs"]
+      diff <- compareFiles "./test/testdata/BCpp.refactored.hs"
+                           "./test/testdata/BCpp.hs"
+      diff `shouldBe` []
+
+    -- ---------------------------------
 
     it "loads a series of files based on cabal1" $ do
 
@@ -377,6 +390,22 @@ spec = do
 
       setCurrentDirectory currentDir
 
+    ------------------------------------
+
+    it "gets modules for HaRe" $ do
+      {-
+      let
+        comp = do
+         parseSourceFileGhc "src/Language/Haskell/Refact/Utils/TypeUtils.hs" -- Load the file first
+         tm <- getRefactTargetModule
+         g <- clientModsAndFiles tm
+         return g
+      (mg,_s) <- runRefactGhc comp initialState testOptions
+      -- (mg,_s) <- runRefactGhc comp initialLogOnState testOptions
+      show (sort $ map GM.mpModule mg) `shouldBe` "[ModuleName \"Language.Haskell.Refact.API\",ModuleName \"Language.Haskell.Refact.HaRe\",ModuleName \"Language.Haskell.Refact.Refactoring.Case\",ModuleName \"Language.Haskell.Refact.Refactoring.DupDef\",ModuleName \"Language.Haskell.Refact.Refactoring.MoveDef\",ModuleName \"Language.Haskell.Refact.Refactoring.Renaming\",ModuleName \"Language.Haskell.Refact.Refactoring.RoundTrip\",ModuleName \"Language.Haskell.Refact.Refactoring.SwapArgs\",ModuleName \"Language.Haskell.Refact.Refactoring.Simple\",ModuleName \"MoveDefSpec\",ModuleName \"Main\",ModuleName \"Main\",ModuleName \"CaseSpec\",ModuleName \"DupDefSpec\",ModuleName \"GhcUtilsSpec\",ModuleName \"RenamingSpec\",ModuleName \"RoundTripSpec\",ModuleName \"SimpleSpec\",ModuleName \"SwapArgsSpec\",ModuleName \"TypeUtilsSpec\",ModuleName \"UtilsSpec\"]"
+    -}
+    pendingWith "make an equivalent test using testdata/cabal"
+
   -- -------------------------------------------------------------------
 
   describe "serverModsAndFiles" $ do
@@ -526,9 +555,9 @@ spec = do
 
   describe "RefactFlags" $ do
     it "puts the RefactDone flag through its paces" $ do
-      t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
       let
         comp = do
+          parseSourceFileGhc "./FreeAndDeclared/DeclareTypes.hs"
           v1 <- getRefactDone
           clearRefactDone
           v2 <- getRefactDone
@@ -536,7 +565,7 @@ spec = do
           v3 <- getRefactDone
 
           return (v1,v2,v3)
-      ((v1',v2',v3'), _s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t }) testOptions
+      ((v1',v2',v3'), _s) <- ct $ runRefactGhc comp initialState testOptions
 
       (show (v1',v2',v3')) `shouldBe` "(False,False,True)"
 

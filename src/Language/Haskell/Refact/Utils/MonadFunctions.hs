@@ -118,6 +118,7 @@ getRefactStreamModified = do
 -- |For testing
 setRefactStreamModified :: RefacResult -> RefactGhc ()
 setRefactStreamModified rr = do
+  logm $ "setRefactStreamModified:rr=" ++ show rr
   st <- get
   let (Just tm) = rsModule st
   put $ st { rsModule = Just (tm { rsStreamModified = rr })}
@@ -153,6 +154,7 @@ getRefactParsed = do
 
 putRefactParsed :: GHC.ParsedSource -> Anns -> RefactGhc ()
 putRefactParsed parsed newAnns = do
+  logm $ "putRefactParsed:setting rsStreamModified"
   st <- get
   mrm <- gets rsModule
   let rm = gfromJust "putRefactParsed" mrm
@@ -183,6 +185,7 @@ setRefactAnns anns = modifyRefactAnns (const anns)
 -- RefactGhc state.
 modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do
+  logm $ "modifyRefactAnns:setting rsStreamModified"
   st <- get
   mrm <- gets rsModule
   let rm = gfromJust "modifyRefactAnns" mrm
@@ -202,10 +205,10 @@ modifyAnns tk f = tk'
 
 -- ----------------------------------------------------------------------
 
-putParsedModule :: GHC.TypecheckedModule -> RefactGhc ()
-putParsedModule tm = do
+putParsedModule :: [Comment] -> GHC.TypecheckedModule -> RefactGhc ()
+putParsedModule cppComments tm = do
   st <- get
-  put $ st { rsModule = initRefactModule tm }
+  put $ st { rsModule = initRefactModule cppComments tm }
 
 clearParsedModule :: RefactGhc ()
 clearParsedModule = do
@@ -395,12 +398,12 @@ logParsedSource str = do
 
 -- ---------------------------------------------------------------------
 
-initRefactModule
-  :: GHC.TypecheckedModule -> Maybe RefactModule
-initRefactModule tm
+initRefactModule :: [Comment] -> GHC.TypecheckedModule -> Maybe RefactModule
+initRefactModule cppComments tm
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsNameMap = initRdrNameMap tm
-                 , rsTokenCache = initTokenCacheLayout (relativiseApiAnns
+                 , rsTokenCache = initTokenCacheLayout (relativiseApiAnnsWithComments
+                                     cppComments
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
                                     (GHC.pm_annotations $ GHC.tm_parsed_module tm))
                  , rsStreamModified = RefacUnmodifed

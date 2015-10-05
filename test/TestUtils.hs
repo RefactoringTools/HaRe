@@ -42,7 +42,6 @@ import qualified Name          as GHC
 -- import qualified Outputable    as GHC
 import qualified Unique        as GHC
 
-import Control.Monad.State
 import Data.Algorithm.Diff
 import Data.Data
 import Exception
@@ -53,7 +52,6 @@ import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Language.Haskell.GhcMod as GM
 import qualified Language.Haskell.GhcMod.Types as GM
-import Language.Haskell.Refact.Utils.GhcBugWorkArounds
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types

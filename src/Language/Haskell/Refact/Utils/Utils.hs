@@ -21,7 +21,6 @@ module Language.Haskell.Refact.Utils.Utils
        , refactDone
 
        , Update(..)
-       -- , fileNameToModName
        , fileNameFromModSummary
        , getModuleName
        , clientModsAndFiles
@@ -34,6 +33,7 @@ import Control.Monad.State
 import Data.List
 
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Preprocess
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Language.Haskell.GhcMod          as GM
@@ -107,6 +107,19 @@ loadFromModSummary modSum = do
   p <- GHC.parseModule modSum
   t <- GHC.typecheckModule p
 
+  -- dflags <- GHC.getDynFlags
+  -- cppComments <- if (GHC.xopt GHC.Opt_Cpp dflags)
+  cppComments <- if True
+                  then do
+                       -- ++AZ++:TODO: enable the CPP option check some time
+                       logm $ "loadFromModSummary:CPP flag set"
+                       case GHC.ml_hs_file $ GHC.ms_location modSum of
+                         Just fileName -> getCppTokensAsComments defaultCppOptions fileName
+                         Nothing       -> return []
+                  else do
+                       logm $ "loadFromModSummary:no CPP"
+                       return []
+
   -- required for inscope queries. Is there a better way to do those?
   setGhcContext modSum
 
@@ -118,7 +131,7 @@ loadFromModSummary modSum = do
   oldTargetModule <- gets rsCurrentTarget
   let
     putModule = do
-      putParsedModule t
+      putParsedModule cppComments t
       settings <- get
       put $ settings { rsCurrentTarget = Just newTargetModule }
 
@@ -237,7 +250,7 @@ applyRefac refac source = do
 
     res <- refac  -- Run the refactoring, updating the state as required
 
-    mod'   <- getRefactParsed
+    mod' <- getRefactParsed
     anns <- fetchAnnsFinal
     m    <- getRefactStreamModified
 
