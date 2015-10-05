@@ -112,7 +112,6 @@ Library
                                 , containers
                                 , directory
 
-                                -- , dual-tree
                                 , semigroups
                                 , monoid-extras
 
@@ -137,9 +136,6 @@ Library
                                 , ghc-exactprint >= 0.4.1
                                 , monad-control
                                 , Cabal >= 1.22
-                                -- , uniplate
-
-        -- GHC-Options:             -Wall -O0
 
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
@@ -205,7 +201,6 @@ Executable ghc-hare
                                 , containers
                                 , directory
 
-                                -- , dual-tree
                                 , semigroups
                                 , monoid-extras
 
@@ -252,7 +247,7 @@ test-suite spec
   main-is:
       Spec.hs
   Hs-Source-Dirs:
-    -- src
+    src
     test
   other-modules:
       CaseSpec
@@ -268,6 +263,25 @@ test-suite spec
     , TestUtils
     , TypeUtilsSpec
     , UtilsSpec
+
+    , Language.Haskell.Refact.API
+    , Language.Haskell.Refact.HaRe
+    , Language.Haskell.Refact.Refactoring.Case
+    , Language.Haskell.Refact.Refactoring.RoundTrip
+    , Language.Haskell.Refact.Utils.Binds
+    , Language.Haskell.Refact.Utils.ExactPrint
+    , Language.Haskell.Refact.Utils.GhcModuleGraph
+    , Language.Haskell.Refact.Utils.GhcUtils
+    , Language.Haskell.Refact.Utils.GhcVersionSpecific
+    , Language.Haskell.Refact.Utils.LocUtils
+    , Language.Haskell.Refact.Utils.Monad
+    , Language.Haskell.Refact.Utils.MonadFunctions
+    , Language.Haskell.Refact.Utils.TypeSyn
+    , Language.Haskell.Refact.Utils.TypeUtils
+    , Language.Haskell.Refact.Utils.Types
+    , Language.Haskell.Refact.Utils.Utils
+    , Language.Haskell.Refact.Utils.Variables
+    , Paths_HaRe
   build-depends:
       -- GHC 7.10.2 ships with base 4.8.1.0
       base        >= 4.8.1.0  && < 4.9
@@ -276,7 +290,7 @@ test-suite spec
     , QuickCheck  >= 2.5
     , containers
 
-    -- , dual-tree
+    , cabal-helper
     , semigroups
     , monoid-extras
 
@@ -284,7 +298,6 @@ test-suite spec
     , directory
     , filepath
     , ghc
-    -- , ghc-paths   == 0.1.*
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
@@ -306,10 +319,8 @@ test-suite spec
     , ghc-exactprint >= 0.4.1
     , monad-control
     , Cabal >= 1.22
-    -- , uniplate
     -- , Paths_HaRe
-    -- , haskell-token-utils >= 0.0.0.6
-    , HaRe >= 0.8
+    -- , HaRe >= 0.8
   Extensions:      CPP
   if impl (ghc < 7.10.2)
     buildable: False

@@ -377,6 +377,20 @@ spec = do
 
       setCurrentDirectory currentDir
 
+    ------------------------------------
+
+    it "gets modules for HaRe" $ do
+      let
+        comp = do
+         parseSourceFileGhc "src/Language/Haskell/Refact/Utils/TypeUtils.hs" -- Load the file first
+         tm <- getRefactTargetModule
+         g <- clientModsAndFiles tm
+         return g
+      (mg,_s) <- runRefactGhc comp initialState testOptions
+      -- (mg,_s) <- runRefactGhc comp initialLogOnState testOptions
+      showGhc (map GM.mpModule mg) `shouldBe` "[Language.Haskell.Refact.API, Language.Haskell.Refact.HaRe,\n Language.Haskell.Refact.Refactoring.Case,\n Language.Haskell.Refact.Refactoring.DupDef,\n Language.Haskell.Refact.Refactoring.MoveDef,\n Language.Haskell.Refact.Refactoring.Renaming,\n Language.Haskell.Refact.Refactoring.RoundTrip,\n Language.Haskell.Refact.Refactoring.SwapArgs,\n Language.Haskell.Refact.Refactoring.Simple, UtilsSpec, Main, Main,\n CaseSpec, DupDefSpec, GhcUtilsSpec, MoveDefSpec, RenamingSpec,\n RoundTripSpec, SimpleSpec, SwapArgsSpec, TypeUtilsSpec]"
+
+
   -- -------------------------------------------------------------------
 
   describe "serverModsAndFiles" $ do
