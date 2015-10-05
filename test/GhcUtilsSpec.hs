@@ -18,6 +18,7 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
 -- import TestUtils
@@ -48,9 +49,9 @@ spec = do
     -- ---------------------------------
 
     it "Finds a GHC.Name at top level only" $ do
-      t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
+         parseSourceFileGhc "./DupDef/Dd1.hs"
          renamed <- getRefactRenamed
 
          let mn = locToName (4,1) renamed
@@ -78,7 +79,7 @@ spec = do
              g2 = onelayerStaged SYB.Renamer ["-1"] (["-10"] `SYB.mkQ` worker2) duplicatedDecls
 
          return (res,res2,resx,resx2,duplicatedDecls,g,g2,ln,lx)
-      ((r,r2,rx,rx2,d,gg,gg2,_l,_x),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t }) testOptions
+      ((r,r2,rx,rx2,d,gg,gg2,_l,_x),_s) <- ct $ runRefactGhc comp initialState testOptions
       -- (SYB.showData SYB.Renamer 0 d) `shouldBe` ""
 
       (showGhcQual d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"

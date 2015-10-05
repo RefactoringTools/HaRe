@@ -202,10 +202,10 @@ modifyAnns tk f = tk'
 
 -- ----------------------------------------------------------------------
 
-putParsedModule :: GHC.TypecheckedModule -> RefactGhc ()
-putParsedModule tm = do
+putParsedModule :: [Comment] -> GHC.TypecheckedModule -> RefactGhc ()
+putParsedModule cppComments tm = do
   st <- get
-  put $ st { rsModule = initRefactModule tm }
+  put $ st { rsModule = initRefactModule cppComments tm }
 
 clearParsedModule :: RefactGhc ()
 clearParsedModule = do
@@ -395,12 +395,12 @@ logParsedSource str = do
 
 -- ---------------------------------------------------------------------
 
-initRefactModule
-  :: GHC.TypecheckedModule -> Maybe RefactModule
-initRefactModule tm
+initRefactModule :: [Comment] -> GHC.TypecheckedModule -> Maybe RefactModule
+initRefactModule cppComments tm
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsNameMap = initRdrNameMap tm
-                 , rsTokenCache = initTokenCacheLayout (relativiseApiAnns
+                 , rsTokenCache = initTokenCacheLayout (relativiseApiAnnsWithComments
+                                     cppComments
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
                                     (GHC.pm_annotations $ GHC.tm_parsed_module tm))
                  , rsStreamModified = RefacUnmodifed

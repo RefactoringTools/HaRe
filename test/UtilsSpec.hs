@@ -25,6 +25,8 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
+import Language.Haskell.Refact.Refactoring.RoundTrip
+
 import System.Directory
 
 -- ---------------------------------------------------------------------
@@ -81,7 +83,18 @@ spec = do
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       (showGhc parsed) `shouldBe` "module BCpp where\nbob :: Int -> Int -> Int\nbob x y = x + y"
 
-  -- -----------------------------------
+     -- ---------------------------------
+
+    it "refactors a file having the LANGUAGE CPP pragma" $ do
+      r <- ct $ roundTrip defaultTestSettings testOptions "BCpp.hs"
+      -- r <- ct $ roundTrip logTestSettings testOptions "BCpp.hs"
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' `shouldBe` ["BCpp.hs"]
+      diff <- compareFiles "./test/testdata/BCpp.refactored.hs"
+                           "./test/testdata/BCpp.hs"
+      diff `shouldBe` []
+
+    -- ---------------------------------
 
     it "loads a series of files based on cabal1" $ do
 
@@ -540,9 +553,9 @@ spec = do
 
   describe "RefactFlags" $ do
     it "puts the RefactDone flag through its paces" $ do
-      t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareTypes.hs"
       let
         comp = do
+          parseSourceFileGhc "./FreeAndDeclared/DeclareTypes.hs"
           v1 <- getRefactDone
           clearRefactDone
           v2 <- getRefactDone
@@ -550,7 +563,7 @@ spec = do
           v3 <- getRefactDone
 
           return (v1,v2,v3)
-      ((v1',v2',v3'), _s) <- runRefactGhc comp (initialState { rsModule = initRefactModule t }) testOptions
+      ((v1',v2',v3'), _s) <- ct $ runRefactGhc comp initialState testOptions
 
       (show (v1',v2',v3')) `shouldBe` "(False,False,True)"
 
