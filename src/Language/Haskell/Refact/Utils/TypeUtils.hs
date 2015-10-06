@@ -59,9 +59,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,getTypeForName
 
     ,defines, definesP,definesTypeSig,definesTypeSigRdr
-    -- ,HasModName(hasModName), HasNameSpace(hasNameSpace)
     ,sameBind,sameBindRdr
-    {- ,usedByRhs -},UsedByRhs(..)
+    ,UsedByRhs(..)
 
     -- ** Modules and files
     -- ,clientModsAndFiles,serverModsAndFiles,isAnExistingMod
@@ -84,22 +83,13 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Updating
     -- ,Update(update)
-    {- ,qualifyPName-},rmQualifier,qualifyToplevelName, renamePN {- ,replaceNameInPN -},autoRenameLocalVar
-
-    -- * Miscellous
-    -- ** Parsing, writing and showing
-    {- ,parseSourceFile,writeRefactoredFiles-}, showEntities,showPNwithLoc -- , newProj, addFile, chase
-    -- ** Locations
-    -- ,toRelativeLocs, rmLocs
-    -- ** Default values
-   ,defaultPN {- ,defaultPNT -},defaultName {-,defaultModName-},defaultExp -- ,defaultPat, defaultExpUnTyped
-
+    , rmQualifier, qualifyToplevelName, renamePN, autoRenameLocalVar
 
     -- ** Identifiers, expressions, patterns and declarations
     ,ghcToPN,lghcToPN, expToName, expToNameRdr
     ,nameToString
     ,patToNameRdr
-    {- ,expToPNT, expToPN, nameToExp,pNtoExp -},patToPNT {- , patToPN --, nameToPat -},pNtoPat
+    , patToPNT, pNtoPat
 
     -- ** Others
     , divideDecls
@@ -108,26 +98,18 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- The following functions are not in the the API yet.
     , causeNameClashInExports {- , inRegion , unmodified -}
 
-    -- , removeOffset
-
     , declsSybTransform
-    -- , hasDeclsSybTransform
 
     -- * Typed AST traversals (added by CMB)
     -- * Miscellous
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
     -- * Debug stuff
-    -- , getDeclAndToks, getSigAndToks
-    -- , getToksForDecl, removeToksOffset -- ++AZ++ remove this after debuggging
     , getParsedForRenamedLPat
     , getParsedForRenamedName
     , getParsedForRenamedLocated
-    -- , allPNT
-    --  , allPNTLens
     , rdrNameFromName
     , stripLeadingSpaces
-    -- , lookupNameGhc
  ) where
 
 import Control.Monad.State
@@ -197,6 +179,7 @@ inScopeInfo names = nub $  map getEntInfo $ names
        _                         -> Nothing
 
 
+-- ---------------------------------------------------------------------
 
 -- | Return True if the identifier is inscope and can be used without
 -- a qualifier.
@@ -271,33 +254,20 @@ equivalentNameInNewMod old = do
   return newNames
 
 -- ---------------------------------------------------------------------
--- | Show a PName in a format like: 'pn'(at row:r, col: c).
-showPNwithLoc:: GHC.Located GHC.Name -> String
-showPNwithLoc pn@(GHC.L l _n)
-  = let (r,c) = getGhcLoc l
-    -- in  " '"++pNtoName pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
-    in  " '"++showGhc pn++"'" ++"(at row:"++show r ++ ",col:" ++ show c ++")"
 
--- ---------------------------------------------------------------------
-
-defaultPN :: PName
-defaultPN = PN (mkRdrName "nothing")
-
+-- TODO: get rid of this
 defaultName :: GHC.Name
 defaultName = n
   where
     un = GHC.mkUnique 'H' 0 -- H for HaRe :)
     n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc "nothing")
 
--- | Default expression.
-defaultExp::HsExpP
--- defaultExp=Exp (HsId (HsVar defaultPNT))
-defaultExp=GHC.HsVar $ mkRdrName "nothing"
+-- ---------------------------------------------------------------------
 
+-- |Make a simple unqualified 'GHC.RdrName'
 mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
--- ---------------------------------------------------------------------
 
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
 -- RefactState.
@@ -403,12 +373,9 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
       _           -> False
 
     modIsUnQualifedImported _mod' modName'
-     =let -- imps =hsModImports mod
-       -- imp@(GHC.L _ (GHC.ImportDecl (GHC.L _ modName) qualify _source _safe isQualified _isImplicit as h))
+     =let
       in isJust $ find (\(GHC.L _ (GHC.ImportDecl _ (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h))
                                 -> modName1 == modName' && (not isQualified)) imps
-      -- in isJust $ find (\(HsImportDecl _ (SN modName1 _) qualify  _ h) -> modName == modName1 && (not qualify)) imps
-
 
 -- Original seems to be
 --   1. pick up any module names in the export list with same unQual
@@ -513,7 +480,6 @@ usedWithoutQualR name parsed = fromMaybe False res
 
      checkName ((GHC.L l pn)::GHC.Located GHC.RdrName)
         | ((GHC.rdrNameOcc pn) == (GHC.nameOccName name)) &&
-          -- isUsedInRhs pname parsed &&
           isUsedInRhs (GHC.L l name) parsed &&
           GHC.isUnqual pn     = Just True
      checkName _ = Nothing
@@ -580,8 +546,6 @@ isTopLevelPN n = do
 -- |Return True if a PName is a local PName.
 isLocalPN::GHC.Name -> Bool
 isLocalPN = GHC.isInternalName
--- isLocalPN (PN i (UniqueNames.S _)) = True
--- isLocalPN _ = False
 
 -- |Return True if the name has a @GHC.SrcSpan@, i.e. is declared in
 -- source we care about
@@ -596,7 +560,6 @@ isFunOrPatName::(SYB.Data t) => GHC.Name -> t -> Bool
 isFunOrPatName pn
    =isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
      where
-        -- worker (decl::HsDeclP)
         worker (decl::GHC.LHsBind GHC.Name)
            | defines pn decl = Just True
         worker _ = Nothing
@@ -982,18 +945,6 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
                         }
 
 -- ---------------------------------------------------------------------
-{-
--- | Remove ImportDecl from the imports list, commonly returned from a RenamedSource type, so it can
--- be further processed.
---rmPreludeImports :: [GHC.Located (GHC.ImportDecl GHC.Name)] -> [GHC.Located (GHC.ImportDecl GHC.Name)]
-rmPreludeImports ::
-  [GHC.Located (GHC.ImportDecl GHC.Name)]
-  -> [GHC.Located (GHC.ImportDecl GHC.Name)]
-rmPreludeImports = filter isPrelude where
-            isPrelude = (/="Prelude") . GHC.moduleNameString . GHC.unLoc . GHC.ideclName . GHC.unLoc
--}
-
--- ---------------------------------------------------------------------
 
 -- | Adding a declaration to the declaration list of the given syntax
 -- phrase. If the second argument is Nothing, then the declaration
@@ -1241,7 +1192,6 @@ addParamsToDecls::
 
 addParamsToDecls decls pn paramPNames = do
   -- logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
-  -- logm $ "addParamsToDecls: decls=" ++ (SYB.showData SYB.Renamer 0 decls)
   nameMap <- getRefactNameMap
   if (paramPNames /= [])
         then mapM (addParamToDecl nameMap) decls
@@ -1558,12 +1508,9 @@ rmDecl pn incSig t = do
                      return expr
                     _ -> do
                      -- logm $ "rmDecl.inLet:length decls /= 1"
-                     -- let decls2' = gtail "inLet" decls2
                      decls' <- doRmDecl decls1 decls2
                      letExpr' <- liftT $ replaceDecls letExpr decls'
                      return letExpr'
-                     -- localDecls' <- liftT $ replaceDecls localDecls decls'
-                     -- return $ (GHC.L ss (GHC.HsLet localDecls' expr))
                 else do
                   -- liftT $ replaceDecls localDecls decls
                   return letExpr
@@ -1592,7 +1539,6 @@ rmDecl pn incSig t = do
                  logDataWithAnns "doRmDeclList:(parent')" (parent')
                  return parent'
                else do
-                 -- liftT $ replaceDecls parent decls
                  return parent
 
     -- ---------------------------------
@@ -1782,9 +1728,6 @@ rmQualifier pns t = do
      rename nm (ln@(GHC.L l pn)::GHC.Located GHC.RdrName)
        | elem (rdrName2NamePure nm ln) pns
        = do
-               -- let (rs,_) = break (=='.') $ reverse $ showGhc pn -- ++TODO: replace this with the appropriate formulation
-               --     s = reverse rs
-               -- return (GHC.L l (GHC.mkInternalName (GHC.nameUnique pn) (GHC.mkVarOcc s) l))
               case pn of
                 GHC.Qual _ n -> return (GHC.L l (GHC.Unqual n))
                 _            -> return ln
@@ -1795,7 +1738,6 @@ rmQualifier pns t = do
 -- | Replace all occurences of a top level GHC.Name with a qualified version.
 qualifyToplevelName :: GHC.Name -> RefactGhc ()
 qualifyToplevelName n = do
-    -- renamed <- getRefactRenamed
     parsed <- getRefactParsed
     parsed' <- renamePN n n True parsed
     putRefactParsed parsed' emptyAnns
@@ -2180,10 +2122,6 @@ findNamesRdr nm pns t =
       inName = nameSybQuery checker
 
       uns = map GHC.nameUnique pns
-
-      -- worker (ln :: GHC.Located GHC.RdrName)
-      --    | elem (GHC.nameUnique (rdrName2NamePure nm ln)) uns = Just True
-      -- worker _ = Nothing
 
 -- ---------------------------------------------------------------------
 

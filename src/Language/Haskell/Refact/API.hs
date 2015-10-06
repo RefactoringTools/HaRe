@@ -164,15 +164,6 @@ module Language.Haskell.Refact.API
     ,Update(update)
     ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
 
-    -- ** Miscellous
-    -- *** Parsing, writing and showing
-    , showEntities,showPNwithLoc
-    -- *** Locations
-    -- ,toRelativeLocs, rmLocs
-    -- *** Default values
-   ,defaultPN,defaultName,defaultExp
-
-
     -- *** Identifiers, expressions, patterns and declarations
     ,ghcToPN,lghcToPN, expToName, expToNameRdr
     ,patToNameRdr
@@ -190,8 +181,6 @@ module Language.Haskell.Refact.API
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports
-
-    -- , removeOffset
 
     , declsSybTransform
 

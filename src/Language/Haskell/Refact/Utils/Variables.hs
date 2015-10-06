@@ -17,7 +17,6 @@ module Language.Haskell.Refact.Utils.Variables
     isFieldName
   , isClassName
   , isInstanceName
-  -- , hsPNs
   , isDeclaredIn,isDeclaredInRdr
   , FreeNames(..),DeclaredNames(..)
   , hsFreeAndDeclaredPNsOld
@@ -39,7 +38,7 @@ module Language.Haskell.Refact.Utils.Variables
   -- ** Identifiers, expressions, patterns and declarations
   , FindEntity(..)
   , sameOccurrence
-  {- ,definingDecls -}, definedPNs, definedPNsRdr,definedNamesRdr
+  , definedPNs, definedPNsRdr,definedNamesRdr
   , definingDeclsRdrNames,definingDeclsRdrNames',definingSigsRdrNames
   , definingDeclsNames, definingDeclsNames', definingSigsNames
   , definingTyClDeclsNames
@@ -48,7 +47,6 @@ module Language.Haskell.Refact.Utils.Variables
   , definesTypeSig,definesTypeSigRdr,definesSigDRdr
   , definesP
   , allNames
-  -- ,simplifyDecl
 
   , hsPNs, hsNamess, hsNamessRdr
   , locToName, locToRdrName
@@ -123,15 +121,6 @@ instance FindEntity (GHC.Located GHC.RdrName) where
       checkRdr n
         | sameOccurrence n ln = Just True
         | otherwise = Nothing
-{-
-  findEntity n t = fromMaybe False res
-   where
-    res = SYB.something (Nothing `SYB.mkQ` worker) t
-
-    worker (name :: GHC.Located GHC.RdrName)
-      | sameOccurrence n name = Just True
-    worker _ = Nothing
--}
 
 -- ---------------------------------------------------------------------
 {-
@@ -291,7 +280,6 @@ hsFreeAndDeclaredRdr':: (SYB.Data t) => NameMap -> t -> Maybe (FreeNames,Declare
 hsFreeAndDeclaredRdr' nm t = do
       (FN f,DN d) <- hsFreeAndDeclared'
       let (f',d') = (nub f, nub d)
-      -- return (f' \\ d',d')
       return (FN f',DN d')
           -- hsFreeAndDeclared'=applyTU (stop_tdTU (failTU  `adhocTU` exp
 
@@ -464,9 +452,6 @@ hsFreeAndDeclaredPNs' t = do
                                                       `adhocTU` rhs
                                                        )) t
 
-          -- TODO: ++AZ++ Note:After renaming, HsBindLR has field bind_fvs
-          --       containing locally bound free vars
-
           -- expr --
           expr (GHC.HsVar n) = return ([n],[])
 
@@ -575,7 +560,6 @@ hsFreeAndDeclaredNameStrings t = do
   return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 
--- hsFreeAndDeclaredPNs :: (SYB.Data t,GHC.Outputable t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
@@ -653,11 +637,6 @@ hsFreeAndDeclaredGhc t = do
 
     -- -----------------------
 
-    -- lhsdecls :: [GHC.LHsDecl GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
-    -- lhsdecls ds = recurseList ds
-
-    -- -----------------------
-
     lhsbinds :: [GHC.LHsBind GHC.Name] -> RefactGhc (FreeNames,DeclaredNames)
     lhsbinds bs = do
       (FN f,DN d) <- recurseList bs
@@ -674,7 +653,6 @@ hsFreeAndDeclaredGhc t = do
     hsbind b@(GHC.FunBind _n _ (GHC.MG matches _ _ _) _ _ _) = do
         -- logm $ "hsFreeAndDeclaredGhc.hsbind:b=" ++ (showGhc b)
         let d = GHC.collectHsBindBinders b
-        -- let pats = concatMap (\(GHC.L _ (GHC.Match pat _ _)) -> pat) matches
         (fp,_dp) <- hsFreeAndDeclaredGhc matches
         -- logm $ "hsFreeAndDeclaredGhc.hsbind:(fp,_dp)=" ++ (show (fp,_dp))
         -- logm $ "hsFreeAndDeclaredGhc.hsbind:(d)=" ++ (showGhc (d))
@@ -733,8 +711,6 @@ hsFreeAndDeclaredGhc t = do
       let
         d = GHC.collectPatBinders lp
 
-      -- logm $ "hsFreeAndDeclaredGhc.lpat p=" ++ (SYB.showData SYB.Renamer 0 p)
-
       (FN f,DN _dn) <- pat p
       -- logm $ "hsFreeAndDeclaredGhc.lpat:(fn,dn)=" ++ (showGhc (fn,dn))
       return (FN f,DN d)
@@ -779,7 +755,6 @@ hsFreeAndDeclaredGhc t = do
 
     pat p = error $ "hsFreeAndDeclaredGhc.pat:unimplemented:" ++ (showGhc p)
 
-    --  HsConDetails (LPat id) (HsRecFields id (LPat id))
     details :: GHC.HsConPatDetails GHC.Name -> RefactGhc (FreeNames,DeclaredNames)
     details (GHC.PrefixCon  args) = do
       -- logm $ "hsFreeAndDeclaredGhc.details:args=" ++ (showGhc args)
@@ -2255,7 +2230,6 @@ hsFDsFromInsideRdr nm t = do
      parsed p
         = return $ hsFreeAndDeclaredRdr nm p
 
-     -- Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
      match :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (FreeNames,DeclaredNames)
      match (GHC.Match _fn pats _type rhs) = do
        let (FN pf, DN pd) = hsFreeAndDeclaredRdr nm pats
@@ -2343,7 +2317,6 @@ hsFDsFromInside t = do
                                             `adhocTU` match
                                             `adhocTU` expr
                                             `adhocTU` stmts )) t1
-          -- let (f',d') = fromMaybe ([],[]) r1
           let (f',d') = r1
           return (nub f', nub d')
 
@@ -2351,7 +2324,6 @@ hsFDsFromInside t = do
      renamed ((grp,_,_,_)::GHC.RenamedSource)
         = hsFreeAndDeclaredPNs $ GHC.hs_valds grp
 
-     -- Match [LPat id] (Maybe (LHsType id)) (GRHSs id)
      match :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name) -> RefactGhc ([GHC.Name],[GHC.Name])
      match ((GHC.Match _fn pats _type rhs):: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) = do
        (pf, pd) <- hsFreeAndDeclaredPNs pats
@@ -2403,7 +2375,6 @@ hsFDsFromInside t = do
          (df,dd) <- hsFreeAndDeclaredPNs matches
          return (nub (df `union` (ef \\ dd)), nub dd)
 
-     -- expr _ = return ([],[])
      expr _ = mzero
 
      stmts ((GHC.BindStmt pat e1 e2 e3) :: GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) =
@@ -2417,7 +2388,6 @@ hsFDsFromInside t = do
      stmts ((GHC.LetStmt binds) :: GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) =
        hsFreeAndDeclaredPNs binds
 
-     -- stmts _ = return ([],[])
      stmts _ = mzero
 
 
@@ -2516,43 +2486,4 @@ locToName' (row,col) t = res1
               (col >= (GHC.srcSpanStartCol ss)) &&
               (col <= (GHC.srcSpanEndCol   ss))
 
--- ---------------------------------------------------------------------
-{-
-nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
-             => (GHC.Located a -> Maybe r) -> t -> Maybe r
-nameSybQuery checker = q
-  where
-    q = Nothing `SYB.mkQ` worker
-                `SYB.extQ` workerBind
-                `SYB.extQ` workerExpr
-                `SYB.extQ` workerLIE
-                `SYB.extQ` workerHsTyVarBndr
-                `SYB.extQ` workerLHsType
-
-    worker (pnt :: (GHC.Located a))
-      = checker pnt
-
-    -- workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat a)))
-    workerBind (GHC.L l (GHC.VarPat name))
-      = checker (GHC.L l name)
-    workerBind _ = Nothing
-
-    -- workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr a)))
-    workerExpr ((GHC.L l (GHC.HsVar name)))
-      = checker (GHC.L l name)
-    workerExpr _ = Nothing
-
-    workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
-    -- workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))))
-      = checker (GHC.L ln name)
-    workerLIE _ = Nothing
-
-    -- workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name))::  (GHC.LHsTyVarBndr a))
-    workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name)))
-      = checker (GHC.L l name)
-    workerHsTyVarBndr _ = Nothing
-
-    workerLHsType ((GHC.L l (GHC.HsTyVar name)))
-      = checker (GHC.L l name)
-    workerLHsType _ = Nothing
--}
+-- EOF
