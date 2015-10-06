@@ -232,6 +232,16 @@ spec = do
 
      (show res) `shouldBe` "Just \"The identifier(s): (sq, test/testdata/LiftToToplevel/WhereIn2.hs:11:18) will cause name clash/capture or ambiguity occurrence problem after lifting, please do renaming first!\""
 
+    -- ---------------------------------
+
+    it "liftToTopLevel Collapse1 8 6" $ do
+     r <- liftToTopLevel defaultTestSettings testOptions "./test/testdata/LiftToToplevel/Collapse1.hs" (8,6)
+     -- r <- liftToTopLevel logTestSettings  testOptions "./test/testdata/LiftToToplevel/Collapse1.hs" (8,6)
+     r' <- mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"test/testdata/LiftToToplevel/Collapse1.hs\"]"
+     diff <- compareFiles "./test/testdata/LiftToToplevel/Collapse1.expected.hs"
+                          "./test/testdata/LiftToToplevel/Collapse1.refactored.hs"
+     diff `shouldBe` []
 
 
 {- original tests
