@@ -161,7 +161,7 @@ module Language.Haskell.Refact.API
     ,rmDecl, rmTypeSig, rmTypeSigs
 
     -- *** Updating
-    ,Update(update)
+    -- ,Update(update)
     ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
 
     -- *** Identifiers, expressions, patterns and declarations

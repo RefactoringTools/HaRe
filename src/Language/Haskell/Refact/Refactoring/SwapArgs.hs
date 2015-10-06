@@ -79,9 +79,14 @@ doSwap (GHC.L _s n1) = do
          inMod _ func = return func
 
          -- 2. All call sites of the function...
-         inExp nm expr@((GHC.L _x (GHC.HsApp (GHC.L _y (GHC.HsApp e e1)) e2))::GHC.LHsExpr GHC.RdrName)
+         inExp nm ((GHC.L l (GHC.HsApp (GHC.L e0 (GHC.HsApp e e1)) e2))::GHC.LHsExpr GHC.RdrName)
             | cond
-                   =  update e2 e1 =<< update e1 e2 expr
+                   -- =  update e2 e1 =<< update e1 e2 expr
+                   = do
+                       -- expr1 <- update e1 e2 expr
+                       -- expr2 <- update e2 e1 expr1
+                       -- return expr2
+                       return (GHC.L l (GHC.HsApp (GHC.L e0 (GHC.HsApp e e2)) e1))
             where
               cond = case (expToNameRdr nm e) of
                 Nothing -> False
@@ -94,8 +99,10 @@ doSwap (GHC.L _s n1) = do
                 = do
                      logm $ "doSwap.inType"
                      let (t1:t2:ts) = tyFunToList types
-                     t1' <- update t1 t2 t1
-                     t2' <- update t2 t1 t2
+                     -- t1' <- update t1 t2 t1
+                     -- t2' <- update t2 t1 t2
+                     let t1' = t2
+                     let t2' = t1
                      return (GHC.L x (GHC.TypeSig [lname] (tyListToFun (t1':t2':ts)) pns))
 
          inType nm (GHC.L _x (GHC.TypeSig (n:ns) _types _)::GHC.LSig GHC.RdrName)
@@ -120,8 +127,11 @@ doSwap (GHC.L _s n1) = do
          updateMatches [] = return []
          updateMatches ((GHC.L x (GHC.Match mfn pats nothing rhs)::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)):matches)
            = case pats of
-               (p1:p2:ps) -> do p1' <- update p1 p2 p1
-                                p2' <- update p2 p1 p2
+               (p1:p2:ps) -> do
+                                -- p1' <- update p1 p2 p1
+                                -- p2' <- update p2 p1 p2
+                                let p1' = p2
+                                let p2' = p1
                                 matches' <- updateMatches matches
                                 return ((GHC.L x (GHC.Match mfn (p1':p2':ps) nothing rhs)):matches')
                [p] -> return [GHC.L x (GHC.Match mfn [p] nothing rhs)]

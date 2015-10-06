@@ -82,7 +82,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
 
     -- ** Updating
-    -- ,Update(update)
     , rmQualifier, qualifyToplevelName, renamePN, autoRenameLocalVar
 
     -- ** Identifiers, expressions, patterns and declarations

@@ -1632,20 +1632,18 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
 
 
 -- |substitute an old expression by new expression
-replaceExpWithUpdToks :: (SYB.Data t)
-                      => t -> (GHC.Name, GHC.HsExpr GHC.RdrName)
-                      -> RefactGhc t
+replaceExpWithUpdToks :: GHC.LHsBind GHC.RdrName -> (GHC.Name, GHC.HsExpr GHC.RdrName)
+                      -> RefactGhc (GHC.LHsBind GHC.RdrName)
 replaceExpWithUpdToks  decls subst = do
   nm <- getRefactNameMap
   let
     worker (e@(GHC.L l _)::GHC.LHsExpr GHC.RdrName)
       |(expToNameRdr nm e) == Just (fst subst)
-          = update e (GHC.L l (snd subst)) e
+          = return (GHC.L l (snd subst))
     worker x=return x
 
   -- = applyTP (full_buTP (idTP `adhocTP` worker)) decls
   everywhereMStaged' SYB.Parser (SYB.mkM worker) decls
-
 
 -- | return True if pn is a local function/pattern name
 isLocalFunOrPatName :: SYB.Data t => GHC.Name -> t -> Bool

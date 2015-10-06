@@ -20,7 +20,7 @@ module Language.Haskell.Refact.Utils.Utils
        , applyRefac
        , refactDone
 
-       , Update(..)
+       -- , Update(..)
        , fileNameFromModSummary
        , getModuleName
        , clientModsAndFiles
@@ -288,7 +288,7 @@ getEnabledTargets settings (libt,exet,testt,bencht) = (targetsLib,targetsExe)
 -}
 -- ---------------------------------------------------------------------
 
-
+{-
 -- ++AZ++ I think the intended function of this class has been superseded by
 -- ghc-exactprint HasDecls.
 class (SYB.Data t, SYB.Data t1) => Update t t1 where
@@ -301,11 +301,11 @@ class (SYB.Data t, SYB.Data t1) => Update t t1 where
          -> RefactGhc t1  -- ^ The result.
 
 instance (SYB.Data t, GHC.OutputableBndr n, GHC.DataId n)
-  => Update (GHC.Located (GHC.HsExpr n)) t where
+  => Update (GHC.LHsExpr n) t where
     update oldExp newExp t
            = SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) t
        where
-        inExp (e::GHC.Located (GHC.HsExpr n))
+        inExp (e::GHC.LHsExpr n)
           | sameOccurrence e oldExp
                = return newExp
           | otherwise = return e
@@ -339,7 +339,7 @@ instance (SYB.Data t, GHC.OutputableBndr n1, GHC.OutputableBndr n2, GHC.DataId n
               | sameOccurrence t' oldBind
                   = return newBind
               | otherwise = return t'
-
+-}
 
 -- ---------------------------------------------------------------------
 
