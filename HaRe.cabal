@@ -1,9 +1,9 @@
 Name:                           HaRe
-Version:                        0.8.1.0
+Version:                        0.8.1.1
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
-Bug-Reports:                    http://github.com/alanz/HaRe/issues
+Bug-Reports:                    http://github.com/RefactoringTools/HaRe/issues
 License:                        BSD3
 License-File:                   LICENSE
 Homepage:                       https://github.com/RefactoringTools/HaRe/wiki
@@ -339,4 +339,4 @@ test-suite spec
 
 source-repository head
   type:     git
-  location: https://github.com/alanz/HaRe.git
+  location: https://github.com/RefactoringTools/HaRe.git

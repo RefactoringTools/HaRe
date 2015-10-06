@@ -1,3 +1,5 @@
+2015-10-05 v0.8.1.1
+	* Move to new/old home at https://github.com/RefactoringTools/HaRe
 2015-10-05 v0.8.1.0
 	* Reinstate processing of CPP directives as comments #36
 	* Fix problem in renaming in a client module when the old name is
