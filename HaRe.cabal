@@ -142,13 +142,14 @@ Library
         Exposed-modules:
              Language.Haskell.Refact.API
            , Language.Haskell.Refact.HaRe
+           , Language.Haskell.Refact.Refactoring.AddRmParam
            , Language.Haskell.Refact.Refactoring.Case
            , Language.Haskell.Refact.Refactoring.DupDef
            , Language.Haskell.Refact.Refactoring.MoveDef
            , Language.Haskell.Refact.Refactoring.Renaming
            , Language.Haskell.Refact.Refactoring.RoundTrip
-           , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Refactoring.Simple
+           , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
@@ -178,6 +179,7 @@ Executable ghc-hare
         other-modules:
              Language.Haskell.Refact.API
            , Language.Haskell.Refact.HaRe
+           , Language.Haskell.Refact.Refactoring.AddRmParam
            , Language.Haskell.Refact.Refactoring.Case
            , Language.Haskell.Refact.Refactoring.RoundTrip
            , Language.Haskell.Refact.Utils.Binds
@@ -266,6 +268,7 @@ test-suite spec
 
     , Language.Haskell.Refact.API
     , Language.Haskell.Refact.HaRe
+    , Language.Haskell.Refact.Refactoring.AddRmParam
     , Language.Haskell.Refact.Refactoring.Case
     , Language.Haskell.Refact.Refactoring.RoundTrip
     , Language.Haskell.Refact.Utils.Binds

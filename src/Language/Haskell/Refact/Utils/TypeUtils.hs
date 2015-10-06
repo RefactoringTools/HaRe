@@ -75,7 +75,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
  -- * Program transformation
     -- ** Adding
-    ,addDecl, addItemsToImport, addHiding
+    ,addDecl, addItemsToImport, addItemsToExport, addHiding
     ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl
     -- ** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
@@ -1220,6 +1220,86 @@ addParamsToDecls decls pn paramPNames = do
      addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
      return vn
 
+-- ---------------------------------------------------------------------
+
+addItemsToExport ::
+                    GHC.ParsedSource                    -- The module AST.
+                   -> Maybe PName                       -- The condtion identifier.
+                   -> Bool                              -- Create an explicit list or not
+                   -> Either [String] [GHC.LIE GHC.RdrName] -- The identifiers to add in either String or HsExportEntP format.
+                   -> RefactGhc GHC.ParsedSource        -- The result.
+addItemsToExport = assert False undefined
+{-
+
+-- | Add identifiers to the export list of a module. If the second argument is like: Just p, then do the adding only if p occurs
+-- in the export list, and the new identifiers are added right after p in the export list. Otherwise the new identifiers are add
+-- to the beginning of the export list. In the case that the export list is emport, then if the third argument is True, then create
+-- an explict export list to contain only the new identifiers, otherwise do nothing.
+{-
+addItemsToExport::( )
+                 => HsModuleP                           -- The module AST.
+                   -> Maybe PName                       -- The condtion identifier.
+                   -> Bool                              -- Create an explicit list or not
+                   -> Either [String] [HsExportEntP]    -- The identifiers to add in either String or HsExportEntP format.
+                   -> m HsModuleP                       -- The result.
+-}
+
+addItemsToExport::(MonadState (([PosToken],Bool), t1) m)
+                 => HsModuleP                           -- The module AST.
+                   -> Maybe PName                       -- The condtion identifier.
+                   -> Bool                              -- Create an explicit list or not
+                   -> Either [String] [HsExportEntP]    -- The identifiers to add in either String or HsExportEntP format.
+                   -> m HsModuleP                       -- The result.
+
+
+addItemsToExport mod _  _ (Left [])  = return mod
+addItemsToExport mod _  _ (Right []) = return mod
+addItemsToExport mod@(HsModule loc modName exps imps ds) (Just pn) _ ids
+  =  case exps  of
+       Just ents ->let (e1,e2) = break (findEntity pn) ents
+                   in if e2 /=[]
+                        then do ((toks,_),others)<-get
+                                let e = (ghead "addVarItemInExport" e2)
+                                    es = case ids of
+                                          (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+                                          (Right es') -> es'
+                                let (_,endPos) = getStartEndLoc toks e
+                                    (t, (_,s)) = ghead "addVarItemInExport" $ getToks (endPos,endPos) toks
+                                    newToken = mkToken t endPos (s++","++ showEntities (render.ppi) es)
+                                    toks' = replaceToks toks endPos endPos [newToken]
+                                put ((toks',modified),others)
+                                return (HsModule loc modName (Just (e1++(e:es)++tail e2)) imps ds)
+                        else return mod
+       Nothing   -> return mod
+
+addItemsToExport mod@(HsModule _ _ (Just ents) _ _) Nothing createExp ids
+    = do ((toks,_),others)<-get
+         let es = case ids of
+                    (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+                    (Right es') -> es'
+             (t, (pos,s))=fromJust $ find isOpenBracket toks  -- s is the '('
+             newToken = if ents /=[] then  (t, (pos,(s++showEntities (render.ppi) es++",")))
+                                     else  (t, (pos,(s++showEntities (render.ppi) es)))
+             pos'= simpPos pos
+             toks' = replaceToks toks pos' pos' [newToken]
+         put ((toks',modified),others)
+         return mod {hsModExports=Just (es++ ents)}
+
+addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _)  Nothing createExp ids
+  =case createExp of
+       True ->do ((toks,_),others)<-get
+                 let es = case ids of
+                               (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+                               (Right es') -> es'
+                     pos = (row,col)
+                     newToken = mkToken Varid pos (modNameToStr modName++ "("
+                                         ++ showEntities (render.ppi) es++")")
+                     toks' = replaceToks toks pos pos [newToken]
+                 put  ((toks', modified), others)
+                 return mod {hsModExports=Just es}
+       False ->return mod
+
+-}
 -- ---------------------------------------------------------------------
 
 addActualParamsToRhs :: (SYB.Data t) =>

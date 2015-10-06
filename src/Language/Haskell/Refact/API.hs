@@ -155,7 +155,7 @@ module Language.Haskell.Refact.API
 
  -- * Program transformation
     -- *** Adding
-    ,addDecl, addItemsToImport, addHiding
+    ,addDecl, addItemsToImport, addItemsToExport, addHiding
     ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl -- , moveDecl
     -- *** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs

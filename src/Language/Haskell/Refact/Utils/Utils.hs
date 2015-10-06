@@ -80,7 +80,9 @@ getTargetGhc (GM.ModulePath _mn fp) = parseSourceFileGhc fp
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
+  logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
   setTargetSession targetFile
+  logm $ "parseSourceFileGhc:after setTargetSession"
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath targetFile

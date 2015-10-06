@@ -32,8 +32,7 @@ duplicateDef settings opts fileName newName (row,col) = do
   absFileName <- canonicalizePath fileName
   runRefacSession settings opts (comp absFileName newName (row,col))
 
-comp :: FilePath -> String -> SimpPos
-     -> RefactGhc [ApplyRefacResult]
+comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName newName (row, col) = do
   if isVarId newName
     then
@@ -50,7 +49,7 @@ comp fileName newName (row, col) = do
           Just pn ->
             do
               logm $ "DupDef.comp:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
-              (refactoredMod@((_fp,_ismod),(_anns',_parsed')),(isDone,nn)) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
+              (refactoredMod,(isDone,nn)) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
               logm $ "DupDef.com:isDone=" ++ show isDone
               case isDone of
                 DupDefFailed -> error "The selected identifier is not a function/simple pattern name, or is not defined in this module "
