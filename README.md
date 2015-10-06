@@ -1,5 +1,7 @@
 ## <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
 
+Home is now https://github.com/RefactoringTools/HaRe
+
 HaRe can rename symbols, lift definitions, convert equivalent Haskell
 constructs like ifs and cases and more while preserving program
 semantics, types and correctly handling indentation. Only HaRe can
@@ -9,12 +11,12 @@ execute identity transformation!
 [![License BSD3][badge-license]][license]
 [![Build Status][badge-travis]][travis]
 
-[badge-travis]: https://travis-ci.org/alanz/HaRe.png?branch=master
-[travis]: https://travis-ci.org/alanz/HaRe
+[badge-travis]: https://travis-ci.org/RefactoringTools/HaRe.png?branch=master
+[travis]: https://travis-ci.org/RefactoringTools/HaRe
 [badge-hackage]: https://img.shields.io/hackage/v/HaRe.svg?dummy
 [hackage]: https://hackage.haskell.org/package/HaRe
 [badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
-[license]: https://github.com/alanz/HaRe/blob/master/LICENSE
+[license]: https://github.com/RefactoringTools/HaRe/blob/master/LICENSE
 
 Note:
 
@@ -29,6 +31,7 @@ HaRe with 7.10.2 and then using it against projects using an earlier compiler
 will not work, as HaRe needs to be able to invoke GHC to the type checker stage
 on the project using GHC 7.10.2.
 
+See https://github.com/kazu-yamamoto/ghc-mod/issues/615
 
 ### Getting Started
 
@@ -47,7 +50,7 @@ Currently only emacs integration is offered. Add the following to your
 ~/.emacs using the load-path entry that matches the installation on
 your machine.
 
-    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.1.0/elisp")
+    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.1.1/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 
