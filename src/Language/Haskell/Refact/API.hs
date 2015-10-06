@@ -149,7 +149,7 @@ module Language.Haskell.Refact.API
     , getModule
 
     -- *** Locations
-    ,defineLoc, useLoc, locToExp 
+    ,defineLoc, useLoc, locToExp
     ,locToName, locToRdrName
     ,getName
 
@@ -162,7 +162,7 @@ module Language.Haskell.Refact.API
 
     -- *** Updating
     ,Update(update)
-    ,rmQualifier,qualifyToplevelName,renamePN',autoRenameLocalVar
+    ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
 
     -- ** Miscellous
     -- *** Parsing, writing and showing

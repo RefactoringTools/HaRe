@@ -174,7 +174,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                           then do
                                                logm $ "renameTopLevelVarName start..:should have qualified"
                                                parsed <- getRefactParsed
-                                               parsed' <- renamePN' oldPN newNameGhc True parsed
+                                               parsed' <- renamePN oldPN newNameGhc True parsed
                                                putRefactParsed parsed' mempty
                                                logm $ "renameTopLevelVarName done:should have qualified"
                                                r' <- getRefactRenamed
@@ -182,7 +182,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
                                           else do
                                                logm $ "renameTopLevelVarName start.."
                                                parsed <- getRefactParsed
-                                               parsed' <- renamePN' oldPN newNameGhc False parsed
+                                               parsed' <- renamePN oldPN newNameGhc False parsed
                                                putRefactParsed parsed' mempty
                                                logm $ "renameTopLevelVarName done"
                                                r' <- getRefactRenamed
@@ -257,7 +257,7 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
        logm $ "refactRenameSimple:(old,newStr,new,useQual)=" ++ showGhc (old,newStr,new,useQual)
        qualifyTopLevelVar newStr
        parsed <- getRefactParsed
-       parsed' <- renamePN' old new useQual parsed
+       parsed' <- renamePN old new useQual parsed
        putRefactParsed parsed' mempty
        return ()
 
@@ -283,8 +283,8 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
        vs <- hsVisibleNames oldPN' renamed   --Does this check names other than variable names?
        logm $ "renameInClientMod.worker:(vs,oldPN',isInScopeUnqualNew)=" ++ showGhc (vs,oldPN',isInScopeUnqualNew)
        parsed' <- if elem newName' ((nub vs) \\ [nameToString oldPN'])  || isInScopeUnqualNew
-         then renamePN' oldPN' newNameGhc' True  parsed --rename to qualified Name
-         else renamePN' oldPN' newNameGhc' False parsed -- do not qualify
+         then renamePN oldPN' newNameGhc' True  parsed --rename to qualified Name
+         else renamePN oldPN' newNameGhc' False parsed -- do not qualify
        putRefactParsed parsed' mempty
        return ()
 

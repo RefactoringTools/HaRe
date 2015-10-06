@@ -2460,7 +2460,7 @@ spec = do
          renamed <- getRefactRenamed
          let Just (GHC.L _l n') = locToName (3, 1) renamed
          newName <- mkNewGhcName Nothing "bar2"
-         new <- renamePN' n' newName False parsed
+         new <- renamePN n' newName False parsed
          putRefactParsed new emptyAnns
          return (new,newName,n')
       let
@@ -2483,7 +2483,7 @@ spec = do
          let decl = head $ drop 0 declsr
          let Just (GHC.L _l n') = locToName (11, 21) renamed
          newName <- mkNewGhcName Nothing "p_1"
-         new <- renamePN' n' newName False decl
+         new <- renamePN n' newName False decl
          parsed' <- liftT $ replaceDecls parsed (new:tail declsr)
          putRefactParsed parsed' emptyAnns
          return (new,newName,decl,n')
@@ -2509,7 +2509,7 @@ spec = do
          parsed <- getRefactParsed
          decls <- liftT $ hsDecls parsed
          newName <- mkNewGhcName Nothing "bar2"
-         new <- renamePN' n newName False (head $ drop 3 decls)
+         new <- renamePN n newName False (head $ drop 3 decls)
          parsed' <- liftT $ replaceDecls parsed (take 3 decls ++ [new] ++ drop 4 decls)
          putRefactParsed parsed' emptyAnns
          return (new,newName)
@@ -2537,7 +2537,7 @@ spec = do
          decls <- liftT $ hsDecls parsed
          let decl = head $ drop 3 decls
          newName <- mkNewGhcName Nothing "bar2"
-         new <- renamePN' n newName False decl
+         new <- renamePN n newName False decl
 
          parsed' <- liftT $ replaceDecls parsed (take 3 decls ++ [new] ++ drop 4 decls)
          putRefactParsed parsed' emptyAnns
@@ -2562,7 +2562,7 @@ spec = do
       let
         comp = do
          newName <- mkNewGhcName Nothing "pointx1"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2588,7 +2588,7 @@ spec = do
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName Nothing "NewPoint"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2612,7 +2612,7 @@ spec = do
       let
         comp = do
          newName <- mkNewGhcName Nothing "newPoint"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2637,7 +2637,7 @@ spec = do
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName (Just modu) "newPoint"
-         new <- renamePN' n newName True parsed
+         new <- renamePN n newName True parsed
 
          putRefactParsed new emptyAnns
 
@@ -2663,7 +2663,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "ls"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2687,7 +2687,7 @@ spec = do
       let
         comp = do
          newName <- mkNewGhcName (Just modu) "mySum"
-         new <- renamePN' n newName True parsed
+         new <- renamePN n newName True parsed
 
          putRefactParsed new emptyAnns
 
@@ -2715,7 +2715,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName (Just modu) "myNewFringe"
 
-         new <- renamePN' n newName True parsed
+         new <- renamePN n newName True parsed
          putRefactParsed new emptyAnns
 
          return (new,newName)
@@ -2740,7 +2740,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "ls"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2767,7 +2767,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "listlonger"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2793,7 +2793,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "io"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2819,7 +2819,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "ioFunLong"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2844,7 +2844,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "q"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2870,7 +2870,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "square"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2895,7 +2895,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "x"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2921,7 +2921,7 @@ spec = do
 
          newName <- mkNewGhcName Nothing "xxxlong"
          -- new <- renamePN n newName False renamed
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2948,7 +2948,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "xxxlong"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
 
@@ -2975,7 +2975,7 @@ spec = do
          logm $ "parsed:" ++ (SYB.showData SYB.Parser 0 parsed)
 
          newName <- mkNewGhcName Nothing "NewType"
-         new <- renamePN' n newName False parsed
+         new <- renamePN n newName False parsed
 
          putRefactParsed new emptyAnns
          logm $ "parsed:after" ++ (SYB.showData SYB.Parser 0 new)

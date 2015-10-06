@@ -84,7 +84,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Updating
     -- ,Update(update)
-    {- ,qualifyPName-},rmQualifier,qualifyToplevelName,{- renamePN, -} renamePN' {- ,replaceNameInPN -},autoRenameLocalVar
+    {- ,qualifyPName-},rmQualifier,qualifyToplevelName, renamePN {- ,replaceNameInPN -},autoRenameLocalVar
 
     -- * Miscellous
     -- ** Parsing, writing and showing
@@ -1466,8 +1466,8 @@ duplicateDecl decls n newFunName
        declsToDup = definingDeclsRdrNames nm [n] decls True False
        funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
        typeSig    = map wrapSig $ definingSigsRdrNames nm [n] decls
-     funBinding'' <- renamePN' n newFunName False funBinding
-     typeSig'' <- renamePN' n newFunName False typeSig
+     funBinding'' <- renamePN n newFunName False funBinding
+     typeSig'' <- renamePN n newFunName False typeSig
      logm $ "duplicateDecl:funBinding''=" ++ showGhc funBinding''
 
      funBinding3 <- mapM (\f@(GHC.L _ fb) -> do
@@ -1797,7 +1797,7 @@ qualifyToplevelName :: GHC.Name -> RefactGhc ()
 qualifyToplevelName n = do
     -- renamed <- getRefactRenamed
     parsed <- getRefactParsed
-    parsed' <- renamePN' n n True parsed
+    parsed' <- renamePN n n True parsed
     putRefactParsed parsed' emptyAnns
     return ()
 
@@ -1812,14 +1812,14 @@ data HowToQual = Qualify | NoQualify | PreserveQualify
 -- TODO: the syntax phrase is required to be GHC.Located, not sure how
 -- to specify this without breaking the everywhereMStaged call
 
-renamePN'::(SYB.Data t)
+renamePN::(SYB.Data t)
    =>GHC.Name             -- ^ The identifier to be renamed.
    ->GHC.Name             -- ^ The new name, including possible qualifier
    ->Bool                 -- ^ True means use the qualified form for
                           --   the new name.
    ->t                    -- ^ The syntax phrase
    ->RefactGhc t
-renamePN' oldPN newName useQual t = do
+renamePN oldPN newName useQual t = do
   -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- logm $ "renamePN: t=" ++ (SYB.showData SYB.Parser 0 t)
   nameMap <- getRefactNameMap
@@ -2057,7 +2057,7 @@ autoRenameLocalVar pn t = do
                        ds <- hsVisibleNamesRdr pn tt
                        let newNameStr = mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                        newName <- mkNewGhcName Nothing newNameStr
-                       renamePN' pn newName False tt
+                       renamePN pn newName False tt
 
 -- ---------------------------------------------------------------------
 
