@@ -93,10 +93,25 @@ parseSourceFileGhc targetFile = do
 -- ---------------------------------------------------------------------
 
 setTargetSession :: FilePath -> RefactGhc ()
-setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] setDynFlags (return ())
+-- setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] setDynFlags (return ())
+setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (return ())
 
 setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
 setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
+-- setDynFlags df = return df
+
+-- ---------------------------------------------------------------------
+
+-- |For GHC 7.10.2, setting 'GHC.Opt_KeepRawTokenStream' prevents the pragmas at
+-- the top of a source file from being read if there is a comment mixed in them
+-- anywhere. To work around this, we need to inject that setting into the cached
+-- dynflags in the 'GHC.ModSummary' before parsing it for refactoring, otherwise
+-- all comments will be discarded.
+-- See https://ghc.haskell.org/trac/ghc/ticket/10942
+tweakModSummaryDynFlags :: GHC.ModSummary -> GHC.ModSummary
+tweakModSummaryDynFlags ms =
+  let df = GHC.ms_hspp_opts ms
+  in ms { GHC.ms_hspp_opts = GHC.gopt_set df GHC.Opt_KeepRawTokenStream }
 
 -- ---------------------------------------------------------------------
 
@@ -105,7 +120,8 @@ setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
 loadFromModSummary :: GHC.ModSummary -> RefactGhc ()
 loadFromModSummary modSum = do
   logm $ "loadFromModSummary:modSum=" ++ show modSum
-  p <- GHC.parseModule modSum
+  let modSumWithRaw = tweakModSummaryDynFlags modSum
+  p <- GHC.parseModule modSumWithRaw
   t <- GHC.typecheckModule p
 
   -- dflags <- GHC.getDynFlags

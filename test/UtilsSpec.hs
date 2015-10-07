@@ -84,6 +84,13 @@ spec = do
       (showGhc parsed) `shouldBe` "module BCpp where\nbob :: Int -> Int -> Int\nbob x y = x + y"
 
      -- ---------------------------------
+    it "loads a file having a top comment and LANGUAGE CPP pragma" $ do
+      t <- ct $ parsedFileGhc "./BCppTC.hs"
+
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      (showGhc parsed) `shouldBe` "module BCppTC where\nbob :: Int -> Int -> Int\nbob x y = x + y"
+
+     -- ---------------------------------
 
     it "refactors a file having the LANGUAGE CPP pragma" $ do
       r <- ct $ roundTrip defaultTestSettings testOptions "BCpp.hs"
