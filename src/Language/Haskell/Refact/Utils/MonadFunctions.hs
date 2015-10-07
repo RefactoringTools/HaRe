@@ -185,7 +185,7 @@ setRefactAnns anns = modifyRefactAnns (const anns)
 -- RefactGhc state.
 modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
 modifyRefactAnns f = do
-  logm $ "modifyRefactAnns:setting rsStreamModified"
+  -- logm $ "modifyRefactAnns:setting rsStreamModified"
   st <- get
   mrm <- gets rsModule
   let rm = gfromJust "modifyRefactAnns" mrm

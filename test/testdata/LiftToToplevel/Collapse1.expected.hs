@@ -5,7 +5,7 @@ collapse' left space (t:ts) = new : collapse' right space rest
   where
     (_, leftInner)  = left
     rightInner      = leftInner   + symbolSize t
-    right           = (rightInner, rightOuter rightInner rights)
+    right           = (rightInner, (rightOuter rightInner rights))
     (rights, rest)  = span space ts
     new             = (t, Bounds left right)
 

@@ -598,5 +598,18 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      (show r') `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
 -}
 
+    -- -----------------------------------------------------------------
+
+    it "renames in ghc-mod with CPP" $ do
+     pendingWith "get to the bottom of this"
+     {-
+     let cts = cdAndDo "/home/alanz/tmp/hackage/ghc-mod-5.4.0.0"
+     r <- cts $ rename defaultTestSettings testOptions "Language/Haskell/GhcMod/Target.hs" "putNewSession2" (81,6)
+     -- cdAndDo "/home/alanz/tmp/hackage/ghc-mod-5.4.0.0" $ rename logTestSettings testOptions  "Language/Haskell/GhcMod/Target.hs" "putNewSession2" (81,6)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
+     -}
+ 
 -- ---------------------------------------------------------------------
 -- Helper functions

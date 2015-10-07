@@ -44,17 +44,16 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types
-import Language.Haskell.Refact.Utils.Variables
 import System.Directory
 import System.FilePath.Posix
-import qualified Data.Generics as SYB
 
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
-import qualified Outputable    as GHC
+-- import qualified Outputable    as GHC
 
-import qualified GHC.SYB.Utils as SYB
+-- import qualified GHC.SYB.Utils as SYB
+-- import qualified Data.Generics as SYB
 
 import qualified Data.Map      as Map
 import qualified Data.Set      as Set

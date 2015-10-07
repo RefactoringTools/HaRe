@@ -584,14 +584,14 @@ moveDecl1 :: (SYB.Data t)
   -> RefactGhc t    -- ^ The updated syntax element (and tokens in monad)
 moveDecl1 t defName ns mliftedDecls sigNames mliftedSigs = do
   logm $ "moveDecl1:(defName,ns,sigNames,mliftedDecls)=" ++ showGhc (defName,ns,sigNames,mliftedDecls)
-  logm $ "moveDecl1:(t)=" ++ SYB.showData SYB.Parser 0 (t)
+  -- logm $ "moveDecl1:(t)=" ++ SYB.showData SYB.Parser 0 (t)
 
   -- TODO: rmDecl can now remove the sig at the same time.
   (t'',_sigsRemoved) <- rmTypeSigs sigNames t
   -- logm $ "moveDecl1:after rmTypeSigs:t''" ++ SYB.showData SYB.Parser 0 t''
   logm $ "moveDecl1:mliftedSigs=" ++ showGhc mliftedSigs
   (t',_declRemoved,_sigRemoved) <- rmDecl (ghead "moveDecl3.1"  ns) False t''
-  logm $ "moveDecl1:after rmDecl:t'" ++ SYB.showData SYB.Parser 0 t'
+  -- logm $ "moveDecl1:after rmDecl:t'" ++ SYB.showData SYB.Parser 0 t'
   let sigs = map wrapSig mliftedSigs
   r <- addDecl t' defName (sigs++mliftedDecls,Nothing)
 
@@ -641,7 +641,17 @@ addParamsToParent :: (SYB.Data t) => GHC.Name -> [GHC.RdrName] -> t -> RefactGhc
 addParamsToParent _pn [] t = return t
 addParamsToParent  pn params t = do
   logm $ "addParamsToParent:(pn,params)" ++ (showGhc (pn,params))
-  addActualParamsToRhs pn params t
+  nm <- getRefactNameMap
+  applyTP (full_buTP (idTP  `adhocTP` (inExp nm))) t
+  where
+    inExp nm (e@(GHC.L l (GHC.HsVar n)) :: GHC.LHsExpr GHC.RdrName) = do
+      let ne = rdrName2NamePure nm (GHC.L l n)
+      if GHC.nameUnique ne == GHC.nameUnique pn
+         then addActualParamsToRhs pn params e
+         else return e
+    inExp _ e = return e
+
+  -- addActualParamsToRhs pn params t
 
 
 -- |Do refactoring in the client module. that is to hide the identifer

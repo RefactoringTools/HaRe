@@ -985,14 +985,14 @@ addDecl parent pn (declSig, mDeclAnns) = do
     where
       workerHsDecls :: forall t. HasDecls t => t -> RefactGhc t
       workerHsDecls parent' = do
-        logm $ "addDecl.appendDecl:(pn')=" ++ showGhc pn'
+        -- logm $ "addDecl.appendDecl:(pn')=" ++ showGhc pn'
         liftT $ setDeclSpacing newDeclSig 2 0
         nameMap <- getRefactNameMap
         decls <- liftT $ hsDecls parent'
         let
            (before,after) = break (definesDeclRdr nameMap pn') decls
 
-        logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
+        -- logm $ "addDecl.appendDecl:(before,after)=" ++ showGhc (before,after)
         let (decls1,decls2) = case after of
               [] -> (before,[])
               _  -> (before ++ [ghead "appendDecl14" after],
@@ -1308,12 +1308,6 @@ addActualParamsToRhs pn paramPNames rhs = do
     logm $ "addActualParamsToRhs:entered:(pn,paramPNames)=" ++ showGhc (pn,paramPNames)
     nameMap <- getRefactNameMap
     let
-       -- |Limit the action to actual RHS elements
-       grhs :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-       grhs (GHC.GRHSs g lb) = do
-         g' <- SYB.everywhereMStaged SYB.Renamer (SYB.mkM worker) g
-         return (GHC.GRHSs g' lb)
-
        worker :: (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
@@ -1340,7 +1334,7 @@ addActualParamsToRhs pn paramPNames rhs = do
          addSimpleAnnT expr' (DP (0,0)) []
          return expr'
 
-    r <- applyTP (stop_tdTP (failTP `adhocTP` grhs)) rhs
+    r <- applyTP (full_buTP (idTP  `adhocTP` worker)) rhs
     return r
 
 {-
@@ -1600,8 +1594,8 @@ rmDecl pn incSig t = do
     doRmDeclList parent
       = do
          isDone <- getDone
-         logm $ "doRmDeclList:isDone=" ++ show isDone
-         logm $ "doRmDeclList:parent=" ++ SYB.showData SYB.Parser 0 parent
+         -- logm $ "doRmDeclList:isDone=" ++ show isDone
+         -- logm $ "doRmDeclList:parent=" ++ SYB.showData SYB.Parser 0 parent
          if isDone
            then return parent
            else do
@@ -1615,7 +1609,7 @@ rmDecl pn incSig t = do
                  setStateStorage (StorageDeclRdr decl)
                  decls'  <- doRmDecl decls1 decls2
                  parent' <- liftT $ replaceDecls parent decls'
-                 logDataWithAnns "doRmDeclList:(parent')" (parent')
+                 -- logDataWithAnns "doRmDeclList:(parent')" (parent')
                  return parent'
                else do
                  return parent
@@ -2079,16 +2073,6 @@ autoRenameLocalVar pn t = do
                        let newNameStr = mkNewName (nameToString pn) (nub (f `union` d `union` ds)) 1
                        newName <- mkNewGhcName Nothing newNameStr
                        renamePN pn newName False tt
-
--- ---------------------------------------------------------------------
-
--- | Show a list of entities, the parameter f is a function that
--- specifies how to format an entity.
-showEntities:: (t->String) -> [t] ->String
-showEntities _ [] = ""
-showEntities f [pn] = f pn
-showEntities f (pn:pns) =f pn ++ "," ++ showEntities f pns
-
 
 -- ---------------------------------------------------------------------
 
