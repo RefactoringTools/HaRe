@@ -1,3 +1,9 @@
+2015-10-07 v0.8.2.0
+	* Work around a bug in GHC 7.10.2 that will not process pragmas
+	after a comment at the top of a file, when comments are returned
+	for ghc-exactprint processing.
+	* Add parameters to all use sites in the original location when
+	lifting a declaration.
 2015-10-05 v0.8.1.1
 	* Move to new/old home at https://github.com/RefactoringTools/HaRe
 2015-10-05 v0.8.1.0

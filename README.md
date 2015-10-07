@@ -50,7 +50,7 @@ Currently only emacs integration is offered. Add the following to your
 ~/.emacs using the load-path entry that matches the installation on
 your machine.
 
-    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.1.1/elisp")
+    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.2.0/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 
