@@ -112,6 +112,8 @@ addOneParameter args
 doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe String -> Bool
               -> RefactGhc ()
 doAddingParam fileName modName pn newParam defaultArg isExported = do
+    assert False undefined
+    {-
     parsed <- getRefactParsed
     r <- applyTP (once_tdTP (failTP `adhocTP` inMod
                                     -- `adhocTP` inMatch
@@ -185,6 +187,8 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                        ds'' <- addArgToSig pn (hsDecls parent'')
                        return (replaceDecls parent'' ds'')
                    else error " Refactoring failed."
+-}
+-- ---------------------------------------------------------------------
 {-
 doAddingParam fileName modName pn newParam defaultArg isExported mod tokList
     =  runStateT (applyTP (once_tdTP (failTP `adhocTP` inMod
