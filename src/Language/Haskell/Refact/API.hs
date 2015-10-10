@@ -20,6 +20,7 @@ module Language.Haskell.Refact.API
 
        , logm
        , logDataWithAnns
+       , logExactprint
 
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
@@ -74,6 +75,9 @@ module Language.Haskell.Refact.API
 
        , setStateStorage
        , getStateStorage
+
+       -- * Parsing source
+       , parseDeclWithAnns
 
        -- , logm
 
@@ -140,7 +144,7 @@ module Language.Haskell.Refact.API
     ,sameOccurrence
     , findIdForName
     , getTypeForName
-    ,defines, definesP,definesTypeSig
+    , definesTypeSig,definesTypeSigRdr,definesSigDRdr
     ,sameBind,sameBindRdr
     ,UsedByRhs(..)
 
@@ -178,6 +182,7 @@ module Language.Haskell.Refact.API
     -- *** Others
     , divideDecls
     , mkRdrName,mkQualifiedRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , registerRdrName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports

@@ -93,6 +93,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Others
     , divideDecls
     , mkRdrName,mkQualifiedRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , registerRdrName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports {- , inRegion , unmodified -}
@@ -271,6 +272,22 @@ mkQualifiedRdrName mn s = GHC.mkRdrQual mn (GHC.mkVarOcc s)
 mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
+-- ---------------------------------------------------------------------
+
+-- |Register a 'GHC.Located' 'GHC.RdrName' in the 'NameMap' so it can be looked
+-- up if needed. This will create a brand new 'GHC.Name', so no guarantees are
+-- given as to matches later. Perhaps this is a bad idea.
+registerRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
+registerRdrName (GHC.L l rn) = do
+  case GHC.isQual_maybe rn of
+    Nothing -> do
+      n <- mkNewGhcName Nothing (showGhc rn)
+      addToNameMap l n
+    Just (mn,oc) -> do
+      n <- mkNewGhcName (Just (GHC.Module (GHC.stringToPackageKey "HaRe") mn)) (showGhc oc)
+      addToNameMap l n
+
+-- ---------------------------------------------------------------------
 
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
 -- RefactState.
@@ -1226,6 +1243,13 @@ addParamsToDecls decls pn paramPNames = do
 
 -- ---------------------------------------------------------------------
 
+-- | Add identifiers to the export list of a module. If the second argument
+-- is like: Just p, then do the adding only if p occurs in the export list, and
+-- the new identifiers are added right after p in the export list. Otherwise the
+-- new identifiers are add to the beginning of the export list. In the case that
+-- the export list is emport, then if the third argument is True, then create an
+-- explict export list to contain only the new identifiers, otherwise do
+-- nothing.
 addItemsToExport ::
                     GHC.ParsedSource                    -- ^The module AST.
                    -> Maybe GHC.Name                    -- ^The condtion identifier.
@@ -1234,6 +1258,52 @@ addItemsToExport ::
                             -- ^The identifiers to add in either String or HsExportEntP format.
                    -> RefactGhc GHC.ParsedSource        -- ^The result.
 addItemsToExport = assert False undefined
+-- addItemsToExport modu _  _ (Left [])  = return modu
+-- addItemsToExport modu _  _ (Right []) = return modu
+-- addItemsToExport modu@(HsModule loc modName exps imps ds) (Just pn) _ ids
+--   =  case exps  of
+--        Just ents ->let (e1,e2) = break (findEntity pn) ents
+--                    in if e2 /=[]
+--                         then do ((toks,_),others)<-get
+--                                 let e = (ghead "addVarItemInExport" e2)
+--                                     es = case ids of
+--                                           (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+--                                           (Right es') -> es'
+--                                 let (_,endPos) = getStartEndLoc toks e
+--                                     (t, (_,s)) = ghead "addVarItemInExport" $ getToks (endPos,endPos) toks
+--                                     newToken = mkToken t endPos (s++","++ showEntities (render.ppi) es)
+--                                     toks' = replaceToks toks endPos endPos [newToken]
+--                                 put ((toks',modified),others)
+--                                 return (HsModule loc modName (Just (e1++(e:es)++tail e2)) imps ds)
+--                         else return mod
+--        Nothing   -> return mod
+
+-- addItemsToExport mod@(HsModule _ _ (Just ents) _ _) Nothing createExp ids
+--     = do ((toks,_),others)<-get
+--          let es = case ids of
+--                     (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+--                     (Right es') -> es'
+--              (t, (pos,s))=fromJust $ find isOpenBracket toks  -- s is the '('
+--              newToken = if ents /=[] then  (t, (pos,(s++showEntities (render.ppi) es++",")))
+--                                      else  (t, (pos,(s++showEntities (render.ppi) es)))
+--              pos'= simpPos pos
+--              toks' = replaceToks toks pos' pos' [newToken]
+--          put ((toks',modified),others)
+--          return mod {hsModExports=Just (es++ ents)}
+
+-- addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _)  Nothing createExp ids
+--   =case createExp of
+--        True ->do ((toks,_),others)<-get
+--                  let es = case ids of
+--                                (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+--                                (Right es') -> es'
+--                      pos = (row,col)
+--                      newToken = mkToken Varid pos (modNameToStr modName++ "("
+--                                          ++ showEntities (render.ppi) es++")")
+--                      toks' = replaceToks toks pos pos [newToken]
+--                  put  ((toks', modified), others)
+--                  return mod {hsModExports=Just es}
+--        False ->return mod
 {-
 
 -- | Add identifiers to the export list of a module. If the second argument is like: Just p, then do the adding only if p occurs
@@ -1318,7 +1388,7 @@ addActualParamsToRhs pn paramPNames rhs = do
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
               logDataWithAnns "addActualParamsToRhs:oldExp=" oldExp
-              newExp' <- liftT $ foldlM addParamToExp oldExp paramPNames
+              newExp' <- foldlM addParamToExp oldExp paramPNames
 
               edp <- liftT $ getEntryDPT oldExp
               liftT $ setEntryDPT oldExp (DP (0,0))
@@ -1329,14 +1399,16 @@ addActualParamsToRhs pn paramPNames rhs = do
               return newExp
        worker x = return x
 
-       addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> Transform (GHC.LHsExpr GHC.RdrName)
+       addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
        addParamToExp expr param = do
-         ss1 <- uniqueSrcSpanT
-         ss2 <- uniqueSrcSpanT
+         ss1 <- liftT $ uniqueSrcSpanT
+         ss2 <- liftT $ uniqueSrcSpanT
+         logm $ "addActualParamsToRhs.addParamsToExp:(ss1,ss2):" ++ showGhc (ss1,ss2)
+         registerRdrName (GHC.L ss2 param)
          let var   = GHC.L ss2 (GHC.HsVar param)
          let expr' = GHC.L ss1 (GHC.HsApp expr var)
-         addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
-         addSimpleAnnT expr' (DP (0,0)) []
+         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
+         liftT $ addSimpleAnnT expr' (DP (0,0)) []
          return expr'
 
     r <- applyTP (full_buTP (idTP  `adhocTP` worker)) rhs
