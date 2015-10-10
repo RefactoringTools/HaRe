@@ -922,16 +922,14 @@
   (let (changed)
       (dolist (b (buffer-list) changed)
         (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
-          (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
+          (if (and (buffer-file-name b) (buffer-modified-p b))
               (setq changed (cons (buffer-name b) changed)))))
       (if changed
           (if (y-or-n-p (format "There are modified buffers: %s, which HaRe needs to save before refactoring, continue?" changed))
               (progn
-                (save-some-buffers t)
-                t)
+                (save-some-buffers t) t)
             nil)
-        t)
-      ))
+        t)))
 
 
 (defun buffers-changed-warning()
