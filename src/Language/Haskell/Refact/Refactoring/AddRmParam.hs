@@ -12,6 +12,7 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import qualified GHC
+import qualified Outputable            as GHC
 import qualified RdrName               as GHC
 
 import qualified Language.Haskell.GhcMod as GM
@@ -71,7 +72,14 @@ compAdd fileName paramName (row, col) = do
                   exported <- isExported pn
                   if exported
                     then do
-                      assert False undefined
+                     clients <- clientModsAndFiles targetModule
+                     logm ("AddRmParam.compAdd: clients=" ++ show clients) -- ++AZ++ debug
+                     decls <- liftT $ hsDecls parsed
+                     defaultArg <- mkTopLevelDefaultArgName pn paramName fileName modName undefined decls
+                     (refactoredMod,_) <- applyRefac (doAddingParam undefined modName pn paramName (Just defaultArg) False) RSAlreadyLoaded
+                     refactoredClients <- mapM (addArgInClientMod pn defaultArg) clients
+                     -- let refactoredClients = []
+                     return $ refactoredMod:(concat refactoredClients)
                     else do
                      (refactoredMod,_) <- applyRefac (doAddingParam undefined modName pn paramName Nothing False) (RSFile fileName)
                      return [refactoredMod]
@@ -109,11 +117,10 @@ addOneParameter args
 
 -- ---------------------------------------------------------------------
 
-doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe String -> Bool
+doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe (GHC.Located GHC.RdrName) -> Bool
               -> RefactGhc ()
 doAddingParam fileName modName pn newParam defaultArg isExported = do
-    assert False undefined
-    {-
+    logm $ "doAddingParam entered"
     parsed <- getRefactParsed
     r <- applyTP (once_tdTP (failTP `adhocTP` inMod
                                     -- `adhocTP` inMatch
@@ -134,17 +141,22 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
              --          then addItemsToExport mod' (Just pn) False (Left [pNtoName (fromJust defaultArg)])
              --          else return mod'
              -- inMod _ = mzero
-             inMod (modu :: GHC.HsModule GHC.RdrName) = do
+             inMod :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
+             inMod modu = do
                nm <- getRefactNameMap
-               if definingDeclsRdrNames nm [pn] modu /= []
+               decls <- liftT $ hsDecls modu
+               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
                 then
                  do
+                    logm $ "doAddingParam.inMod doing it"
                     ds <- liftT $ hsDecls modu
                     modu' <- doAdding modu ds
-                    if isExported && isExplicitlyExported pn modu
+                    renamed <- getRefactRenamed
+                    if isExported && isExplicitlyExported pn renamed
                       then addItemsToExport modu' (Just pn) False (Left [(fromJust defaultArg)])
                       else return modu'
-                else return mzero
+                -- else return mzero
+                else return modu
 
 {-
              --2. pn is declared locally in the where clause of a match.
@@ -172,22 +184,31 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                | definingDecls [pn] ds False  False/=[]  = doAdding letStmt ds
              inLetStmt _ = mzero
 -}
-             failure = idTP `adhocTP` mod
+             failure = idTP `adhocTP` modu
                where modu (m::GHC.ParsedSource) = error "Refactoring failed"
 
-             doAdding parent ds
-               = if paramNameOk pn newParam ds
-                   then
-                    do ds' <- addParamsToDecls ds pn [mkRdrName newParam] True  --addFormalParam pn newParam ds
+             doAdding :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
+             doAdding parent ds = do
+               nm <- getRefactNameMap
+               if paramNameOk nm pn newParam ds
+                   then do
+                       logm $ "doAddingParam.doAdding: True leg of paramNameOk"
+                       ds' <- addParamsToDecls ds pn [mkRdrName newParam] --addFormalParam pn newParam ds
+                       logm $ "doAddingParam.doAdding: after addParamsToDecls"
                        defaultParamPName <-if isNothing defaultArg
                                            then mkLocalDefaultArgName pn newParam modName parent
                                            else return (fromJust defaultArg)
-                       parent' <- addDefaultActualArg False pn defaultParamPName (replaceDecls parent ds')
-                       parent''<- addDefaultActualArgDecl defaultParamPName  parent' pn isExported
-                       ds'' <- addArgToSig pn (hsDecls parent'')
-                       return (replaceDecls parent'' ds'')
+                       parent1 <- liftT $ replaceDecls parent ds'
+                       logDataWithAnns "doAddingParam.doAdding:parent1" parent1
+                       parent' <- addDefaultActualArg False pn defaultParamPName parent1
+                       logm $ "doAddingParam.doAdding: xxx"
+                       parent''<- addDefaultActualArgDecl defaultParamPName parent' pn isExported
+                       ds2 <- liftT $ hsDecls parent''
+                       ds'' <- addArgToSig pn ds2
+                       parent3 <- liftT $ replaceDecls parent'' ds''
+                       return parent3
                    else error " Refactoring failed."
--}
+
 -- ---------------------------------------------------------------------
 {-
 doAddingParam fileName modName pn newParam defaultArg isExported mod tokList
@@ -238,7 +259,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported mod tokList
                where mod (m::HsModuleP) = error "Refactoring failed"
 
              doAdding parent ds
-               = if paramNameOk pn newParam ds
+               = if paramNameOk nm pn newParam ds
                    then
                     do ds' <- addParamsToDecls ds pn [nameToPN newParam] True  --addFormalParam pn newParam ds
                        defaultParamPName <-if isNothing defaultArg
@@ -253,7 +274,27 @@ doAddingParam fileName modName pn newParam defaultArg isExported mod tokList
 
 -- ---------------------------------------------------------------------
 
-paramNameOk = assert False undefined
+-- |check whether the new parameter is a legal.
+paramNameOk :: (SYB.Data t) => NameMap -> GHC.Name -> String -> t -> Bool
+paramNameOk nm pn newParam t = (fromMaybe True) (applyTU (once_tdTU (failTU `adhocTU` decl)) t)
+  where
+   -- decl ((Dec (HsFunBind _ matches@((HsMatch _ fun pats rhs ds):ms)))::HsDeclP)
+   decl :: GHC.LHsBind GHC.RdrName -> Maybe Bool
+   decl (GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t))
+    | rdrName2NamePure nm n == pn
+    = do results' <- mapM checkInMatch matches
+         Just (all (==True) results')
+   -- decl pat@(Dec (HsPatBind loc p rhs ds))
+   decl (GHC.L _ (GHC.PatBind _pat _rhs _ty _fvs _t))
+      = error "Parameter can not be added to complex pattern binding"
+   decl _ = mzero
+
+   checkInMatch match
+     = do let (f,d) = hsFDNamesFromInsideRdrPure nm match
+          if elem newParam (f `union` d)
+           then error "The new parameter name will cause name clash or semantics change, please choose another name!"
+           else return True
+
 {-
 
 -- check whether the new parameter is a legal.
@@ -282,6 +323,8 @@ paramNameOk pn newParam t = (fromMaybe True) (applyTU (once_tdTU (failTU `adhocT
            else return True
 -}
 -- ---------------------------------------------------------------------
+
+addDefaultActualArgDecl :: a -> b -> c -> d -> RefactGhc b
 addDefaultActualArgDecl = assert False undefined
 {-
 --add the default argument declaration right after the declaration defining pn
@@ -306,6 +349,18 @@ mkLocalDefaultArgName fun paramName modName t
 
 -}
 -- ---------------------------------------------------------------------
+
+mkTopLevelDefaultArgName :: (SYB.Data t,GHC.Outputable a) => a -> String -> c -> GHC.ModuleName -> [String] -> t -> RefactGhc (GHC.Located GHC.RdrName)
+mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t = do
+  nm <- getRefactNameMap
+  (f,d) <- hsFDNamesFromInsideRdr t
+  let name = mkNewName ((showGhc fun)++"_"++paramName) (nub (f `union` d `union` inscopeNames)) 0
+  loc <- liftT $ uniqueSrcSpanT
+  let vn = (GHC.L loc (mkQualifiedRdrName modName name))
+  liftT $ addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+  return vn
+  -- return (PN (UnQual name) (G modName name (N (Just loc))))
+
 {-
 mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t
  =do (f,d)<-hsFDNamesFromInside t
@@ -315,7 +370,48 @@ mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t
 
 -}
 -- ---------------------------------------------------------------------
-addDefaultActualArg = assert False undefined
+
+addDefaultActualArg :: (SYB.Data t) => Bool -> GHC.Name -> GHC.Located GHC.RdrName -> t -> RefactGhc t
+addDefaultActualArg recursion pn argPName t = do
+  nm <- getRefactNameMap
+  if recursion then (applyTP (stop_tdTP (failTP `adhocTP` (funApp nm)))) t
+               else (applyTP (stop_tdTP (failTP `adhocTP` (inDecl nm)
+                                                `adhocTP` (funApp nm)))) t
+       where
+         -- inDecl :: NameMap -> GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
+         -- inDecl = assert False undefined
+
+         -- funApp :: NameMap -> GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+         -- funApp = assert False undefined
+
+         inDecl :: NameMap -> GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
+         -- inDecl (fun@(Dec (HsFunBind _  ((HsMatch _ (PNT pname _ _) _ _ _):ms)))::HsDeclP)
+         inDecl nm fun@(GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t))
+           | rdrName2NamePure nm n == pn
+           -- was | pn == pname
+           = return fun
+
+         -- inDecl (pat@(Dec (HsPatBind loc1 ps rhs ds))::HsDeclP)
+         --   | pn == patToPN  ps
+         --   = return pat
+         inDecl _ _ = mzero
+
+         -- funApp nm (exp@(Exp (HsId (HsVar (PNT pname _ _))))::HsExpP)
+         funApp :: NameMap -> GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+         funApp nm (exp@(GHC.L l (GHC.HsVar n))::GHC.LHsExpr GHC.RdrName)
+          | rdrName2NamePure nm (GHC.L l n) == pn = do
+          -- was | pname == pn
+           -- = update exp (Exp (HsParen (Exp (HsApp exp (pNtoExp argPName))))) exp
+            lp <- liftT uniqueSrcSpanT
+            la <- liftT uniqueSrcSpanT
+            lv <- liftT uniqueSrcSpanT
+            let pNtoExp (GHC.L _ rdrName) = GHC.L lv (GHC.HsVar rdrName)
+            let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp exp (pNtoExp argPName))))
+            return ret
+
+         funApp _ _ = mzero
+
+
 {-
 
 addDefaultActualArg recursion pn argPName
@@ -376,7 +472,10 @@ addArgToSig pn decls
                      =if elem initName v
                          then mkNewName ((intToDigit (digitToInt(head initName)+1)):tail initName) v
                          else initName
-
+-}
+-- ---------------------------------------------------------------------
+addArgInClientMod = assert False undefined
+{-
 addArgInClientMod pnt defaultArg  serverModName ((inscps, exps, mod,ts), fileName)
  = let qual = hsQualifier pnt inscps
        pn = pNTtoPN pnt

@@ -622,8 +622,8 @@ pnsNeedRenaming dest parent _liftedDecls pns
        = do
             logm $ "MoveDef.pnsNeedRenaming' entered"
             nm <- getRefactNameMap
-            (FN f,DN d) <- hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
-                                                      --d: declaread variables names that may clash with pn
+            let (FN f,DN d) = hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
+                                                         --d: declaread variables names that may clash with pn
             logm $ "MoveDef.pnsNeedRenaming':(f,d)=" ++ showGhc (f,d)
             vs <- hsVisiblePNsRdr nm pn parent  --vs: declarad variables that may shadow pn
             logm $ "MoveDef.pnsNeedRenaming':vs=" ++ showGhc vs
@@ -1625,7 +1625,7 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
                        -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
                        -> RefactGhc [GHC.Name]
        getClashedNames nm oldNames newNames match'
-         = do  (_f,DN d) <- hsFDsFromInsideRdr nm match'
+         = do  let (_f,DN d) = hsFDsFromInsideRdr nm match'
                ds' <- mapM (flip (hsVisiblePNsRdr nm) match') oldNames
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub

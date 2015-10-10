@@ -123,7 +123,7 @@ module Language.Haskell.Refact.API
 
     ,hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
     ,hsVisibleNamesRdr
-    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr
+    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
     ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
     ,rdrName2Name, rdrName2NamePure
@@ -177,7 +177,7 @@ module Language.Haskell.Refact.API
 
     -- *** Others
     , divideDecls
-    , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , mkRdrName,mkQualifiedRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports

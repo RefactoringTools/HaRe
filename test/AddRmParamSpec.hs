@@ -1,0 +1,65 @@
+module AddRmParamSpec (main, spec) where
+
+import           Test.Hspec
+
+import Language.Haskell.Refact.Refactoring.AddRmParam
+
+import TestUtils
+
+import System.Directory
+
+-- ---------------------------------------------------------------------
+
+main :: IO ()
+main = do
+  hspec spec
+
+spec :: Spec
+spec = do
+
+  describe "Adding" $ do
+    it "renames in D1 B1 C1 A1 6 6" $ do
+     r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/D3.hs" "y" (7,1)
+     -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/D3.hs" "y" (7,1)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+     r' `shouldBe` [ "Renaming/D1.hs"
+                   , "Renaming/A1.hs"
+                   , "Renaming/B1.hs"
+                   , "Renaming/C1.hs"
+                   ]
+
+     diffD <- ct $ compareFiles "./Renaming/D1.hs.expected"
+                                "./Renaming/D1.refactored.hs"
+     diffD `shouldBe` []
+
+     diffC <- ct $ compareFiles "./Renaming/C1.hs.expected"
+                                "./Renaming/C1.refactored.hs"
+     diffC `shouldBe` []
+
+     diffB <- ct $ compareFiles "./Renaming/B1.hs.expected"
+                                "./Renaming/B1.refactored.hs"
+     diffB `shouldBe` []
+
+     diffA <- ct $ compareFiles "./Renaming/A1.hs.expected"
+                                "./Renaming/A1.refactored.hs"
+     diffA `shouldBe` []
+
+
+{-
+TestCases{refactorCmd="addOneParameter",
+positive=[(["D3.hs","A3.hs"],["y","7","1"]),
+          (["D1.hs","C1.hs","A1.hs"],["f","10","1"]),
+          (["D2.hs","C2.hs","A2.hs"],["f","11","1"]),
+          (["PatIn1.hs"],["x","7","1"]),
+          (["FunIn1.hs"],["y","7","1"]),
+          (["FunIn2.hs"],["y","10","18"]),
+          (["FunIn3.hs"],["y","9","11"]),
+          (["FunIn4.hs"],["y","8","22"])],
+negative=[(["PatIn2.hs"],["x","7","20"]),
+         (["FunIn5.hs"],["h","8","1"])]
+
+-}
+
+    -- ---------------------------------

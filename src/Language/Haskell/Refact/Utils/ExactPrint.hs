@@ -20,6 +20,10 @@ import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
+-- ++AZ++:TODO: Move this to ghc-exactprint
+-- |The annotations are keyed to the constructor, so if we replace a qualified
+-- with an unqualified RdrName or vice versa we have to rebuild the key for the
+-- appropriate annotation.
 replaceAnnKey :: (SYB.Data old,SYB.Data new)
   => GHC.Located old -> GHC.Located new -> Anns -> Anns
 replaceAnnKey old new ans =
@@ -33,6 +37,7 @@ replaceAnnKey old new ans =
 
 -- ---------------------------------------------------------------------
 
+-- ++AZ++ TODO: migrate this to ghc-exactprint
 copyAnn :: (SYB.Data old,SYB.Data new)
   => GHC.Located old -> GHC.Located new -> Anns -> Anns
 copyAnn old new ans =

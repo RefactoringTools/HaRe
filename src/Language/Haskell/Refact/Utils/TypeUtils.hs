@@ -92,7 +92,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Others
     , divideDecls
-    , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , mkRdrName,mkQualifiedRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports {- , inRegion , unmodified -}
@@ -262,6 +262,10 @@ defaultName = n
     n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc "nothing")
 
 -- ---------------------------------------------------------------------
+
+-- |Make a qualified 'GHC.RdrName'
+mkQualifiedRdrName :: GHC.ModuleName -> String -> GHC.RdrName
+mkQualifiedRdrName mn s = GHC.mkRdrQual mn (GHC.mkVarOcc s)
 
 -- |Make a simple unqualified 'GHC.RdrName'
 mkRdrName :: String -> GHC.RdrName
@@ -1223,11 +1227,12 @@ addParamsToDecls decls pn paramPNames = do
 -- ---------------------------------------------------------------------
 
 addItemsToExport ::
-                    GHC.ParsedSource                    -- The module AST.
-                   -> Maybe PName                       -- The condtion identifier.
-                   -> Bool                              -- Create an explicit list or not
-                   -> Either [String] [GHC.LIE GHC.RdrName] -- The identifiers to add in either String or HsExportEntP format.
-                   -> RefactGhc GHC.ParsedSource        -- The result.
+                    GHC.ParsedSource                    -- ^The module AST.
+                   -> Maybe GHC.Name                    -- ^The condtion identifier.
+                   -> Bool                              -- ^Create an explicit list or not
+                   -> Either [GHC.Located GHC.RdrName] [GHC.LIE GHC.RdrName]
+                            -- ^The identifiers to add in either String or HsExportEntP format.
+                   -> RefactGhc GHC.ParsedSource        -- ^The result.
 addItemsToExport = assert False undefined
 {-
 

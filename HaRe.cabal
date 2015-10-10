@@ -46,6 +46,8 @@ data-files:                     elisp/*.el
                                 configure.sh
                                 test/testdata/*.cabal
                                 test/testdata/*.hs
+                                test/testdata/AddOneParam/*.hs
+                                test/testdata/AddOneParam/*.expected.hs
                                 test/testdata/Case/*.hs
                                 test/testdata/Case/*.hs.expected
                                 test/testdata/Case/*.hs.expected.dd
@@ -252,7 +254,8 @@ test-suite spec
     src
     test
   other-modules:
-      CaseSpec
+      AddRmParamSpec
+    , CaseSpec
     , DupDefSpec
     , GhcUtilsSpec
     , LocUtilsSpec
