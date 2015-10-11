@@ -77,7 +77,7 @@ compAdd fileName paramName (row, col) = do
                      decls <- liftT $ hsDecls parsed
                      let inscopes = []
                      defaultArg <- mkTopLevelDefaultArgName pn paramName fileName modName inscopes decls
-                     (refactoredMod,_) <- applyRefac (doAddingParam undefined modName pn paramName (Just defaultArg) True) RSAlreadyLoaded
+                     (refactoredMod,_) <- applyRefac (doAddingParam (error "p2") modName pn paramName (Just defaultArg) True) RSAlreadyLoaded
                      refactoredClients <- mapM (addArgInClientMod pn defaultArg) clients
                      -- let refactoredClients = []
                      return $ refactoredMod:(concat refactoredClients)
@@ -155,7 +155,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                     renamed <- getRefactRenamed
                     if isExported && isExplicitlyExported pn renamed
                       then do
-                           logm $ "doAddingParam.inMod calling addItemsToExport"
+                           -- logm $ "doAddingParam.inMod calling addItemsToExport for:" ++ showGhc [(fromJust defaultArg)]
                            addItemsToExport modu' (Just pn) False (Left [(fromJust defaultArg)])
                       else return modu'
                 -- else return mzero
@@ -388,7 +388,8 @@ mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t = do
   logm $ "mkTopLevelDefaultArgName:loc=" ++ showGhc loc
   logm $ "mkTopLevelDefaultArgName:modName=" ++ showGhc modName
   logm $ "mkTopLevelDefaultArgName:name=" ++ showGhc name
-  let vn = (GHC.L loc (mkQualifiedRdrName modName name))
+  -- let vn = (GHC.L loc (mkQualifiedRdrName modName name))
+  let vn = (GHC.L loc (mkRdrName name))
   liftT $ addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
   logm $ "mkTopLevelDefaultArgName:vn=" ++ showGhc vn
   return vn

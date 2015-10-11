@@ -3679,6 +3679,12 @@ spec = do
 
   -- ---------------------------------------
 
+  describe "addItemsToExport" $ do
+    it "adds an item to an export entry with no items" $ do
+      pendingWith "write these tests"
+
+  -- ---------------------------------------
+
   describe "stripLeadingSpaces" $ do
     it "Strips the longest common space prefix from a list of Strings" $ do
       (stripLeadingSpaces []) `shouldBe` []

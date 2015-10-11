@@ -24,26 +24,16 @@ spec = do
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "Renaming/D1.hs"
-                   , "Renaming/A1.hs"
-                   , "Renaming/B1.hs"
-                   , "Renaming/C1.hs"
+     r' `shouldBe` [ "AddOneParameter/D3.hs"
+                   , "AddOneParameter/A3.hs"
                    ]
 
-     diffD <- ct $ compareFiles "./Renaming/D1.hs.expected"
-                                "./Renaming/D1.refactored.hs"
+     diffD <- ct $ compareFiles "./AddOneParameter/D3.hs.expected"
+                                "./AddOneParameter/D3.refactored.hs"
      diffD `shouldBe` []
 
-     diffC <- ct $ compareFiles "./Renaming/C1.hs.expected"
-                                "./Renaming/C1.refactored.hs"
-     diffC `shouldBe` []
-
-     diffB <- ct $ compareFiles "./Renaming/B1.hs.expected"
-                                "./Renaming/B1.refactored.hs"
-     diffB `shouldBe` []
-
-     diffA <- ct $ compareFiles "./Renaming/A1.hs.expected"
-                                "./Renaming/A1.refactored.hs"
+     diffA <- ct $ compareFiles "./AddOneParameter/A3.hs.expected"
+                                "./AddOneParameter/A3.refactored.hs"
      diffA `shouldBe` []
 
 

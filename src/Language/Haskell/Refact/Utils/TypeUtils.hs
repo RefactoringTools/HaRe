@@ -1257,55 +1257,70 @@ addItemsToExport ::
                    -> Either [GHC.Located GHC.RdrName] [GHC.LIE GHC.RdrName]
                             -- ^The identifiers to add in either String or HsExportEntP format.
                    -> RefactGhc GHC.ParsedSource        -- ^The result.
-addItemsToExport = assert False undefined
--- addItemsToExport modu _  _ (Left [])  = return modu
--- addItemsToExport modu _  _ (Right []) = return modu
+addItemsToExport modu _  _ (Left [])  = return modu
+addItemsToExport modu _  _ (Right []) = return modu
 -- addItemsToExport modu@(HsModule loc modName exps imps ds) (Just pn) _ ids
---   =  case exps  of
---        Just ents ->let (e1,e2) = break (findEntity pn) ents
---                    in if e2 /=[]
---                         then do ((toks,_),others)<-get
---                                 let e = (ghead "addVarItemInExport" e2)
---                                     es = case ids of
---                                           (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
---                                           (Right es') -> es'
---                                 let (_,endPos) = getStartEndLoc toks e
---                                     (t, (_,s)) = ghead "addVarItemInExport" $ getToks (endPos,endPos) toks
---                                     newToken = mkToken t endPos (s++","++ showEntities (render.ppi) es)
---                                     toks' = replaceToks toks endPos endPos [newToken]
---                                 put ((toks',modified),others)
---                                 return (HsModule loc modName (Just (e1++(e:es)++tail e2)) imps ds)
---                         else return mod
---        Nothing   -> return mod
+addItemsToExport modu@(GHC.L l (GHC.HsModule modName exps imps ds deps hs)) (Just pn) _ ids
+  =  case exps  of
+       Just (GHC.L le ents) -> do
+                   logm $ "addItemsToExport:pn=" ++ showGhc pn
+                   nm <- getRefactNameMap
+                   let (e1,e2) = break (findLRdrName nm pn) ents
+                   if e2 /= []
+                        then do
+                           es <- case ids of
+                             Left is' -> mkNewEntList $ map GHC.unLoc is'
+                             Right es' -> return es'
+                           let e = (ghead "addVarItemInExport" e2)
+                               lNewEnts = GHC.L le (e1++(e:es)++tail e2)
+                           liftT (addTrailingCommaT e)
+                           return (GHC.L l (GHC.HsModule modName (Just lNewEnts) imps ds deps hs))
+                        -- then do ((toks,_),others)<-get
+                        --         let e = (ghead "addVarItemInExport" e2)
+                        --             es = case ids of
+                        --                   (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+                        --                   (Right es') -> es'
+                        --         let (_,endPos) = getStartEndLoc toks e
+                        --             (t, (_,s)) = ghead "addVarItemInExport" $ getToks (endPos,endPos) toks
+                        --             newToken = mkToken t endPos (s++","++ showEntities (render.ppi) es)
+                        --             toks' = replaceToks toks endPos endPos [newToken]
+                        --         put ((toks',modified),others)
+                        --         return (HsModule loc modName (Just (e1++(e:es)++tail e2)) imps ds)
+                        else return modu
+       Nothing   -> return modu
 
--- addItemsToExport mod@(HsModule _ _ (Just ents) _ _) Nothing createExp ids
---     = do ((toks,_),others)<-get
---          let es = case ids of
---                     (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
---                     (Right es') -> es'
---              (t, (pos,s))=fromJust $ find isOpenBracket toks  -- s is the '('
---              newToken = if ents /=[] then  (t, (pos,(s++showEntities (render.ppi) es++",")))
---                                      else  (t, (pos,(s++showEntities (render.ppi) es)))
---              pos'= simpPos pos
---              toks' = replaceToks toks pos' pos' [newToken]
---          put ((toks',modified),others)
---          return mod {hsModExports=Just (es++ ents)}
+addItemsToExport mod@(GHC.L l (GHC.HsModule _ (Just ents) _ _ _ _)) Nothing createExp ids
+  = assert False undefined
+    -- = do ((toks,_),others)<-get
+    --      let es = case ids of
+    --                 (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+    --                 (Right es') -> es'
+    --          (t, (pos,s))=fromJust $ find isOpenBracket toks  -- s is the '('
+    --          newToken = if ents /=[] then  (t, (pos,(s++showEntities (render.ppi) es++",")))
+    --                                  else  (t, (pos,(s++showEntities (render.ppi) es)))
+    --          pos'= simpPos pos
+    --          toks' = replaceToks toks pos' pos' [newToken]
+    --      put ((toks',modified),others)
+    --      return mod {hsModExports=Just (es++ ents)}
 
 -- addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _)  Nothing createExp ids
---   =case createExp of
---        True ->do ((toks,_),others)<-get
---                  let es = case ids of
---                                (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
---                                (Right es') -> es'
---                      pos = (row,col)
---                      newToken = mkToken Varid pos (modNameToStr modName++ "("
---                                          ++ showEntities (render.ppi) es++")")
---                      toks' = replaceToks toks pos pos [newToken]
---                  put  ((toks', modified), others)
---                  return mod {hsModExports=Just es}
---        False ->return mod
-{-
+addItemsToExport mod@(GHC.L l (GHC.HsModule modName Nothing _ _ _ _))  Nothing createExp ids
+  = assert False undefined
+  -- =case createExp of
+  --      True ->do ((toks,_),others)<-get
+  --                let es = case ids of
+  --                              (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+  --                              (Right es') -> es'
+  --                    pos = (row,col)
+  --                    newToken = mkToken Varid pos (modNameToStr modName++ "("
+  --                                        ++ showEntities (render.ppi) es++")")
+  --                    toks' = replaceToks toks pos pos [newToken]
+  --                put  ((toks', modified), others)
+  --                return mod {hsModExports=Just es}
+  --      False ->return mod
 
+
+{-
 -- | Add identifiers to the export list of a module. If the second argument is like: Just p, then do the adding only if p occurs
 -- in the export list, and the new identifiers are added right after p in the export list. Otherwise the new identifiers are add
 -- to the beginning of the export list. In the case that the export list is emport, then if the third argument is True, then create
@@ -1373,7 +1388,6 @@ addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _
                  put  ((toks', modified), others)
                  return mod {hsModExports=Just es}
        False ->return mod
-
 -}
 -- ---------------------------------------------------------------------
 

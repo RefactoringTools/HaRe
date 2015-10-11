@@ -49,6 +49,7 @@ module Language.Haskell.Refact.Utils.Variables
   , allNames
 
   , hsPNs, hsNamess, hsNamessRdr
+  , findLRdrName
   , locToName, locToRdrName
   ) where
 
@@ -1583,6 +1584,19 @@ hsNamessRdr t = nub $ fromMaybe [] r
 
      inName :: (SYB.Typeable a) => a -> Maybe [GHC.Located GHC.RdrName]
      inName = nameSybQuery checker
+-- ---------------------------------------------------------------------
+
+-- |Does the given 'GHC.Name' appear as a 'GHC.Located' 'GHC.RdrName' anywhere in 't'?
+findLRdrName :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
+findLRdrName nm n t = isJust $ SYB.something isMatch t
+  where
+    checker :: GHC.Located GHC.RdrName -> Maybe Bool
+    checker x
+      | GHC.nameUnique (rdrName2NamePure nm x) == GHC.nameUnique n = Just True
+      | otherwise = Nothing
+
+    isMatch :: (SYB.Typeable a) => a -> Maybe Bool
+    isMatch = nameSybQuery checker
 
 -- ---------------------------------------------------------------------
 
