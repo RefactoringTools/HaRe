@@ -108,6 +108,7 @@ module Language.Haskell.Refact.API
    , inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    , isExported, isExplicitlyExported, modIsExported
    , equivalentNameInNewMod
+   , hsQualifier
 
     -- *** Variable analysis
     , isFieldName

@@ -157,7 +157,7 @@ Executable qualified
 -- ---------------------------------------------------------------------
 
 Executable addoneparama3
-  Main-Is: AddOneParam/A3.hs
-  Other-Modules : AddOneParam.D3
+  Main-Is: AddOneParameter/A3.hs
+  Other-Modules : AddOneParameter.D3
   Build-Depends:          base >= 4.0  && < 4.9
   default-language:    Haskell2010

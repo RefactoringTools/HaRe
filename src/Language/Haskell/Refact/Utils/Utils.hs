@@ -258,6 +258,8 @@ applyRefac refac source = do
     fileName <- case source of
          RSFile fname    -> do parseSourceFileGhc fname
                                return fname
+         RSTarget tgt    -> do getTargetGhc tgt
+                               return (GM.mpPath tgt)
          RSMod  ms       -> do parseSourceFileGhc $ fileNameFromModSummary ms
                                return $ fileNameFromModSummary ms
          RSAlreadyLoaded -> do mfn <- getRefactFileName

@@ -43,6 +43,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    , isExported, isExplicitlyExported, modIsExported
    , equivalentNameInNewMod
+   , hsQualifier
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
@@ -252,6 +253,30 @@ equivalentNameInNewMod old = do
   let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
   let newNames = filter (\n -> showGhcQual n == showGhcQual old) clientInscopes
   return newNames
+
+-- ---------------------------------------------------------------------
+
+-- | Return all the possible qualifiers for the identifier. The identifier
+-- is not inscope if the result is an empty list. NOTE: This is intended to be
+-- used when processing a client module, so the 'GHC.Name' parameter is actually
+-- from a different module.
+hsQualifier :: GHC.Name                   -- ^ The identifier.
+            -> RefactGhc [GHC.ModuleName] -- ^ The result.
+hsQualifier pname = do
+  names <- inScopeNames (showGhc pname)
+  let mods = map (GHC.moduleName . GHC.nameModule) names
+  return mods
+
+{-
+hsQualifier::PNT                   -- ^ The identifier.
+            ->InScopes             -- ^ The in-scope relation.
+            ->[ModuleName]         -- ^ The result.
+hsQualifier pnt@(PNT pname _ _ ) inScopeRel
+  = let r = filter ( \ ( name, nameSpace, modName, qual) -> pNtoName pname == name
+                   && hasModName pname == Just modName && hasNameSpace pnt == nameSpace
+                   && isJust qual) $ inScopeInfo inScopeRel
+    in  map (\ (_,_,_,qual) -> fromJust qual ) r
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -1108,7 +1133,7 @@ addHiding::
   -> RefactGhc GHC.ParsedSource -- ^ The result
 addHiding mn p ns = do
   logm $ "addHiding called for (module,names):" ++ showGhc (mn,ns)
-  p' <- addItemsToImport' mn p ns Hide
+  p' <- addItemsToImport' mn p (Left ns) Hide
   putRefactParsed p' emptyAnns
   return p'
 
@@ -1138,24 +1163,29 @@ mkNewEnt addCommaAnn pn = do
 data ImportType = Hide     -- ^ Used for addHiding
                 | Import   -- ^ Used for addItemsToImport
 
--- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
---   specified module name. This function does nothing if the import declaration does not have an explicit entity list.
-addItemsToImport::
-    GHC.ModuleName       -- ^ The imported module name
-  ->GHC.ParsedSource     -- ^ The current module
-  ->[GHC.RdrName]        -- ^ The items to be added
---  ->Maybe GHC.Name       -- ^ The condition identifier.
-  ->RefactGhc GHC.ParsedSource -- ^ The result
-addItemsToImport mn r ns = addItemsToImport' mn r ns Import
+-- | Add identifiers (given by the third argument) to the explicit entity list
+--   in the declaration importing the specified module name. This function does
+--   nothing if the import declaration does not have an explicit entity list.
+addItemsToImport ::
+     GHC.ModuleName        -- ^ The imported module name
+  -> Maybe GHC.Name       -- ^ The condition identifier.
+  -- -> [GHC.RdrName]         -- ^ The items to be added
+  -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName] -- ^ The items to be added
+  -> GHC.ParsedSource      -- ^ The current module
+  -> RefactGhc GHC.ParsedSource -- ^ The result
+addItemsToImport mn mc ns r = addItemsToImport' mn r ns Import
 
--- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
---   specified module name. If the ImportType argument is Hide, then the items will be added to the "hiding"
---   list. If it is Import, they will be added to the explicit import entries. This function does nothing if
---   the import declaration does not have an explicit entity list and ImportType is Import.
+-- | Add identifiers (given by the third argument) to the explicit entity list
+--   in the declaration importing the specified module name. If the ImportType
+--   argument is Hide, then the items will be added to the "hiding" list. If it
+--   is Import, they will be added to the explicit import entries. This function
+--   does nothing if the import declaration does not have an explicit entity
+--   list and ImportType is Import.
 addItemsToImport'::
      GHC.ModuleName       -- ^ The imported module name
   -> GHC.ParsedSource     -- ^ The current module
-  -> [GHC.RdrName]        -- ^ The items to be added
+  -- -> [GHC.RdrName]        -- ^ The items to be added
+  -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName] -- ^ The items to be added
 --  ->Maybe GHC.Name       -- ^ The condition identifier.
   -> ImportType           -- ^ Whether to hide the names or import them. Uses special data for clarity.
   -> RefactGhc GHC.ParsedSource -- ^ The result
@@ -1187,7 +1217,10 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
          else do
             logm $ "addItemsToImport':insertEnts:doing stuff"
             newSpan <- liftT uniqueSrcSpanT
-            newEnts <- mkNewEntList pns
+            -- newEnts <- mkNewEntList pns
+            newEnts <- case pns of
+                            Left pns'  -> mkNewEntList pns'
+                            Right pns' -> return pns'
             let lNewEnts = GHC.L newSpan (ents++newEnts)
             logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
             if isHide
@@ -1243,18 +1276,19 @@ addParamsToDecls decls pn paramPNames = do
 
 -- ---------------------------------------------------------------------
 
+-- ++AZ++: This looks like it is trying to do too many things
 -- | Add identifiers to the export list of a module. If the second argument
 -- is like: Just p, then do the adding only if p occurs in the export list, and
 -- the new identifiers are added right after p in the export list. Otherwise the
 -- new identifiers are add to the beginning of the export list. In the case that
--- the export list is emport, then if the third argument is True, then create an
+-- the export list is empty, then if the third argument is True, then create an
 -- explict export list to contain only the new identifiers, otherwise do
 -- nothing.
 addItemsToExport ::
                     GHC.ParsedSource                    -- ^The module AST.
                    -> Maybe GHC.Name                    -- ^The condtion identifier.
                    -> Bool                              -- ^Create an explicit list or not
-                   -> Either [GHC.Located GHC.RdrName] [GHC.LIE GHC.RdrName]
+                   -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName]
                             -- ^The identifiers to add in either String or HsExportEntP format.
                    -> RefactGhc GHC.ParsedSource        -- ^The result.
 addItemsToExport modu _  _ (Left [])  = return modu
@@ -1269,7 +1303,7 @@ addItemsToExport modu@(GHC.L l (GHC.HsModule modName exps imps ds deps hs)) (Jus
                    if e2 /= []
                         then do
                            es <- case ids of
-                             Left is' -> mkNewEntList $ map GHC.unLoc is'
+                             Left is' -> mkNewEntList is'
                              Right es' -> return es'
                            let e = (ghead "addVarItemInExport" e2)
                                lNewEnts = GHC.L le (e1++(e:es)++tail e2)

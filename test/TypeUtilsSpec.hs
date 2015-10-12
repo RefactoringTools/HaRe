@@ -3573,7 +3573,7 @@ spec = do
          -- itemName <- mkNewGhcName Nothing "fromJust"
          let  itemName = mkRdrName "fromJust"
 
-         res  <- addItemsToImport modName parsed [itemName]
+         res  <- addItemsToImport modName Nothing (Left [itemName]) parsed
          putRefactParsed res emptyAnns
 
          return (res)
@@ -3617,7 +3617,7 @@ spec = do
          let modName  = GHC.mkModuleName "Data.Maybe"
          let  itemName = mkRdrName "isJust"
 
-         res  <- addItemsToImport modName parsed [itemName]
+         res  <- addItemsToImport modName Nothing (Left [itemName]) parsed
          putRefactParsed res emptyAnns
          return (res)
       ((_r),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions

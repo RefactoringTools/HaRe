@@ -12,6 +12,7 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import qualified GHC
+import qualified Name                  as GHC
 import qualified Outputable            as GHC
 import qualified RdrName               as GHC
 
@@ -73,14 +74,13 @@ compAdd fileName paramName (row, col) = do
                   if exported
                     then do
                      clients <- clientModsAndFiles targetModule
-                     logm ("AddRmParam.compAdd: clients=" ++ show clients) -- ++AZ++ debug
                      decls <- liftT $ hsDecls parsed
                      let inscopes = []
                      defaultArg <- mkTopLevelDefaultArgName pn paramName fileName modName inscopes decls
                      (refactoredMod,_) <- applyRefac (doAddingParam (error "p2") modName pn paramName (Just defaultArg) True) RSAlreadyLoaded
                      refactoredClients <- mapM (addArgInClientMod pn defaultArg) clients
                      -- let refactoredClients = []
-                     return $ refactoredMod:(concat refactoredClients)
+                     return $ refactoredMod:refactoredClients
                     else do
                      (refactoredMod,_) <- applyRefac (doAddingParam (error "p1") modName pn paramName Nothing False) (RSFile fileName)
                      return [refactoredMod]
@@ -156,7 +156,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                     if isExported && isExplicitlyExported pn renamed
                       then do
                            -- logm $ "doAddingParam.inMod calling addItemsToExport for:" ++ showGhc [(fromJust defaultArg)]
-                           addItemsToExport modu' (Just pn) False (Left [(fromJust defaultArg)])
+                           addItemsToExport modu' (Just pn) False (Left [GHC.unLoc (fromJust defaultArg)])
                       else return modu'
                 -- else return mzero
                 else return modu
@@ -545,7 +545,34 @@ addArgToSig pn decls
                          else initName
 -}
 -- ---------------------------------------------------------------------
-addArgInClientMod = assert False undefined
+
+addArgInClientMod :: GHC.Name -> GHC.Located GHC.RdrName -> TargetModule -> RefactGhc ApplyRefacResult
+addArgInClientMod pnt defaultArg serverModName = do
+  (r,_) <- applyRefac (addArgInClientMod' pnt defaultArg (GM.mpModule serverModName)) (RSTarget serverModName)
+  return r
+
+
+addArgInClientMod' :: GHC.Name -> GHC.Located GHC.RdrName -> GHC.ModuleName -> RefactGhc ()
+addArgInClientMod' pnt defaultArg serverModName = do
+   logm $ "addArgInClientMod':defaultArg=" ++ showGhc defaultArg
+   parsed <- getRefactParsed
+   let pn = pnt
+   qual <- hsQualifier pnt
+   logm $ "addArgInClientMod':qual=" ++ showGhc qual
+   if qual == []
+          then return ()
+          else do
+            mod'  <- addItemsToImport serverModName  (Just pn) (Left [GHC.unLoc defaultArg]) parsed
+            mod'' <- addItemsToExport parsed (Just pn) False (Left [GHC.unLoc defaultArg])
+            isInScopeAndUnqual <- isInScopeAndUnqualifiedGhc (showGhc pnt) Nothing
+            logm $ "addArgInClientMod':isInScopeAndUnqual=" ++ show isInScopeAndUnqual
+            mod3 <- if isInScopeAndUnqual
+               then addDefaultActualArgInClientMod  pn  (head qual) defaultArg False mod''
+               else addDefaultActualArgInClientMod  pn  (head qual) defaultArg True  mod''
+            putRefactParsed mod3 emptyAnns
+            return ()
+
+
 {-
 addArgInClientMod pnt defaultArg  serverModName ((inscps, exps, mod,ts), fileName)
  = let qual = hsQualifier pnt inscps
@@ -561,6 +588,40 @@ addArgInClientMod pnt defaultArg  serverModName ((inscps, exps, mod,ts), fileNam
                           ((ts,unmodified), (-1000,0))
                   return ((fileName,m),(ts',mod'))
 
+-}
+-- ---------------------------------------------------------------------
+
+--add default actual argument to pn in all the calling places.
+addDefaultActualArgInClientMod :: (SYB.Data t) => GHC.Name -> GHC.ModuleName -> GHC.Located GHC.RdrName -> Bool -> t -> RefactGhc t
+addDefaultActualArgInClientMod pn qual argPName toBeQualified t = do
+  logm $ "addDefaultActualArgInClientMod entered:argPName=" ++ showGhc argPName
+  nm <- getRefactNameMap
+  r <- applyTP (stop_tdTP (failTP `adhocTP` (funApp nm))) t
+  -- logDataWithAnns "addDefaultActualArgInClientMod" r
+  return r
+  where
+    -- funApp (exp@(Exp (HsId (HsVar pnt@(PNT pname _ _))))::HsExpP)
+    funApp nm (exp@((GHC.L l (GHC.HsVar pname )))::GHC.LHsExpr GHC.RdrName)
+      | GHC.nameUnique (rdrName2NamePure nm (GHC.L l pname)) == GHC.nameUnique pn
+       = do
+            logm $ "addDefaultActualArgInClientMod:hit"
+            vs <- hsVisibleNamesRdr (GHC.L l pname) t
+            ss1 <- liftT uniqueSrcSpanT
+            ss2 <- liftT uniqueSrcSpanT
+            ss3 <- liftT uniqueSrcSpanT
+            let argExp = GHC.L ss3 (GHC.HsVar (GHC.unLoc argPName))
+            -- let argExp=if toBeQualified || elem (pNtoName argPName) vs
+            --              then pNtoExp (qualifyPName qual argPName)
+            --              else pNtoExp argPName
+                newExp = (GHC.L ss1 (GHC.HsPar (GHC.L ss2 (GHC.HsApp exp argExp))))
+            liftT $ addSimpleAnnT argExp (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+            liftT $ addSimpleAnnT newExp (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
+            return newExp
+    funApp _ _ = mzero
+
+myfst (a,_,_,_) = a
+
+{-
 
 --add default actual argument to pn in all the calling places.
 addDefaultActualArgInClientMod pn qual argPName toBeQualified t

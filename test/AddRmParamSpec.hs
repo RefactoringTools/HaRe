@@ -28,11 +28,11 @@ spec = do
                    , "AddOneParameter/A3.hs"
                    ]
 
-     diffD <- ct $ compareFiles "./AddOneParameter/D3.hs.expected"
+     diffD <- ct $ compareFiles "./AddOneParameter/D3.expected.hs"
                                 "./AddOneParameter/D3.refactored.hs"
      diffD `shouldBe` []
 
-     diffA <- ct $ compareFiles "./AddOneParameter/A3.hs.expected"
+     diffA <- ct $ compareFiles "./AddOneParameter/A3.expected.hs"
                                 "./AddOneParameter/A3.refactored.hs"
      diffA `shouldBe` []
 
