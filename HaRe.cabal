@@ -46,8 +46,8 @@ data-files:                     elisp/*.el
                                 configure.sh
                                 test/testdata/*.cabal
                                 test/testdata/*.hs
-                                test/testdata/AddOneParam/*.hs
-                                test/testdata/AddOneParam/*.expected.hs
+                                test/testdata/AddOneParameter/*.hs
+                                test/testdata/AddOneParameter/*.expected.hs
                                 test/testdata/Case/*.hs
                                 test/testdata/Case/*.hs.expected
                                 test/testdata/Case/*.hs.expected.dd
