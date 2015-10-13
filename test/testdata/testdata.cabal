@@ -163,6 +163,13 @@ Executable addoneparama1
   Build-Depends:          base >= 4.0  && < 4.9
   default-language:    Haskell2010
 
+Executable addoneparama2
+  Main-Is: AddOneParameter/A2.hs
+  Other-Modules : AddOneParameter.C2
+  Other-Modules : AddOneParameter.D2
+  Build-Depends:          base >= 4.0  && < 4.9
+  default-language:    Haskell2010
+
 Executable addoneparama3
   Main-Is: AddOneParameter/A3.hs
   Other-Modules : AddOneParameter.D3

@@ -62,6 +62,31 @@ spec = do
       diffA `shouldBe` []
 
     -- -------------------
+
+    it "addOneParameter in D2 B2 C2 A2" $ do
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/D2.hs" "f" (11,1)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/D2.hs" "f" (11,1)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/D2.hs"
+                    , "AddOneParameter/A2.hs"
+                    , "AddOneParameter/C2.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/D2.expected.hs"
+                                 "./AddOneParameter/D2.refactored.hs"
+      diffD `shouldBe` []
+
+      diffC <- ct $ compareFiles "./AddOneParameter/C2.expected.hs"
+                                 "./AddOneParameter/C2.refactored.hs"
+      diffC `shouldBe` []
+
+      diffA <- ct $ compareFiles "./AddOneParameter/A2.expected.hs"
+                                 "./AddOneParameter/A2.refactored.hs"
+      diffA `shouldBe` []
+
+    -- -------------------
 {-
 TestCases{refactorCmd="addOneParameter",
 positive=[(["D3.hs","A3.hs"],["y","7","1"]),
