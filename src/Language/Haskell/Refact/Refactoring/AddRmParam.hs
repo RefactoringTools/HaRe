@@ -77,6 +77,7 @@ compAdd fileName paramName (row, col) = do
                      decls <- liftT $ hsDecls parsed
                      let inscopes = []
                      defaultArg <- mkTopLevelDefaultArgName pn paramName fileName modName inscopes decls
+                     logm $ "compAdd:defaultArg=" ++ showGhc defaultArg
                      (refactoredMod,_) <- applyRefac (doAddingParam (error "p2") modName pn paramName (Just defaultArg) True) RSAlreadyLoaded
                      refactoredClients <- mapM (addArgInClientMod pn defaultArg) clients
                      -- let refactoredClients = []
@@ -200,13 +201,13 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                        defaultParamPName <-if isNothing defaultArg
                                            then mkLocalDefaultArgName pn newParam modName parent
                                            else return (gfromJust "doAdding" defaultArg)
+                       logm $ "doAddingParam.doAdding: defaultParamPName=" ++ showGhc defaultParamPName
                        parent1 <- liftT $ replaceDecls parent ds'
-                       parent' <- addDefaultActualArg False pn defaultParamPName parent1
+                       parent' <- addDefaultActualArg     False pn defaultParamPName parent1
                        parent''<- addDefaultActualArgDecl defaultParamPName parent' pn isExported
                        ds2 <- liftT $ hsDecls parent''
                        ds'' <- addArgToSig pn ds2
                        parent3 <- liftT $ replaceDecls parent'' ds''
-                       -- logDataWithAnns "parent3" parent3
                        return parent3
                    else error " Refactoring failed."
 
@@ -407,6 +408,7 @@ mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t
 
 addDefaultActualArg :: (SYB.Data t) => Bool -> GHC.Name -> GHC.Located GHC.RdrName -> t -> RefactGhc t
 addDefaultActualArg recursion pn argPName t = do
+  logm $ "addDefaultActualArg:(recursion,pn,argPName):" ++ showGhc (recursion,pn,argPName)
   nm <- getRefactNameMap
   if recursion then (applyTP (stop_tdTP (failTP `adhocTP` (funApp nm)))) t
                else (applyTP (stop_tdTP (failTP `adhocTP` (inDecl nm)
@@ -436,13 +438,21 @@ addDefaultActualArg recursion pn argPName t = do
           | rdrName2NamePure nm (GHC.L l n) == pn = do
           -- was | pname == pn
            -- = update exp (Exp (HsParen (Exp (HsApp exp (pNtoExp argPName))))) exp
+            addParamToExp expr (GHC.unLoc argPName)
+            {-
             lp <- liftT uniqueSrcSpanT
             la <- liftT uniqueSrcSpanT
             lv <- liftT uniqueSrcSpanT
             logm $ "addDefaultActualArg:(lp,la,lv):" ++ showGhc (lp,la,lv)
-            let pNtoExp (GHC.L _ rdrName) = GHC.L lv (GHC.HsVar rdrName)
-            let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr (pNtoExp argPName))))
+            -- ++AZ++ TODO: harvest this commonality
+            let e2 = GHC.L lv (GHC.HsVar (GHC.unLoc argPName))
+            let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr e2)))
+            liftT $ addSimpleAnnT e2  (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+            liftT $ addSimpleAnnT ret (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
+            liftT $ transferEntryDPT expr ret
+            liftT $ setEntryDPT expr (DP (0,0))
             return ret
+            -}
 
          funApp _ _ = mzero
 
@@ -470,6 +480,26 @@ addDefaultActualArg recursion pn argPName
          funApp _ = mzero
 
 -}
+-- ---------------------------------------------------------------------
+
+-- | Add a parameter to a 'GHC.HsVar' expression
+addParamToExp :: GHC.LHsExpr GHC.RdrName -> GHC.RdrName
+              -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+addParamToExp (expr@(GHC.L l (GHC.HsVar n))) argPName = do
+  nm <- getRefactNameMap
+  lp <- liftT uniqueSrcSpanT
+  la <- liftT uniqueSrcSpanT
+  lv <- liftT uniqueSrcSpanT
+  let e2 = GHC.L lv (GHC.HsVar argPName)
+  let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr e2)))
+  liftT $ addSimpleAnnT e2  (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+  liftT $ addSimpleAnnT ret (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
+  liftT $ transferEntryDPT expr ret
+  liftT $ setEntryDPT expr (DP (0,0))
+  return ret
+addParamToExp x _
+  = error $ "AddRmParam.addParamToExp: can only add param to HsVar, got:" ++ showGhc x
+
 -- ---------------------------------------------------------------------
 
 --Add type arg to type siginature
@@ -601,11 +631,17 @@ addDefaultActualArgInClientMod pn qual argPName toBeQualified t = do
   return r
   where
     -- funApp (exp@(Exp (HsId (HsVar pnt@(PNT pname _ _))))::HsExpP)
-    funApp nm (exp@((GHC.L l (GHC.HsVar pname )))::GHC.LHsExpr GHC.RdrName)
+    funApp nm (expr@((GHC.L l (GHC.HsVar pname )))::GHC.LHsExpr GHC.RdrName)
       | GHC.nameUnique (rdrName2NamePure nm (GHC.L l pname)) == GHC.nameUnique pn
        = do
             logm $ "addDefaultActualArgInClientMod:hit"
             vs <- hsVisibleNamesRdr (GHC.L l pname) t
+            let argExp = GHC.unLoc argPName
+            -- let argExp=if toBeQualified || elem (pNtoName argPName) vs
+            --              then pNtoExp (qualifyPName qual argPName)
+            --              else pNtoExp argPName
+            addParamToExp expr argExp
+{-
             ss1 <- liftT uniqueSrcSpanT
             ss2 <- liftT uniqueSrcSpanT
             ss3 <- liftT uniqueSrcSpanT
@@ -616,7 +652,10 @@ addDefaultActualArgInClientMod pn qual argPName toBeQualified t = do
                 newExp = (GHC.L ss1 (GHC.HsPar (GHC.L ss2 (GHC.HsApp exp argExp))))
             liftT $ addSimpleAnnT argExp (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
             liftT $ addSimpleAnnT newExp (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
+            liftT $ transferEntryDPT exp newExp
+            liftT $ setEntryDPT exp (DP (0,0))
             return newExp
+-}
     funApp _ _ = mzero
 
 myfst (a,_,_,_) = a

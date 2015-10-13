@@ -18,25 +18,50 @@ spec :: Spec
 spec = do
 
   describe "Adding" $ do
-    it "renames in D1 B1 C1 A1 6 6" $ do
-     r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/D3.hs" "y" (7,1)
-     -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/D3.hs" "y" (7,1)
+    it "addOneParameter in D3 A3" $ do
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/D3.hs" "y" (7,1)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/D3.hs" "y" (7,1)
 
-     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
 
-     r' `shouldBe` [ "AddOneParameter/D3.hs"
-                   , "AddOneParameter/A3.hs"
-                   ]
+      r' `shouldBe` [ "AddOneParameter/D3.hs"
+                    , "AddOneParameter/A3.hs"
+                    ]
 
-     diffD <- ct $ compareFiles "./AddOneParameter/D3.expected.hs"
-                                "./AddOneParameter/D3.refactored.hs"
-     diffD `shouldBe` []
+      diffD <- ct $ compareFiles "./AddOneParameter/D3.expected.hs"
+                                 "./AddOneParameter/D3.refactored.hs"
+      diffD `shouldBe` []
 
-     diffA <- ct $ compareFiles "./AddOneParameter/A3.expected.hs"
-                                "./AddOneParameter/A3.refactored.hs"
-     diffA `shouldBe` []
+      diffA <- ct $ compareFiles "./AddOneParameter/A3.expected.hs"
+                                 "./AddOneParameter/A3.refactored.hs"
+      diffA `shouldBe` []
 
+    -- -------------------
 
+    it "addOneParameter in D1 B1 C1 A1" $ do
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/D1.hs" "f" (10,1)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/D1.hs" "f" (10,1)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/D1.hs"
+                    , "AddOneParameter/A1.hs"
+                    , "AddOneParameter/C1.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/D1.expected.hs"
+                                 "./AddOneParameter/D1.refactored.hs"
+      diffD `shouldBe` []
+
+      diffC <- ct $ compareFiles "./AddOneParameter/C1.expected.hs"
+                                 "./AddOneParameter/C1.refactored.hs"
+      diffC `shouldBe` []
+
+      diffA <- ct $ compareFiles "./AddOneParameter/A1.expected.hs"
+                                 "./AddOneParameter/A1.refactored.hs"
+      diffA `shouldBe` []
+
+    -- -------------------
 {-
 TestCases{refactorCmd="addOneParameter",
 positive=[(["D3.hs","A3.hs"],["y","7","1"]),
