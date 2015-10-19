@@ -527,7 +527,7 @@ addArgToSig pn decls = do
        addArgToSig' sig@[(GHC.L l (GHC.SigD (GHC.TypeSig is tp pr)))] = do
               nm <- getRefactNameMap
               let tVar = mkNewTypeVarName sig
-                  typeVar = newTypeVar tVar tp
+              typeVar <- newTypeVar tVar tp
               let newSig=if length is==1
                            then  --the type sig only defines the type for pn
                                 [GHC.L l (GHC.SigD (GHC.TypeSig is typeVar pr))]
@@ -537,9 +537,16 @@ addArgToSig pn decls = do
               return newSig
 
        -- compose a type application using type expressions tv and tp
-       newTypeVar :: String -> GHC.LHsType GHC.RdrName -> GHC.LHsType GHC.RdrName
-       newTypeVar tVar tp
-         = error $ "addArgToSig.newTypeVar:(tVar,tp)=" ++ SYB.showData SYB.Parser 0 (tVar,tp)
+       newTypeVar :: String -> GHC.LHsType GHC.RdrName -> RefactGhc (GHC.LHsType GHC.RdrName)
+       newTypeVar tVar tp = do
+         ls <- liftT $ uniqueSrcSpanT
+         lv <- liftT $ uniqueSrcSpanT
+         let tv = GHC.L lv (GHC.HsTyVar (mkRdrName tVar))
+         let typ = GHC.L ls (GHC.HsFunTy tv tp)
+         liftT $ addSimpleAnnT tv  (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+         liftT $ addSimpleAnnT typ (DP (0,1)) [((G GHC.AnnRarrow),DP (0,1))]
+         return typ
+         -- = error $ "addArgToSig.newTypeVar:(tVar,tp)=" ++ SYB.showData SYB.Parser 0 (tVar,tp)
          -- =(Typ (HsTyFun (Typ (HsTyVar (PNT (PN (UnQual tVar) (S loc0))
          --   (Type (TypeInfo {defType=Nothing, constructors=[], fields=[]})) (N (Just loc0))))) tp))
 
