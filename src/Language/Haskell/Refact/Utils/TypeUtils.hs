@@ -77,7 +77,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     ,addDecl, addItemsToImport, addItemsToExport, addHiding
-    ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl
+    ,addParamsToDecls, addParamsToSigs, addActualParamsToRhs, addImportDecl, duplicateDecl
+
     -- ** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -136,15 +137,20 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 
 -- Modules from GHC
+-- import qualified Outputable    as GHC
 import qualified Bag           as GHC
+import qualified Exception     as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
--- import qualified Outputable    as GHC
 import qualified RdrName       as GHC
+import qualified TyCon         as GHC
+import qualified TypeRep       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
+
+import qualified Var           as Var
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -1234,6 +1240,196 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
 
     replaceHiding (GHC.L l1 (GHC.ImportDecl st mn q src safe isQ isImp as _h)) h1 =
                   (GHC.L l1 (GHC.ImportDecl st mn q src safe isQ isImp as h1))
+
+-- ---------------------------------------------------------------------
+
+addParamsToSigs :: [GHC.Name] -> GHC.LSig GHC.RdrName -> RefactGhc (GHC.LSig GHC.RdrName)
+addParamsToSigs [] ms = return ms
+addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp pns)) = do
+  mts <- mapM getTypeForName newParams
+  let ts = catMaybes mts
+  logm $ "addParamsToSigs:ts=" ++ showGhc ts
+  logDataWithAnns "addParamsToSigs:ts=" ts
+  let newStr = ":: " ++ (intercalate " -> " $ map printSigComponent ts) ++ " -> "
+  logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
+  typ' <- liftT $ foldlM addOneType ltyp (reverse ts)
+  sigOk <- isNewSignatureOk ts
+  logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
+  if sigOk
+    then return (GHC.L l (GHC.TypeSig lns typ' pns))
+    else error $ "\nNew type signature may fail type checking: " ++ newStr ++ "\n"
+  where
+    addOneType :: GHC.LHsType GHC.RdrName -> GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+    addOneType et t = do
+      hst <- typeToLHsType t
+      ss1 <- uniqueSrcSpanT
+      hst1 <- case t of
+        (GHC.FunTy _ _) -> do
+          ss <- uniqueSrcSpanT
+          let t1 = GHC.L ss (GHC.HsParTy hst)
+          setEntryDPT hst (DP (0,0))
+          addSimpleAnnT t1  (DP (0,0)) [((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+          return t1
+        _ -> return hst
+      let typ = GHC.L ss1 (GHC.HsFunTy hst1 et)
+
+      addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+      return typ
+
+    printSigComponent :: GHC.Type -> String
+    printSigComponent x = ppType x
+
+addParamsToSigs np ls = error $ "addParamsToSigs: no match for:" ++ showGhc (np,ls)
+
+-- ---------------------------------------------------------------------
+
+-- |Fail any signature having a forall in it.
+-- TODO: this is unnecesarily restrictive, but needs
+-- a) proper reversing of GHC.Type to GHC.LhsType
+-- b) some serious reverse type inference to ensure that the
+--    constraints are modified properly to merge the old signature
+--    part and the new.
+isNewSignatureOk :: [GHC.Type] -> RefactGhc Bool
+isNewSignatureOk types = do
+  -- NOTE: under some circumstances enabling Rank2Types or RankNTypes
+  --       can resolve the type conflict, this can potentially be checked
+  --       for.
+  -- NOTE2: perhaps proceed and reload the tentative refactoring into
+  --        the GHC session and accept it only if it type checks
+  let
+    r = SYB.everythingStaged SYB.TypeChecker (++) []
+          ([] `SYB.mkQ` usesForAll) types
+    usesForAll (GHC.ForAllTy _ _) = [1::Int]
+    usesForAll _                  = []
+
+  return $ emptyList r
+
+-- ---------------------------------------------------------------------
+
+-- TODO: perhaps move this to TypeUtils
+-- TODO: complete this
+typeToLHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+typeToLHsType (GHC.TyVarTy v)   = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyVar (GHC.nameRdrName $ Var.varName v))
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
+
+typeToLHsType (GHC.AppTy t1 t2) = do
+  t1' <- typeToLHsType t1
+  t2' <- typeToLHsType t2
+  ss <- uniqueSrcSpanT
+  return $ GHC.L ss (GHC.HsAppTy t1' t2')
+
+typeToLHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
+
+typeToLHsType (GHC.FunTy t1 t2) = do
+  t1' <- typeToLHsType t1
+  t2' <- typeToLHsType t2
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsFunTy t1' t2')
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+  return typ
+
+typeToLHsType (GHC.ForAllTy _v t) = do
+  t' <- typeToLHsType t
+  ss1 <- uniqueSrcSpanT
+  ss2 <- uniqueSrcSpanT
+  return $ GHC.L ss1 (GHC.HsForAllTy GHC.Explicit Nothing (GHC.HsQTvs [] []) (GHC.L ss2 []) t')
+
+typeToLHsType (GHC.LitTy (GHC.NumTyLit i)) = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyLit (GHC.HsNumTy (show i) i)) :: GHC.LHsType GHC.RdrName
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
+
+typeToLHsType (GHC.LitTy (GHC.StrTyLit s)) = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyLit (GHC.HsStrTy "" s)) :: GHC.LHsType GHC.RdrName
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
+
+
+{-
+data Type
+  = TyVarTy Var	-- ^ Vanilla type or kind variable (*never* a coercion variable)
+
+  | AppTy         -- See Note [AppTy invariant]
+	Type
+	Type		-- ^ Type application to something other than a 'TyCon'. Parameters:
+	                --
+                        --  1) Function: must /not/ be a 'TyConApp',
+                        --     must be another 'AppTy', or 'TyVarTy'
+	                --
+	                --  2) Argument type
+
+  | TyConApp      -- See Note [AppTy invariant]
+	TyCon
+	[KindOrType]	-- ^ Application of a 'TyCon', including newtypes /and/ synonyms.
+	                -- Invariant: saturated appliations of 'FunTyCon' must
+	                -- use 'FunTy' and saturated synonyms must use their own
+                        -- constructors. However, /unsaturated/ 'FunTyCon's
+                        -- do appear as 'TyConApp's.
+	                -- Parameters:
+	                --
+	                -- 1) Type constructor being applied to.
+	                --
+                        -- 2) Type arguments. Might not have enough type arguments
+                        --    here to saturate the constructor.
+                        --    Even type synonyms are not necessarily saturated;
+                        --    for example unsaturated type synonyms
+	                --    can appear as the right hand side of a type synonym.
+
+  | FunTy
+	Type
+	Type		-- ^ Special case of 'TyConApp': @TyConApp FunTyCon [t1, t2]@
+			-- See Note [Equality-constrained types]
+
+  | ForAllTy
+	Var         -- Type or kind variable
+	Type	        -- ^ A polymorphic type
+
+  | LitTy TyLit     -- ^ Type literals are simillar to type constructors.
+
+-}
+
+tyConAppToHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+tyConAppToHsType (GHC.TyConApp tc _ts) = r (show $ GHC.tyConName tc)
+  where
+    r str = do
+      ss <- uniqueSrcSpanT
+      let typ = GHC.L ss (GHC.HsTyLit (GHC.HsStrTy str $ GHC.mkFastString str)) :: GHC.LHsType GHC.RdrName
+      addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,1))]
+      return typ
+
+-- tyConAppToHsType t@(GHC.TyConApp _tc _ts)
+--    = error $ "tyConAppToHsType: unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+
+{-
+HsType
+HsForAllTy HsExplicitFlag (LHsTyVarBndrs name) (LHsContext name) (LHsType name)
+HsTyVar name
+HsAppTy (LHsType name) (LHsType name)
+HsFunTy (LHsType name) (LHsType name)
+HsListTy (LHsType name)
+HsPArrTy (LHsType name)
+HsTupleTy HsTupleSort [LHsType name]
+HsOpTy (LHsType name) (LHsTyOp name) (LHsType name)
+HsParTy (LHsType name)
+HsIParamTy HsIPName (LHsType name)
+HsEqTy (LHsType name) (LHsType name)
+HsKindSig (LHsType name) (LHsKind name)
+HsQuasiQuoteTy (HsQuasiQuote name)
+HsSpliceTy (HsSplice name) FreeVars PostTcKind
+HsDocTy (LHsType name) LHsDocString
+HsBangTy HsBang (LHsType name)
+HsRecTy [ConDeclField name]
+HsCoreTy Type
+HsExplicitListTy PostTcKind [LHsType name]
+HsExplicitTupleTy [PostTcKind] [LHsType name]
+HsTyLit HsTyLit
+HsWrapTy HsTyWrapper (HsType name)
+-}
 
 -- ---------------------------------------------------------------------
 

@@ -87,6 +87,22 @@ spec = do
       diffA `shouldBe` []
 
     -- -------------------
+
+    it "addOneParameter in PatIn1" $ do
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/PatIn1.hs" "x" (7,1)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/PatIn1.hs" "x" (7,1)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/PatIn1.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/PatIn1.expected.hs"
+                                 "./AddOneParameter/PatIn1.refactored.hs"
+      diffD `shouldBe` []
+
+
+    -- -------------------
 {-
 TestCases{refactorCmd="addOneParameter",
 positive=[(["D3.hs","A3.hs"],["y","7","1"]),

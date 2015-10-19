@@ -114,6 +114,7 @@ module Language.Haskell.Refact.API
     , isFieldName
     , isClassName
     , isInstanceName
+    , hsTypeVbls
     , hsPNs
     , hsBinds
     , HsValBinds(..)
@@ -162,7 +163,8 @@ module Language.Haskell.Refact.API
  -- * Program transformation
     -- *** Adding
     ,addDecl, addItemsToImport, addItemsToExport, addHiding
-    ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl -- , moveDecl
+    ,addParamsToDecls, addParamsToSigs, addActualParamsToRhs, addImportDecl, duplicateDecl
+
     -- *** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs
 

@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Refactoring.MoveDef
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+
 import qualified Data.Generics.Zipper as Z
 
 
@@ -841,7 +842,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
          else return (parent,liftedDecls,mLiftedSigs)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- TODO: perhaps move this to TypeUtils
 addParamsToSigs :: [GHC.Name] -> GHC.LSig GHC.RdrName -> RefactGhc (GHC.LSig GHC.RdrName)
 addParamsToSigs [] ms = return ms
@@ -1033,6 +1034,7 @@ HsTyLit HsTyLit
 HsWrapTy HsTyWrapper (HsType name)
 -}
 
+-}
 
 --------------------------------End of Lifting-----------------------------------------
 

@@ -48,6 +48,7 @@ module Language.Haskell.Refact.Utils.Variables
   , definesP
   , allNames
 
+  , hsTypeVbls
   , hsPNs, hsNamess, hsNamessRdr
   , findLRdrName
   , locToName, locToRdrName
@@ -255,6 +256,17 @@ hsPNs t = (nub.ghead "hsPNs") res
      res = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inPnt) t
 
      inPnt (pname :: GHC.RdrName) = return [(PN pname)]
+
+-- ---------------------------------------------------------------------
+-- | Collect those type variables that are declared in a given syntax phrase t. In
+-- the returned result, the first list is always be empty.
+hsTypeVbls::(SYB.Data t) => t -> ([GHC.RdrName],[GHC.RdrName])
+hsTypeVbls =ghead "hsTypeVbls".(applyTU (stop_tdTU (failTU `adhocTU` pnt)))
+  where
+    -- pnt (PNT (PN i (UniqueNames.S loc)) (Type _) _) = return ([], [(PN i (UniqueNames.S loc))])
+    pnt n | GHC.rdrNameSpace n == GHC.tvName = return ([], [n])
+    pnt _ = mzero
+
 
 -------------------------------------------------------------------------------
 -- ++AZ++ see if we can get away with one only..

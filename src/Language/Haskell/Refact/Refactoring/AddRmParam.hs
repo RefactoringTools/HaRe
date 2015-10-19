@@ -24,6 +24,7 @@ import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Transform
 
 import System.Directory
+import Data.Char
 import Data.Maybe
 import Data.List hiding (delete)
 -- import RefacUtils
@@ -278,18 +279,24 @@ doAddingParam fileName modName pn newParam defaultArg isExported mod tokList
 
 -- |check whether the new parameter is a legal.
 paramNameOk :: (SYB.Data t) => NameMap -> GHC.Name -> String -> t -> Bool
-paramNameOk nm pn newParam t = (fromMaybe True) (applyTU (once_tdTU (failTU `adhocTU` decl)) t)
+paramNameOk nm pn newParam t
+  = (fromMaybe True) (applyTU (once_tdTU (failTU `adhocTU` decl
+                                                 `adhocTU` bind)) t)
   where
-   -- decl ((Dec (HsFunBind _ matches@((HsMatch _ fun pats rhs ds):ms)))::HsDeclP)
-   decl :: GHC.LHsBind GHC.RdrName -> Maybe Bool
-   decl (GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t))
+   decl :: GHC.LHsDecl GHC.RdrName -> Maybe Bool
+   decl (GHC.L l (GHC.ValD d)) = bind (GHC.L l d)
+   decl _ = mzero
+
+   -- bind ((Dec (HsFunBind _ matches@((HsMatch _ fun pats rhs ds):ms)))::HsDeclP)
+   bind :: GHC.LHsBind GHC.RdrName -> Maybe Bool
+   bind (GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t))
     | rdrName2NamePure nm n == pn
     = do results' <- mapM checkInMatch matches
          Just (all (==True) results')
-   -- decl pat@(Dec (HsPatBind loc p rhs ds))
-   decl (GHC.L _ (GHC.PatBind _pat _rhs _ty _fvs _t))
+   -- bind pat@(Dec (HsPatBind loc p rhs ds))
+   bind (GHC.L _ (GHC.PatBind _pat _rhs _ty _fvs _t))
       = error "Parameter can not be added to complex pattern binding"
-   decl _ = mzero
+   bind _ = mzero
 
    checkInMatch match
      = do let (f,d) = hsFDNamesFromInsideRdrPure nm match
@@ -502,7 +509,7 @@ addParamToExp x _
 
 -- ---------------------------------------------------------------------
 
---Add type arg to type siginature
+-- |Add type arg to type siginature
 addArgToSig :: GHC.Name -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
 addArgToSig pn decls = do
    nm <- getRefactNameMap
@@ -513,31 +520,38 @@ addArgToSig pn decls = do
                 return (before++newSig++(tail after))
 
     where
-       addArgToSig' sig@[(GHC.L l (GHC.SigD (GHC.TypeSig is tp pr)))]
-          = assert False undefined
-          -- =do let tVar=mkNewTypeVarName sig
-          --         typeVar=newTypeVar tVar tp
-          --     let newSig=if length is==1
-          --                  then  --the type sig only defines the type for pn
-          --                       [Dec (HsTypeSig loc is c typeVar)]
-          --                  else  --otherwise, seperate it into two type signatures.
-          --                      [Dec (HsTypeSig loc (filter (\x->pNTtoPN x/=pn) is) c tp),
-          --                       Dec (HsTypeSig loc (filter (\x->pNTtoPN x==pn) is) c typeVar)]
-          --     update sig newSig sig
+       -- addArgToSig' sig@[(GHC.L l (GHC.SigD s@(GHC.TypeSig is tp pr)))] = do
+        -- (GHC.L _ s') <- addParamsToSigs [pn] (GHC.L l s)
+        -- return [GHC.L l (GHC.SigD s')]
+       addArgToSig' :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+       addArgToSig' sig@[(GHC.L l (GHC.SigD (GHC.TypeSig is tp pr)))] = do
+              nm <- getRefactNameMap
+              let tVar = mkNewTypeVarName sig
+                  typeVar = newTypeVar tVar tp
+              let newSig=if length is==1
+                           then  --the type sig only defines the type for pn
+                                [GHC.L l (GHC.SigD (GHC.TypeSig is typeVar pr))]
+                           else  --otherwise, seperate it into two type signatures.
+                               [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) tp pr)),
+                                GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) typeVar pr))]
+              return newSig
 
-       --compose a type application using type expressions tv and tp
-       -- newTypeVar tVar tp
-       --   =(Typ (HsTyFun (Typ (HsTyVar (PNT (PN (UnQual tVar) (S loc0))
-       --     (Type (TypeInfo {defType=Nothing, constructors=[], fields=[]})) (N (Just loc0))))) tp))
+       -- compose a type application using type expressions tv and tp
+       newTypeVar :: String -> GHC.LHsType GHC.RdrName -> GHC.LHsType GHC.RdrName
+       newTypeVar tVar tp
+         = error $ "addArgToSig.newTypeVar:(tVar,tp)=" ++ SYB.showData SYB.Parser 0 (tVar,tp)
+         -- =(Typ (HsTyFun (Typ (HsTyVar (PNT (PN (UnQual tVar) (S loc0))
+         --   (Type (TypeInfo {defType=Nothing, constructors=[], fields=[]})) (N (Just loc0))))) tp))
 
-       {- make a fresh type variable name. the new name is the first letter in the alphabet which is not
-          used in the type signature. -}
-       -- mkNewTypeVarName sig
-       --    =mkNewName "a" $ map pNtoName $ (snd.hsTypeVbls) sig
-       --       where mkNewName initName v
-       --               =if elem initName v
-       --                   then mkNewName ((intToDigit (digitToInt(head initName)+1)):tail initName) v
-       --                   else initName
+        -- make a fresh type variable name. the new name is the first letter in the alphabet which is not
+        --   used in the type signature.
+       mkNewTypeVarName :: [GHC.LHsDecl GHC.RdrName] -> String
+       mkNewTypeVarName sig
+          =mkNewName "a" $ map showGhc $ (snd.hsTypeVbls) sig
+             where mkNewName initName v
+                     =if elem initName v
+                         then mkNewName ((intToDigit (digitToInt(head initName)+1)):tail initName) v
+                         else initName
 
 {-
 --Add type arg to type siginature
