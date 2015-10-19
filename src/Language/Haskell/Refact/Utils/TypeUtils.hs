@@ -1049,6 +1049,7 @@ addDecl parent pn (declSig, mDeclAnns) = do
               [] -> (before,[])
               _  -> (before ++ [ghead "appendDecl14" after],
                      gtail "appendDecl15" after)
+        unless (null decls1 || null decls2) $ do liftT $ balanceComments (last decls1) (head decls2)
         liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
 
       workerBind :: (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))

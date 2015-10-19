@@ -2187,7 +2187,7 @@ spec = do
 
     -- -------------------------------------------
 
-    it "adds a top level declaration after a specified one" $ do
+    it "adds a top level declaration after a specified one 1" $ do
       t <- ct $ parsedFileGhc "./MoveDef/Md1.hs"
       let
         comp = do
@@ -2203,6 +2203,27 @@ spec = do
       (showGhcQual n) `shouldBe` "MoveDef.Md1.ff"
       (sourceFromState s) `shouldBe` "module MoveDef.Md1 where\n\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\n\nc,d :: Integer\nc = 7\nd = 9\n\n-- Pattern bind\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h,t) = head $ zip [1..10] [3..ff]\n  where\n    ff :: Int\n    ff = 15\n\ndata D = A | B String | C\n\nff :: Int -> Int\nff y = y + zz\n  where\n    zz = 1\n\nnn = nn2\n\nl z =\n  let\n    ll = 34\n  in ll + z\n\ndd q = do\n  let ss = 5\n  return (ss + q)\n\nzz1 a = 1 + toplevel a\n\n-- General Comment\n-- |haddock comment\ntlFunc :: Integer -> Integer\ntlFunc x = c * x\n-- Comment at end\n\n\n"
       (unspace $ showGhcQual nb) `shouldBe` unspace "module MoveDef.Md1 where\ntoplevel :: Integer -> Integer\ntoplevel x = c * x\nc, d :: Integer\nc = 7\nd = 9\ntup :: (Int, Int)\nh :: Int\nt :: Int\ntup@(h, t)\n = head $ zip [1 .. 10] [3 .. ff]\n where\n ff :: Int\n ff = 15\ndata D = A | B String | C\nff :: Int -> Int\nff y\n = y + zz\n where\n zz = 1\nnn = nn2\nl z = let ll = 34 in ll + z\ndd q\n = do { let ss = 5;\n return (ss + q) }\nzz1 a = 1 + toplevel a\ntlFunc :: Integer -> Integer\ntlFunc x = c * x"
+
+
+    -- -------------------------------------------
+
+    it "adds a top level declaration after a specified one 2" $ do
+      t <- ct $ parsedFileGhc "./AddOneParameter/FunIn1.hs"
+      let
+        comp = do
+         parsed <- getRefactParsed
+         (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "a" "nn = nn2")
+         renamed <- getRefactRenamed
+         let Just (GHC.L _l n) = locToName (7, 1) renamed
+         parsed' <- addDecl parsed (Just n) ([decl],Just declAnns)
+         putRefactParsed parsed' emptyAnns
+         return (n,parsed')
+      ((n,nb),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- ((n,nb),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      (showGhcQual n) `shouldBe` "FunIn1.foo"
+      -- putStrLn (sourceFromState s)
+      (sourceFromState s) `shouldBe` "module FunIn1 where\n\n--Default parameters can be added to definition of functions and simple constants.\n\n--In this example: add parameter 'y' to 'foo'\nfoo :: Int -> Int\nfoo  x= h + t where (h,t) = head $ zip [1..x] [3..15] {-There\nis a comment-}\n\nnn = nn2\n\nmain :: Int\nmain = foo 4\n"
+      (unspace $ showGhcQual nb) `shouldBe` unspace "module FunIn1 where\nfoo :: Int -> Int\nfoo x\n = h + t\n where\n (h, t) = head $ zip [1 .. x] [3 .. 15]\nnn = nn2\nmain :: Int\nmain = foo 4"
 
 
     -- -------------------------------------------
