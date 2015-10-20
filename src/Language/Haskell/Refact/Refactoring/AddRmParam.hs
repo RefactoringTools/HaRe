@@ -84,6 +84,7 @@ compAdd fileName paramName (row, col) = do
                      -- let refactoredClients = []
                      return $ refactoredMod:refactoredClients
                     else do
+                     logm $ "compAdd:not exported"
                      (refactoredMod,_) <- applyRefac (doAddingParam (error "p1") modName pn paramName Nothing False) (RSFile fileName)
                      return [refactoredMod]
 
@@ -120,13 +121,16 @@ addOneParameter args
 
 -- ---------------------------------------------------------------------
 
+-- ++AZ++: TODO put this some where sane if it works
+-- deriving instance MonadPlus (GHC.GenLocated GHC.SrcSpan)
+
 doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe (GHC.Located GHC.RdrName) -> Bool
               -> RefactGhc ()
 doAddingParam fileName modName pn newParam defaultArg isExported = do
     logm $ "doAddingParam entered:defaultArg=" ++ showGhc defaultArg
     parsed <- getRefactParsed
     r <- applyTP (once_tdTP (failTP `adhocTP` inMod
-                                    -- `adhocTP` inMatch
+                                    `adhocTP` inMatch
                                     -- `adhocTP` inPat
                                     -- `adhocTP` inLet
                                     -- `adhocTP` inAlt
@@ -160,15 +164,26 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                            -- logm $ "doAddingParam.inMod calling addItemsToExport for:" ++ showGhc [(fromJust defaultArg)]
                            addItemsToExport modu' (Just pn) False (Left [GHC.unLoc (fromJust defaultArg)])
                       else return modu'
-                -- else return mzero
-                else return modu
+                else mzero
+
+             --2. pn is declared locally in the where clause of a match.
+             inMatch (match@(GHC.L l (GHC.Match mf pats typ (GHC.GRHSs rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+               = do
+                   nm <- getRefactNameMap
+                   decls <- liftT $ hsDecls match
+                   -- logm $ "doAddingParam.inMatch:decls=" ++ showGhc decls
+                   if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                      then do
+                        -- logm $ "doAddingParam.inMatch:True leg"
+                        match' <- doAdding match decls
+                        return match'
+                      else mzero
+             -- --2. pn is declared locally in the where clause of a match.
+             -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+             --   | definingDecls [pn] ds False  False/=[]  = doAdding match  ds
+             -- inMatch _ = mzero
 
 {-
-             --2. pn is declared locally in the where clause of a match.
-             inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-               | definingDecls [pn] ds False  False/=[]  = doAdding match  ds
-             inMatch _ = mzero
-
              --3. pn is declared locally in the where clause of a pattern binding.
              inPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
                | definingDecls [pn] ds False  False/=[]  = doAdding pat  ds
@@ -334,15 +349,12 @@ paramNameOk pn newParam t = (fromMaybe True) (applyTU (once_tdTU (failTU `adhocT
 -- ---------------------------------------------------------------------
 
 -- |add the default argument declaration right after the declaration defining pn
-addDefaultActualArgDecl :: (GHC.Outputable a,SYB.Data t) => a -> t -> GHC.Name -> Bool -> RefactGhc t
+addDefaultActualArgDecl :: (SYB.Data t) => GHC.Located GHC.RdrName -> t -> GHC.Name -> Bool -> RefactGhc t
 addDefaultActualArgDecl defaultParamPName parent pn isExported = do
-  logm $ "addDefaultActualArgDecl entered 1"
-  logm $ "addDefaultActualArgDecl entered 2:" ++ ((showGhc defaultParamPName) ++ " = undefined")
   defaultArgDecl <- parseDeclWithAnns ((showGhc defaultParamPName) ++ " = undefined")
-  -- logDataWithAnns "addDefaultActualArgDecl:defaultArgDecl" defaultArgDecl
-  logm $ "addDefaultActualArgDecl cond=" ++ show (not (findEntity pn parent) , not isExported)
-  logm $ "addDefaultActualArgDecl cond=" ++ show (not (findEntity pn parent) && not isExported)
-  if not (findEntity pn parent) && not isExported
+  nm <- getRefactNameMap
+  let inParent = findLRdrName nm pn parent
+  if not inParent && not isExported
     then return parent
     else addDecl parent (Just pn) ([defaultArgDecl],Nothing)
 {-

@@ -1596,6 +1596,7 @@ hsNamessRdr t = nub $ fromMaybe [] r
 
      inName :: (SYB.Typeable a) => a -> Maybe [GHC.Located GHC.RdrName]
      inName = nameSybQuery checker
+
 -- ---------------------------------------------------------------------
 
 -- |Does the given 'GHC.Name' appear as a 'GHC.Located' 'GHC.RdrName' anywhere in 't'?

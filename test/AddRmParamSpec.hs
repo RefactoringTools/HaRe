@@ -118,6 +118,22 @@ spec = do
       diffD `shouldBe` []
 
     -- -------------------
+
+    it "addOneParameter in FunIn2" $ do
+          -- (["FunIn2.hs"],["y","10","18"]),
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/FunIn2.hs" "y" (10,18)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/FunIn2.hs" "y" (10,18)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/FunIn2.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/FunIn2.expected.hs"
+                                 "./AddOneParameter/FunIn2.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
 {-
 TestCases{refactorCmd="addOneParameter",
 positive=[(["D3.hs","A3.hs"],["y","7","1"]),
