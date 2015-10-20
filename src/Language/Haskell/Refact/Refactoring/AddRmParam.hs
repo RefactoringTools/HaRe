@@ -129,10 +129,11 @@ doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe (GHC.
 doAddingParam fileName modName pn newParam defaultArg isExported = do
     logm $ "doAddingParam entered:defaultArg=" ++ showGhc defaultArg
     parsed <- getRefactParsed
+    -- logDataWithAnns "parsed" parsed
     r <- applyTP (once_tdTP (failTP `adhocTP` inMod
                                     `adhocTP` inMatch
                                     -- `adhocTP` inPat
-                                    -- `adhocTP` inLet
+                                    `adhocTP` inLet
                                     -- `adhocTP` inAlt
                                     -- `adhocTP` inLetStmt
                             )
@@ -141,13 +142,6 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
     return ()
       where
              --1.pn is declared in top level
-             -- inMod (mod@(HsModule loc name exps imps ds):: HsModuleP)
-             --   | definingDecls [pn] ds False  False/=[]
-             --   = do mod'<-doAdding mod  ds
-             --        if isExported && isExplicitlyExported pn mod
-             --          then addItemsToExport mod' (Just pn) False (Left [pNtoName (fromJust defaultArg)])
-             --          else return mod'
-             -- inMod _ = mzero
              inMod :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
              inMod modu = do
                nm <- getRefactNameMap
@@ -171,29 +165,39 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                = do
                    nm <- getRefactNameMap
                    decls <- liftT $ hsDecls match
-                   -- logm $ "doAddingParam.inMatch:decls=" ++ showGhc decls
+                   logm $ "doAddingParam.inMatch:decls=" ++ showGhc decls
                    if not ( null (definingDeclsRdrNames nm [pn] decls False False))
                       then do
                         -- logm $ "doAddingParam.inMatch:True leg"
                         match' <- doAdding match decls
                         return match'
                       else mzero
-             -- --2. pn is declared locally in the where clause of a match.
-             -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-             --   | definingDecls [pn] ds False  False/=[]  = doAdding match  ds
-             -- inMatch _ = mzero
 
 {-
              --3. pn is declared locally in the where clause of a pattern binding.
              inPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
                | definingDecls [pn] ds False  False/=[]  = doAdding pat  ds
              inPat _ = mzero
+-}
 
              --4: pn is declared locally in a  Let expression
-             inLet (letExp@(Exp (HsLet ds e))::HsExpP)
-               | definingDecls [pn] ds False False /=[] = doAdding letExp  ds
-             inLet _ = mzero
-
+             inLet (letExp@(GHC.L l (GHC.HsLet ds e))::GHC.LHsExpr GHC.RdrName)
+               -- | definingDecls [pn] ds False False /=[] = doAdding letExp  ds
+               = do
+                   nm <- getRefactNameMap
+                   decls <- liftT $ hsDecls letExp
+                   logm $ "doAddingParam.inLet:decls=" ++ showGhc decls
+                   if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                      then do
+                        -- logm $ "doAddingParam.inLet:True leg"
+                        match' <- doAdding letExp decls
+                        return match'
+                      else mzero
+             -- --4: pn is declared locally in a  Let expression
+             -- inLet (letExp@(Exp (HsLet ds e))::HsExpP)
+             --   | definingDecls [pn] ds False False /=[] = doAdding letExp  ds
+             -- inLet _ = mzero
+{-
              --5. pn is declared locally in a  case alternative.
              inAlt (alt@(HsAlt loc p rhs ds)::HsAltP)
                | definingDecls [pn] ds False  False/=[] = doAdding  alt  ds
