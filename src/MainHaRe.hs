@@ -1,28 +1,121 @@
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
-
--- Based on
--- https://github.com/kazu-yamamoto/ghc-mod/blob/master/src/GHCMod.hs
+{-# LANGUAGE TemplateHaskell #-}
+import           Control.Exception
+import           Control.Monad.IO.Class
+import           Data.Foldable
+import           Data.IORef
+import           Data.Traversable
+import           Data.Version (showVersion)
+import           Development.GitRev (gitCommitCount)
+import           Distribution.System (buildArch)
+import           Distribution.Text (display)
+-- import           Haskell.Ide.Monad
+-- import           Haskell.Ide.Options
+-- import           Haskell.Ide.Plugin
+-- import           Haskell.Ide.Types
+import           Options.Applicative.Simple
 
 import Control.Exception
 import Data.List
 import Data.Typeable
 import Data.Version
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM
 import Language.Haskell.Refact.HaRe
-import Paths_HaRe
+import qualified Paths_HaRe as Meta
 import Prelude
 import System.Console.GetOpt
 import System.Environment (getArgs)
 import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
+
+import Options.Applicative.Simple
 import Text.Parsec.Combinator
-import Text.Parsec.Prim
+-- import Text.Parsec.Prim
 import Text.Parsec.Char
 
-----------------------------------------------------------------
+main :: IO ()
+main = do
+    -- Version code from stack. Maybe move this stuff into optparse-simple ?
+    let commitCount = $gitCommitCount
+        versionString' = concat $ concat
+            [ [$(simpleVersion Meta.version)]
+              -- Leave out number of commits for --depth=1 clone
+              -- See https://github.com/commercialhaskell/stack/issues/792
+            , [" (" ++ commitCount ++ " commits)" | commitCount /= ("1"::String) &&
+                                                    commitCount /= ("UNKNOWN" :: String)]
+            , [" ", display buildArch]
+            ]
+        numericVersion :: Parser (a -> a)
+        numericVersion =
+            infoOption
+                (showVersion Meta.version)
+                (long "numeric-version" <>
+                 help "Show only version number")
+    -- Parse the options and run the specified command.
+    (global, run) <-
+        simpleOptions
+            versionString'
+            "haskell-ide - Provide a common engine to power any Haskell IDE"
+            ""
+            (numericVersion <*> globalOptsParser)
+            (do addCommand "demote"
+                           "Demote a declaration"
+                           demoteCmd
+                           demoteCmdOpts)
+    -- run global
+    run global
 
+-- ---------------------------------------------------------------------
+
+type Row = Int
+type Col = Int
+data DemoteCmd = DemoteCmd FilePath Row Col
+               deriving Show
+
+demoteCmdOpts :: Parser DemoteCmd
+demoteCmdOpts =
+    DemoteCmd
+      <$> (strArgument
+            ( metavar "FILE"
+            <> help "Specify Haskell file to process"
+            ))
+      <*> (argument auto
+            ((metavar "line")
+           <> help "The line the declaration is on"))
+      <*> (argument auto
+            ((metavar "col")
+           <> help "The col the declaration starts at"))
+
+-- lineVal :: Parser Int
+-- lineVal = argument auto
+--             ( metavar "line"
+--            <> short 'n'
+--            <> metavar "K"
+--            <> help "Output the last K lines" )
+
+
+demoteCmd :: DemoteCmd -> RefactSettings -> IO ()
+demoteCmd (DemoteCmd fileName r c) opt
+  = runFunc $ demote opt GM.defaultOptions fileName (r,c)
+
+-- ---------------------------------------------------------------------
+
+globalOptsParser :: Parser RefactSettings
+globalOptsParser = RefSet
+     <$> ((\b -> if b then Debug else Normal) <$> switch
+         ( long "debug"
+        <> short 'd'
+        <> help "Generate debug output" ))
+    <*> tgts
+
+tgts :: Parser (Bool,Bool,Bool,Bool)
+tgts = undefined -- (True,True,True,True)
+
+-- =====================================================================
+----------------------------------------------------------------
+{-
 ghcOptHelp :: String
 ghcOptHelp = " [-g GHC_opt1 -g GHC_opt2 ...] "
 
@@ -41,31 +134,9 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
 
 argspec :: [OptDescr (RefactSettings -> RefactSettings)]
 argspec = [
-             -- Option "m" ["mainfile"]
-             --  (ReqArg (\mf opts -> opts { rsetMainFile = Just [mf] }) "FILE")
-             --  "Main file name if not specified in cabal file"
-
-          -- , Option "l" ["tolisp"]
-          --     (NoArg (\opts -> opts { outputStyle = LispStyle }))
-          --     "print as a list of Lisp"
-          -- , Option "h" ["hlintOpt"]
-          --     (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
-          --     "hlint options"
-          -- , Option "g" ["ghcOpt"]
-          --     (ReqArg (\g opts -> opts { rsetGhcOpts = g : rsetGhcOpts opts }) "ghcOpt")
-          --     "GHC options"
-          -- , Option "o" ["operators"]
-          --     (NoArg (\opts -> opts { operators = True }))
-          --     "print operators, too"
-          -- , Option "d" ["detailed"]
-          --     (NoArg (\opts -> opts { detailed = True }))
-          --     "print detailed info"
             Option "v" ["verbose"]
               (NoArg (\opts -> opts { rsetVerboseLevel = Debug }))
               "debug logging on"
-          -- , Option "b" ["boundary"]
-          --   (ReqArg (\s opts -> opts { rsetLineSeparator = LineSeparator s }) "sep")
-          --   "specify line separator (default is Nul string)"
           ]
 
 parseArgs :: [OptDescr (RefactSettings -> RefactSettings)] -> [String] -> (RefactSettings, [String])
@@ -85,8 +156,8 @@ instance Exception HareError
 
 ----------------------------------------------------------------
 
-main :: IO ()
-main = flip catches handlers $ do
+_main :: IO ()
+_main = flip catches handlers $ do
     hSetEncoding stdout utf8
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
@@ -148,7 +219,7 @@ main = flip catches handlers $ do
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
 
-
+-}
 ----------------------------------------------------------------
 
 runFunc :: IO [String] -> IO ()
@@ -170,6 +241,7 @@ catchException f = do
     handler:: SomeException -> IO (Either String t)
     handler e = return (Left (show e))
 
+{-
 ----------------------------------------------------------------
 
 parseSimpPos :: String -> String -> SimpPos
@@ -192,3 +264,4 @@ number expectedStr = do { ds <- many1 digit; return (read ds) } <?> expectedStr
 
 ----------------------------------------------------------------
 
+-}
