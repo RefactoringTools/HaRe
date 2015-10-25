@@ -610,6 +610,6 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      (show r') `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
      -}
- 
+
 -- ---------------------------------------------------------------------
 -- Helper functions

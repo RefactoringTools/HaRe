@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 -- module Language.Haskell.Refact.Refactoring.AddRmParam(addOneParameter,rmOneParameter) where
-module Language.Haskell.Refact.Refactoring.AddRmParam(addOneParameter) where
+module Language.Haskell.Refact.Refactoring.AddRmParam(addOneParameter,rmOneParameter) where
 
 -- import PosSyntax
 -- import TypedIds
@@ -121,9 +121,6 @@ addOneParameter args
 
 -- ---------------------------------------------------------------------
 
--- ++AZ++: TODO put this some where sane if it works
--- deriving instance MonadPlus (GHC.GenLocated GHC.SrcSpan)
-
 doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe (GHC.Located GHC.RdrName) -> Bool
               -> RefactGhc ()
 doAddingParam fileName modName pn newParam defaultArg isExported = do
@@ -135,7 +132,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                                     -- `adhocTP` inPat
                                     `adhocTP` inLet
                                     -- `adhocTP` inAlt
-                                    -- `adhocTP` inLetStmt
+                                    `adhocTP` inLetStmt
                             )
                            `choiceTP` failure) parsed
     putRefactParsed r emptyAnns
@@ -190,24 +187,53 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                    if not ( null (definingDeclsRdrNames nm [pn] decls False False))
                       then do
                         -- logm $ "doAddingParam.inLet:True leg"
-                        match' <- doAdding letExp decls
-                        return match'
+                        letExp' <- doAdding letExp decls
+                        return letExp'
                       else mzero
-             -- --4: pn is declared locally in a  Let expression
-             -- inLet (letExp@(Exp (HsLet ds e))::HsExpP)
-             --   | definingDecls [pn] ds False False /=[] = doAdding letExp  ds
-             -- inLet _ = mzero
+             -- inLet doStmt@(GHC.L l (GHC.HsDo ctx stmts))
+             --   = do
+             --       nm <- getRefactNameMap
+             --       decls <- liftT $ hsDecls letStmt
+             --       logm $ "doAddingParam.inLetStmt.bind:decls=" ++ showGhc decls
+             --       if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+             --          then do
+             --            -- logm $ "doAddingParam.inLetStmt:True leg"
+             --            letStmt' <- doAdding letStmt decls
+             --            return letStmt'
+             --          else mzero
+             inLet _ = mzero
 {-
              --5. pn is declared locally in a  case alternative.
              inAlt (alt@(HsAlt loc p rhs ds)::HsAltP)
                | definingDecls [pn] ds False  False/=[] = doAdding  alt  ds
              inAlt _ = mzero
+-}
 
              --6.pn is declared locally in a let statement.
-             inLetStmt (letStmt@(HsLetStmt ds stmts):: HsStmtP)
-               | definingDecls [pn] ds False  False/=[]  = doAdding letStmt ds
+             inLetStmt (letStmt@(GHC.L l (GHC.LetStmt stmts)):: GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+               = do
+                   nm <- getRefactNameMap
+                   decls <- liftT $ hsDecls letStmt
+                   logm $ "doAddingParam.inLetStmt.let:decls=" ++ showGhc decls
+                   if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                      then do
+                        -- logm $ "doAddingParam.inLetStmt:True leg"
+                        letStmt' <- doAdding letStmt decls
+                        return letStmt'
+                      else mzero
+             -- inLetStmt bindStmt@(GHC.L l (GHC.BindStmt pats (GHC.L lv (GHC.HsVar v)) _s1 _s2))
+             --   = do
+             --       nm <- getRefactNameMap
+             --       decls <- liftT $ hsDecls letStmt
+             --       logm $ "doAddingParam.inLetStmt.bind:decls=" ++ showGhc decls
+             --       if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+             --          then do
+             --            -- logm $ "doAddingParam.inLetStmt:True leg"
+             --            letStmt' <- doAdding letStmt decls
+             --            return letStmt'
+             --          else mzero
              inLetStmt _ = mzero
--}
+
              failure = idTP `adhocTP` modu
                where modu (m::GHC.ParsedSource) = error "Refactoring failed"
 
@@ -216,14 +242,14 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                nm <- getRefactNameMap
                if paramNameOk nm pn newParam ds
                    then do
-                       logm $ "doAddingParam.doAdding: True leg of paramNameOk"
+                       logm $ "doAddingParam.doAdding: True leg of paramNameOk:newParam=" ++ showGhc (mkRdrName newParam)
                        ds' <- addParamsToDecls ds pn [mkRdrName newParam] --addFormalParam pn newParam ds
                        defaultParamPName <-if isNothing defaultArg
                                            then mkLocalDefaultArgName pn newParam modName parent
                                            else return (gfromJust "doAdding" defaultArg)
                        logm $ "doAddingParam.doAdding: defaultParamPName=" ++ showGhc defaultParamPName
                        parent1 <- liftT $ replaceDecls parent ds'
-                       parent' <- addDefaultActualArg     False pn defaultParamPName parent1
+                       parent' <- addDefaultActualArg False pn defaultParamPName parent1
                        parent''<- addDefaultActualArgDecl defaultParamPName parent' pn isExported
                        ds2 <- liftT $ hsDecls parent''
                        ds'' <- addArgToSig pn ds2
@@ -432,50 +458,27 @@ mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t
 addDefaultActualArg :: (SYB.Data t) => Bool -> GHC.Name -> GHC.Located GHC.RdrName -> t -> RefactGhc t
 addDefaultActualArg recursion pn argPName t = do
   logm $ "addDefaultActualArg:(recursion,pn,argPName):" ++ showGhc (recursion,pn,argPName)
+  logDataWithAnns "addDefaultActualArg:t=:" t
   nm <- getRefactNameMap
   if recursion then (applyTP (stop_tdTP (failTP `adhocTP` (funApp nm)))) t
                else (applyTP (stop_tdTP (failTP `adhocTP` (inDecl nm)
                                                 `adhocTP` (funApp nm)))) t
        where
-         -- inDecl :: NameMap -> GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
-         -- inDecl = assert False undefined
-
-         -- funApp :: NameMap -> GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-         -- funApp = assert False undefined
-
          inDecl :: NameMap -> GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
-         -- inDecl (fun@(Dec (HsFunBind _  ((HsMatch _ (PNT pname _ _) _ _ _):ms)))::HsDeclP)
          inDecl nm fun@(GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t))
            | rdrName2NamePure nm n == pn
-           -- was | pn == pname
-           = return fun
+           = return fun -- Stop the recursion by not returning mzero
 
          -- inDecl (pat@(Dec (HsPatBind loc1 ps rhs ds))::HsDeclP)
          --   | pn == patToPN  ps
          --   = return pat
          inDecl _ _ = mzero
 
-         -- funApp nm (exp@(Exp (HsId (HsVar (PNT pname _ _))))::HsExpP)
          funApp :: NameMap -> GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
          funApp nm (expr@(GHC.L l (GHC.HsVar n))::GHC.LHsExpr GHC.RdrName)
           | rdrName2NamePure nm (GHC.L l n) == pn = do
-          -- was | pname == pn
-           -- = update exp (Exp (HsParen (Exp (HsApp exp (pNtoExp argPName))))) exp
+            logm $ "addDefaultActualArg.funApp:expr=" ++ showGhc expr
             addParamToExp expr (GHC.unLoc argPName)
-            {-
-            lp <- liftT uniqueSrcSpanT
-            la <- liftT uniqueSrcSpanT
-            lv <- liftT uniqueSrcSpanT
-            logm $ "addDefaultActualArg:(lp,la,lv):" ++ showGhc (lp,la,lv)
-            -- ++AZ++ TODO: harvest this commonality
-            let e2 = GHC.L lv (GHC.HsVar (GHC.unLoc argPName))
-            let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr e2)))
-            liftT $ addSimpleAnnT e2  (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
-            liftT $ addSimpleAnnT ret (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
-            liftT $ transferEntryDPT expr ret
-            liftT $ setEntryDPT expr (DP (0,0))
-            return ret
-            -}
 
          funApp _ _ = mzero
 
@@ -714,6 +717,7 @@ addDefaultActualArgInClientMod pn qual argPName toBeQualified t
     funApp _=mzero
 
 myfst (a,_,_,_) = a
+-}
 -------------------------------End of adding a parameter-----------------------------------
 
 -----------------------------------------------------------------------------------------------------
@@ -726,6 +730,33 @@ myfst (a,_,_,_) = a
 -}
 -----------------------------------------------------------------------------------------------------
 
+rmOneParameter :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
+rmOneParameter settings opts fileName (row,col) = do
+  absFileName <- canonicalizePath fileName
+  runRefacSession settings opts (compRm absFileName (row,col))
+
+compRm :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
+compRm fileName (row, col) = do
+  parseSourceFileGhc fileName
+  assert False undefined
+{-
+  --pn is the function names.
+  --nth is the nth paramter of pn is to be removed,index starts form 0.
+  let (pnt,nth)=getParam tokList (row,col) mod
+      pn=pNTtoPN pnt
+  if pn/=defaultPN
+    then do (mod',((ts',m), _))<-doRmParam pn nth mod fileName tokList
+            if isExported pnt exps
+             then do modName <- RefacUtils.fileNameToModName fileName
+                     clients<-clientModsAndFiles modName
+                     refactoredClients<-mapM (rmParamInClientMod pnt nth) clients
+                     writeRefactoredFiles False $ ((fileName,m),(ts',mod')):refactoredClients
+             else  writeRefactoredFiles  False [((fileName,m), (ts',mod'))]
+    else error "Invalid cursor position!"
+-}
+
+
+{-
 rmOneParameter args
  =do let fileName=args!!0
          row=read (args!!1)::Int

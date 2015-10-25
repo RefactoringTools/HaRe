@@ -74,6 +74,8 @@ data-files:                     elisp/*.el
                                 test/testdata/Renaming/*.expected.hs
                                 test/testdata/Renaming/*.hs
                                 test/testdata/Renaming/*.hs.expected
+                                test/testdata/RmOneParameter/*.expected.hs
+                                test/testdata/RmOneParameter/*.hs
                                 test/testdata/Simple/*.hs
                                 test/testdata/Simple/*.hs.expected
                                 test/testdata/SwapArgs/*.hs

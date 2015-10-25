@@ -150,6 +150,38 @@ spec = do
       diffD `shouldBe` []
 
     -- -------------------
+
+    it "addOneParameter in FunIn4" $ do
+          -- (["FunIn4.hs"],["y","8","22"])],
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/FunIn4.hs" "y" (8,22)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/FunIn4.hs" "y" (8,22)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/FunIn4.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/FunIn4.expected.hs"
+                                 "./AddOneParameter/FunIn4.refactored.hs"
+      diffD `shouldBe` []
+
+    -- ---------------------------------
+    -- Negative tests
+    -- ---------------------------------
+
+    it "fails complex pat binding PatIn2" $ do
+     -- [(["PatIn2.hs"],["x","7","20"]),
+     res <- catchException (ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/PatIn2.hs" "x" (7,20))
+     (show res) `shouldBe` "Just \"Parameter can not be added to complex pattern binding\""
+
+    -- -------------------
+
+    it "fails name clash FunIn5" $ do
+         -- (["FunIn5.hs"],["h","8","1"])]
+     res <- catchException (ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/FunIn5.hs" "h" (8,1))
+     (show res) `shouldBe` "Just \"The new parameter name will cause name clash or semantics change, please choose another name!\""
+
+    -- -------------------
 {-
 TestCases{refactorCmd="addOneParameter",
 positive=[(["D3.hs","A3.hs"],["y","7","1"]),
@@ -166,3 +198,40 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
 -}
 
     -- ---------------------------------
+
+  describe "Removing" $ do
+    it "rmOneParameter in D1 A1" $ do
+          -- (["D1.hs","A1.hs"],["6","19"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/D1.hs" (6,19)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/D1.hs" (6,19)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/D1.hs"
+                    , "RmOneParameter/A1.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/D1.expected.hs"
+                                 "./RmOneParameter/D1.refactored.hs"
+      diffD `shouldBe` []
+
+      diffA <- ct $ compareFiles "./RmOneParameter/A1.expected.hs"
+                                 "./RmOneParameter/A1.refactored.hs"
+      diffA `shouldBe` []
+
+    -- -------------------
+{-
+TestCases{refactorCmd="rmOneParameter",
+positive=[
+          (["D1.hs","A1.hs"],["6","19"]),
+          (["D2.hs","A2.hs"],["7","19"]),
+          (["FunIn1.hs"],["8","5"]),
+          (["FunIn2.hs"],["8","5"]),
+          (["FunIn3.hs"],["7","5"]),
+          (["FunIn5.hs"],["7","6"]),
+          (["FunIn6.hs"],["7","5"]),
+          (["FunIn0.hs"],["10","7"])],
+negative=[(["FunIn4.hs"],["7","6"]),
+          (["FunIn7.hs"],["10","4"])]
+}
+-}

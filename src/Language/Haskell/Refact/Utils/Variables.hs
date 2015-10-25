@@ -1729,6 +1729,7 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` lhstype
           `SYB.extQ` lsigs
           `SYB.extQ` lsig
+          `SYB.extQ` lstmt
           ) t
 
     -- err2 = error $ "hsVisibleDsRdr:err2:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
@@ -1975,7 +1976,30 @@ hsVisibleDsRdr nm e t = do
 
     -- -----------------------
 
-    err = error $ "hsVisibleDsRdr nm:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
+    lstmt :: GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc DeclaredNames
+    lstmt (GHC.L _ (GHC.LastStmt ex _)) = hsVisibleDsRdr nm e ex
+    lstmt (GHC.L _ (GHC.BindStmt pa ex _ _)) = do
+      fdp <- hsVisibleDsRdr nm e pa
+      fde <- hsVisibleDsRdr nm e ex
+      return (fdp <> fde)
+    lstmt (GHC.L _ (GHC.BodyStmt ex _ _ _)) = hsVisibleDsRdr nm e ex
+    -- lstmt (GHC.L _ (GHC.ExprStmt e _ _ _)) = hsFreeAndDeclaredGhc e
+
+    lstmt (GHC.L _ (GHC.LetStmt bs)) = hsVisibleDsRdr nm e bs
+    lstmt (GHC.L _ (GHC.ParStmt ps _ _)) = hsVisibleDsRdr nm e ps
+    lstmt (GHC.L _ (GHC.TransStmt _ stmts _ using mby _ _ _)) = do
+      fds <- hsVisibleDsRdr nm e stmts
+      fdu <- hsVisibleDsRdr nm e using
+      fdb <- case mby of
+        Nothing -> return (DN [])
+        Just ex -> hsVisibleDsRdr nm e ex
+      return $ fds <> fdu <> fdb
+    lstmt (GHC.L _ (GHC.RecStmt stmts _ _ _ _ _ _ _ _)) = hsVisibleDsRdr nm e stmts
+    lstmt _ = return (DN [])
+
+    -- -----------------------
+
+    err = error $ "hsVisibleDsRdr nm:no match for:" ++ (SYB.showData SYB.Parser 0 t)
 
 
 ------------------------------------------------------------------------

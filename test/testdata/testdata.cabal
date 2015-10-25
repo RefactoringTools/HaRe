@@ -175,3 +175,13 @@ Executable addoneparama3
   Other-Modules : AddOneParameter.D3
   Build-Depends:          base >= 4.0  && < 4.9
   default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------
+
+Executable rmoneparama1
+  Main-Is: RmOneParameter/A1.hs
+  Other-Modules : RmOneParameter.D1
+  Build-Depends:          base >= 4.0  && < 4.9
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------
