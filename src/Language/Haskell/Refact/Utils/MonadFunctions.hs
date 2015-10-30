@@ -541,7 +541,7 @@ nameSybQuery checker = q
     q = Nothing `SYB.mkQ`  worker
                 `SYB.extQ` workerBind
                 `SYB.extQ` workerExpr
-                `SYB.extQ` workerLIE
+                -- `SYB.extQ` workerLIE
                 `SYB.extQ` workerHsTyVarBndr
                 `SYB.extQ` workerLHsType
 
@@ -556,9 +556,9 @@ nameSybQuery checker = q
       = checker (GHC.L l name)
     workerExpr _ = Nothing
 
-    workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
-      = checker (GHC.L ln name)
-    workerLIE _ = Nothing
+    -- workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
+    --   = checker (GHC.L ln name)
+    -- workerLIE _ = Nothing
 
     workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name)))
       = checker (GHC.L l name)

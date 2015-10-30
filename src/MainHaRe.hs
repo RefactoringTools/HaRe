@@ -60,10 +60,11 @@ main = do
             "haskell-ide - Provide a common engine to power any Haskell IDE"
             ""
             (numericVersion <*> globalOptsParser)
-            (do addCommand "demote"
-                           "Demote a declaration"
-                           demoteCmd
-                           demoteCmdOpts)
+            addDemoteCmd
+            -- (do addCommand "demote"
+            --                "Demote a declaration"
+            --                demoteCmd
+            --                demoteCmdOpts)
     -- run global
     run global
 
@@ -74,27 +75,25 @@ type Col = Int
 data DemoteCmd = DemoteCmd FilePath Row Col
                deriving Show
 
+addDemoteCmd = do
+  addCommand "demote"
+                "Demote a declaration"
+                demoteCmd
+                demoteCmdOpts
+
 demoteCmdOpts :: Parser DemoteCmd
 demoteCmdOpts =
     DemoteCmd
-      <$> (strArgument
+      <$> strArgument
             ( metavar "FILE"
-            <> help "Specify Haskell file to process"
-            ))
-      <*> (argument auto
-            ((metavar "line")
-           <> help "The line the declaration is on"))
-      <*> (argument auto
-            ((metavar "col")
-           <> help "The col the declaration starts at"))
-
--- lineVal :: Parser Int
--- lineVal = argument auto
---             ( metavar "line"
---            <> short 'n'
---            <> metavar "K"
---            <> help "Output the last K lines" )
-
+           <> help "Specify Haskell file to process"
+            )
+      <*> argument auto
+            ( metavar "line"
+           <> help "The line the declaration is on")
+      <*> argument auto
+            ( metavar "col"
+           <> help "The col the declaration starts at")
 
 demoteCmd :: DemoteCmd -> RefactSettings -> IO ()
 demoteCmd (DemoteCmd fileName r c) opt
@@ -103,15 +102,13 @@ demoteCmd (DemoteCmd fileName r c) opt
 -- ---------------------------------------------------------------------
 
 globalOptsParser :: Parser RefactSettings
-globalOptsParser = RefSet
+globalOptsParser = mkRefSet
      <$> ((\b -> if b then Debug else Normal) <$> switch
          ( long "debug"
         <> short 'd'
         <> help "Generate debug output" ))
-    <*> tgts
-
-tgts :: Parser (Bool,Bool,Bool,Bool)
-tgts = undefined -- (True,True,True,True)
+  where
+    mkRefSet v = RefSet v (True,True,True,True)
 
 -- =====================================================================
 ----------------------------------------------------------------
