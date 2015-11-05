@@ -452,3 +452,5 @@ testing/addCon/Case2.hs.temp.hs
 /HaRe.cabal.lkshs
 /HaRe.cabal.lkshw
 /.travis.yaml.old2
+/hcar/HaReTheHaskellRefactorer-AH.out
+/hcar/HaReTheHaskellRefactorer-AH.pdf

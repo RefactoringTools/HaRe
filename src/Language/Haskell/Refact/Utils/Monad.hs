@@ -214,6 +214,7 @@ runRefactGhc comp initState opt = do
       Right a  -> return (a,s)
 
 -- ---------------------------------------------------------------------
+
 instance GM.GmOut (StateT RefactState IO) where
 
 instance GM.MonadIO (StateT RefactState IO) where
