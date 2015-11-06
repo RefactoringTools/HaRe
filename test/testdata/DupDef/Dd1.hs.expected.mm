@@ -22,7 +22,9 @@ ff y = y + zz
   where
     zz = 1
 
-    mm = 1
+mm y = y + zz
+  where
+    zz = 1
 
 l z =
   let

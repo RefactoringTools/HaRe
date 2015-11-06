@@ -1,53 +1,56 @@
-# HaRe : The Haskell Refactorer
+## <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
+
+Home is now https://github.com/RefactoringTools/HaRe
+
+HaRe can rename symbols, lift definitions, convert equivalent Haskell
+constructs like ifs and cases and more while preserving program
+semantics, types and correctly handling indentation. Only HaRe can
+execute identity transformation!
 
 [![Available on Hackage][badge-hackage]][hackage]
 [![License BSD3][badge-license]][license]
 [![Build Status][badge-travis]][travis]
 
-[badge-travis]: https://travis-ci.org/alanz/HaRe.png?branch=master
-[travis]: https://travis-ci.org/alanz/HaRe
+[badge-travis]: https://travis-ci.org/RefactoringTools/HaRe.png?branch=master
+[travis]: https://travis-ci.org/RefactoringTools/HaRe
 [badge-hackage]: https://img.shields.io/hackage/v/HaRe.svg?dummy
 [hackage]: https://hackage.haskell.org/package/HaRe
 [badge-license]: https://img.shields.io/badge/license-BSD3-green.svg?dummy
-[license]: https://github.com/alanz/HaRe/blob/master/LICENSE
+[license]: https://github.com/RefactoringTools/HaRe/blob/master/LICENSE
 
-Note: The current version (0.7.2.8) does not install with GHC 7.8.x
+Note:
 
-## Roadmap
+  * GHC versions up to 7.6.3 are supported via HaRe version 0.7.2.8
+  * GHC version 7.8.x is NOT supported, and never will be
+  * GHC version 7.10.2 and up is supported for HaRe >= 0.8.0.0
 
-The token management utilities [haskell-token-utils](https://github.com/alanz/haskell-token-utils)
-are too brittle, and will not be updated for GHC 7.8.x and beyond.
+### Limitations
 
-There are substantial changes coming in GHC 7.10, which will form the
-basis of the new token management, based on
-[ghc-exactprint](https://github.com/alanz/ghc-exactprint)
+HaRe will only work for projects using GHC 7.10.2 for compilation. Compiling
+HaRe with 7.10.2 and then using it against projects using an earlier compiler
+will not work, as HaRe needs to be able to invoke GHC to the type checker stage
+on the project using GHC 7.10.2.
 
-For coming changes in GHC 7.10, see
+See https://github.com/kazu-yamamoto/ghc-mod/issues/615
 
-  * https://ghc.haskell.org/trac/ghc/wiki/GhcApi
-  * https://ghc.haskell.org/trac/ghc/wiki/GhcAstAnnotations
-
-## Getting Started
+### Getting Started
 
     cabal install HaRe
 
 Check that it works from the command line
 
     $ ghc-hare --version
-    0.7.2.x
+    0.8.x.y
 
 Running the bare command lists available refactorings and their parameters
 
-### Emacs integration
+#### Emacs integration
 
 Currently only emacs integration is offered. Add the following to your
 ~/.emacs using the load-path entry that matches the installation on
 your machine.
 
-    (add-to-list 'load-path
-        "~/.cabal/share/HaRe-0.7.2.2/elisp")
-    (add-to-list 'load-path
-        "~/.cabal/share/i386-linux-ghc-7.6.3/HaRe-0.7.2.2/elisp")
+    (add-to-load-path "~/.cabal/share/x86_64-linux-ghc-7.10.2/HaRe-0.8.2.0/elisp")
     (require 'hare)
     (autoload 'hare-init "hare" nil t)
 
@@ -102,29 +105,29 @@ This allows a sequence of refactorings to be undone manually if
 required. In theory.
 
 
-## Development & Support
+### Development & Support
 
 Join in at `#haskell-refactorer` on freenode.
 
-### Developing in sandbox with haskell-token-utils locally
+Note: (2015-10-04) HaRe cannot be tested using stack. It can be built, but the tests will
+fail, as HaRe makes use of ghc-mod as a library and the interaction between
+stack, ghc-mod and cabal-helper does not work for the tests.
 
-    cabal clean
-    cabal sandbox init
-    # Next line assumes haskell-token-utils checked out at same level
-    cabal sandbox add-source ../haskell-token-utils/
-    cabal install --dependencies-only
-
-### Running test suite
+#### Running test suite
 
 To run the test suite do:
 
-    cabal configure --enable-tests && cabal build && cabal test
+    ./configure.sh
+    cabal test
+
+The `configure.sh` script simply makes sure that all the cabal projects used in
+the tests are also configured.
 
 See <http://hspec.github.com/> for details on hspec
 
 see <http://travis-ci.org/#alanz/HaRe> for continuous build results
 
-## Resources
+### Resources
 
   * [GHC chapter](http://aosabook.org/en/ghc.html) of
     [AOSA](http://aosabook.org "Architecture of Open Source
@@ -135,21 +138,25 @@ see <http://travis-ci.org/#alanz/HaRe> for continuous build results
     The background to how the dual tree data structure used for token
     output works
 
-## Coding style
+### Coding style
 
 Contributors: please try to follow https://github.com/tibbe/haskell-style-guide
 Note:A consistent coding layout style is more important than what specific on is used.
 
-## Contributors
+### Contributors
 
- * Simon Thompson
- * Christopher Brown
- * Huiqing Li
  * Alan Zimmerman
+ * Christopher Brown
+ * Francisco Soares
+ * Gracjan Polak
+ * Harald Jagenteufel
+ * Huiqing Li
+ * Matthew Pickering
+ * Simon Thompson
 
 Please put a pull request for this list if you are missing.
 
-## Logo
+### Logo
 
 <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg"
 width="400" height="300" />

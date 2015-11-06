@@ -1,9 +1,9 @@
 Name:                           HaRe
-Version:                        0.7.2.8
+Version:                        0.8.2.0
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
-Bug-Reports:                    http://github.com/alanz/HaRe/issues
+Bug-Reports:                    http://github.com/RefactoringTools/HaRe/issues
 License:                        BSD3
 License-File:                   LICENSE
 Homepage:                       https://github.com/RefactoringTools/HaRe/wiki
@@ -11,49 +11,116 @@ Description:
    A Haskell 2010 refactoring tool. HaRe supports the full
    Haskell 2010 standard, through making use of the GHC API.
    .
-   It is tested against GHC 7.4.x and 7.6.x (via travis-ci.org)
+   Version 0.7.2.8 supports up to GHC 7.6.3.
+   .
+   There is no support for GHC 7.8.x. There will never be support for GHC 7.8.x
+   .
+   From version 0.8.0.0, GHC 7.10.2 is supported.
+   .
+   It is tested against GHC 7.10.2 (via travis-ci.org)
    .
    It currently only has emacs integration built in, community input
    welcome for others.
    .
-   Warning: This is alpha code. Always commit code to your version
-   control system before refactoring. The developers make no
-   warranties, use at your own risk.
+   HaRe attempts to operate in a safe way, by first writing new files with
+   proposed changes, and only swapping these with the originals when the change
+   is accepted. In the process the original file is renamed to have the current
+   date/time as a suffix. Thus it should be possible to (manually) undo changes.
    .
-   Despite the disclaimer, HaRe attempts to operate in a safe way, by
-   first writing new files with proposed changes, and only swapping
-   these with the originals when the change is accepted. In the
-   process the original file is renamed to have the current date/time
-   as a suffix. Thus it should be possible to (manually) undo changes.
-   .
-   The renaming refactoring seems reasonably reliable, as does lifting
-   and demoting
+   Even so, it is strongly advised to back up any source files before
+   refactoring, as we can make no promises as to the reliability of this tool.
+   Use at your own risk.
    .
    At the moment parsing of any file with FFI exports will fail.
    .
-
+   See Language.Haskell.Refact.HaRe for the current list of refactorings supported
+   .
 Synopsis:                       the Haskell Refactorer.
 Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
+
+tested-with:                    GHC == 7.10.2
+
 data-files:                     elisp/*.el
+                                configure.sh
+                                test/testdata/*.cabal
+                                test/testdata/*.hs
+                                test/testdata/Case/*.hs
+                                test/testdata/Case/*.hs.expected
+                                test/testdata/Case/*.hs.expected.dd
+                                test/testdata/Demote/*.expected.hs
+                                test/testdata/Demote/*.hs
+                                test/testdata/Demote/*.hs.expected
+                                test/testdata/DupDef/*.hs
+                                test/testdata/DupDef/*.hs.expected
+                                test/testdata/DupDef/*.hs.expected.dd
+                                test/testdata/DupDef/*.hs.expected.gg
+                                test/testdata/DupDef/*.hs.expected.ll
+                                test/testdata/DupDef/*.hs.expected.mm
+                                test/testdata/DupDef/*.hs.expected.nn
+                                test/testdata/FreeAndDeclared/*.hs
+                                test/testdata/Layout/*.hs
+                                test/testdata/Layout/*.hs.expected
+                                test/testdata/LiftOneLevel/*.hs
+                                test/testdata/LiftOneLevel/*.hs.expected
+                                test/testdata/LiftToToplevel/*.expected.hs
+                                test/testdata/LiftToToplevel/*.hs
+                                test/testdata/LiftToToplevel/*.hs.expected
+                                test/testdata/MoveDef/*.hs
+                                test/testdata/MoveDef/*.hs.expected
+                                test/testdata/Renaming/*.expected.hs
+                                test/testdata/Renaming/*.hs
+                                test/testdata/Renaming/*.hs.expected
+                                test/testdata/Simple/*.hs
+                                test/testdata/Simple/*.hs.expected
+                                test/testdata/SwapArgs/*.hs
+                                test/testdata/TH/*.hs
+                                test/testdata/TypeUtils/*.hs
+                                test/testdata/Visible/*.hs
+                                test/testdata/cabal/cabal1/*.cabal
+                                test/testdata/cabal/cabal1/*.hs
+                                test/testdata/cabal/cabal1/src/*.hs
+                                test/testdata/cabal/cabal1/src/Foo/*.hs
+                                test/testdata/cabal/cabal2/*.cabal
+                                test/testdata/cabal/cabal2/*.hs
+                                test/testdata/cabal/cabal2/src/*.hs
+                                test/testdata/cabal/cabal2/src/Foo/*.hs
+                                test/testdata/cabal/cabal3/*.cabal
+                                test/testdata/cabal/cabal3/*.hs
+                                test/testdata/cabal/cabal3/src/*.hs
+                                test/testdata/cabal/cabal3/src/Foo/*.hs
+                                test/testdata/cabal/cabal4/*.cabal
+                                test/testdata/cabal/cabal4/*.hs
+                                test/testdata/cabal/cabal4/src/*.expected.hs
+                                test/testdata/cabal/cabal4/src/*.hs
+                                test/testdata/cabal/cabal4/src/Foo/*.expected.hs
+                                test/testdata/cabal/cabal4/src/Foo/*.hs
+                                test/testdata/cabal/foo/*.cabal
+                                test/testdata/cabal/foo/*.hs
+                                test/testdata/cabal/foo/src/*.expected.hs
+                                test/testdata/cabal/foo/src/*.hs
+                                test/testdata/cabal/foo/src/Foo/*.expected.hs
+                                test/testdata/cabal/foo/src/Foo/*.hs
+
 data-Dir:                       .
 extra-source-files:             ChangeLog
 
 Library
-        Build-Depends:          base
+        -- GHC 7.10.2 ships with base 4.8.1.0
+        Build-Depends:          base >= 4.8.1.0  && < 4.9
                                 , containers
                                 , directory
 
-                                , dual-tree
                                 , semigroups
                                 , monoid-extras
+                                , cabal-helper
                                 , filepath
                                 , ghc
                                 , ghc-paths
                                 , ghc-prim  
                                 , ghc-syb-utils
-                                , ghc-mod
+                                , ghc-mod >= 5.4
                                 , mtl
                                 , old-time
                                 , pretty
@@ -61,28 +128,31 @@ Library
                                 , syb
                                 , hslogger
                                 , transformers
+                                , transformers-base
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
---                                , haskell-token-utils >= 0.0.0.6
-                                , ghc-exactprint
-
-
-        GHC-Options:             -Wall
+                                , ghc-exactprint >= 0.4.1
+                                , monad-control
+                                , Cabal >= 1.22
 
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
         Exposed-modules:
              Language.Haskell.Refact.API
            , Language.Haskell.Refact.HaRe
+           , Language.Haskell.Refact.Refactoring.AddRmParam
            , Language.Haskell.Refact.Refactoring.Case
            , Language.Haskell.Refact.Refactoring.DupDef
            , Language.Haskell.Refact.Refactoring.MoveDef
            , Language.Haskell.Refact.Refactoring.Renaming
+           , Language.Haskell.Refact.Refactoring.RoundTrip
+           , Language.Haskell.Refact.Refactoring.Simple
            , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Refactoring.DeleteDef
            , Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
            , Language.Haskell.Refact.Utils.Binds
+           , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
            , Language.Haskell.Refact.Utils.GhcUtils
@@ -90,37 +160,60 @@ Library
            , Language.Haskell.Refact.Utils.LocUtils
            , Language.Haskell.Refact.Utils.Monad
            , Language.Haskell.Refact.Utils.MonadFunctions
-           , Language.Haskell.Refact.Utils.TokenUtils
            , Language.Haskell.Refact.Utils.TypeSyn
            , Language.Haskell.Refact.Utils.TypeUtils
+           , Language.Haskell.Refact.Utils.Types
            , Language.Haskell.Refact.Utils.Utils
+           , Language.Haskell.Refact.Utils.Variables
            , Paths_HaRe
-        Extensions:      CPP
-
+        if impl (ghc < 7.10.2)
+            buildable: False
 
 
 Executable ghc-hare
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
-        GHC-Options:            -Wall
+        -- GHC-Options:            -Wall -O0
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
-        Build-Depends:          base
+        other-modules:
+             Language.Haskell.Refact.API
+           , Language.Haskell.Refact.HaRe
+           , Language.Haskell.Refact.Refactoring.AddRmParam
+           , Language.Haskell.Refact.Refactoring.Case
+           , Language.Haskell.Refact.Refactoring.RoundTrip
+           , Language.Haskell.Refact.Utils.Binds
+           , Language.Haskell.Refact.Utils.ExactPrint
+           , Language.Haskell.Refact.Utils.GhcModuleGraph
+           , Language.Haskell.Refact.Utils.GhcUtils
+           , Language.Haskell.Refact.Utils.GhcVersionSpecific
+           , Language.Haskell.Refact.Utils.LocUtils
+           , Language.Haskell.Refact.Utils.Monad
+           , Language.Haskell.Refact.Utils.MonadFunctions
+           , Language.Haskell.Refact.Utils.TypeSyn
+           , Language.Haskell.Refact.Utils.TypeUtils
+           , Language.Haskell.Refact.Utils.Types
+           , Language.Haskell.Refact.Utils.Utils
+           , Language.Haskell.Refact.Utils.Variables
+           , Paths_HaRe
+
+        -- GHC 7.10.2 ships with base 4.8.1.0
+        Build-Depends:          base >= 4.8.1.0  && < 4.9
                                 , array
                                 , containers
                                 , directory
 
-                                , dual-tree
                                 , semigroups
                                 , monoid-extras
 
+                                , cabal-helper
                                 , filepath
                                 , ghc
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod
+                                , ghc-mod >= 5.4
                                 , mtl
                                 , old-time
                                 , parsec >= 3.1.6
@@ -129,18 +222,24 @@ Executable ghc-hare
                                 , syb
                                 , time
                                 , transformers
+                                , transformers-base
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
---                                , haskell-token-utils >= 0.0.0.6
-                                , HaRe >= 0.7.2.3
+                                , ghc-exactprint >= 0.4.1
+                                , monad-control
+                                , Cabal >= 1.22
+                                -- , Paths_HaRe
+                                , HaRe >= 0.8
         Extensions:      CPP
-
+        if impl (ghc < 7.10.2)
+            buildable: False
 
 test-suite spec
   type:
       exitcode-stdio-1.0
   ghc-options:
+      -- -O0
       -- reinstate these later  -Wall
       -- -Wall
       -- reinstate these later  -Werror
@@ -151,29 +250,62 @@ test-suite spec
   main-is:
       Spec.hs
   Hs-Source-Dirs:
-    -- src
+    src
     test
+  other-modules:
+      CaseSpec
+    , DupDefSpec
+    , GhcUtilsSpec
+    , LocUtilsSpec
+    , MonadFunctionsSpec
+    , MoveDefSpec
+    , RenamingSpec
+    , RoundTripSpec
+    , SimpleSpec
+    , SwapArgsSpec
+    , TestUtils
+    , TypeUtilsSpec
+    , UtilsSpec
+
+    , Language.Haskell.Refact.API
+    , Language.Haskell.Refact.HaRe
+    , Language.Haskell.Refact.Refactoring.AddRmParam
+    , Language.Haskell.Refact.Refactoring.Case
+    , Language.Haskell.Refact.Refactoring.RoundTrip
+    , Language.Haskell.Refact.Utils.Binds
+    , Language.Haskell.Refact.Utils.ExactPrint
+    , Language.Haskell.Refact.Utils.GhcModuleGraph
+    , Language.Haskell.Refact.Utils.GhcUtils
+    , Language.Haskell.Refact.Utils.GhcVersionSpecific
+    , Language.Haskell.Refact.Utils.LocUtils
+    , Language.Haskell.Refact.Utils.Monad
+    , Language.Haskell.Refact.Utils.MonadFunctions
+    , Language.Haskell.Refact.Utils.TypeSyn
+    , Language.Haskell.Refact.Utils.TypeUtils
+    , Language.Haskell.Refact.Utils.Types
+    , Language.Haskell.Refact.Utils.Utils
+    , Language.Haskell.Refact.Utils.Variables
+    , Paths_HaRe
   build-depends:
-      base
+      -- GHC 7.10.2 ships with base 4.8.1.0
+      base        >= 4.8.1.0  && < 4.9
     , Diff >= 0.3.0
-    -- , HUnit       == 1.2.*
     , HUnit
     , QuickCheck  >= 2.5
     , containers
 
-    , dual-tree
+    , cabal-helper
     , semigroups
     , monoid-extras
 
     , deepseq
     , directory
     , filepath
-    , ghc         >= 7.0.1 && < 7.8
-    -- , ghc-paths   == 0.1.*
+    , ghc
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod
+    , ghc-mod >= 5.4
     , hspec
     , mtl
     , old-time
@@ -183,20 +315,25 @@ test-suite spec
     , rosezipper
     , syb
     , transformers
+    , transformers-base
     , time
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , haskell-token-utils >= 0.0.0.6
-    , HaRe >= 0.7.2.3
+    , ghc-exactprint >= 0.4.1
+    , monad-control
+    , Cabal >= 1.22
+    -- , Paths_HaRe
+    -- , HaRe >= 0.8
   Extensions:      CPP
-
+  if impl (ghc < 7.10.2)
+    buildable: False
 
 -- test-suite doctests
 --   type:          exitcode-stdio-1.0
 --   ghc-options:   -threaded
 --   main-is:       doctests.hs
---   build-depends: base        >= 4.0  && < 4.8
+--   build-depends: base        >= 4.0  && < 4.9
 --                , doctest >= 0.8
 --                , ghc-mod
 --   Hs-Source-Dirs:
@@ -206,4 +343,4 @@ test-suite spec
 
 source-repository head
   type:     git
-  location: https://github.com/alanz/HaRe.git
+  location: https://github.com/RefactoringTools/HaRe.git

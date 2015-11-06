@@ -11,7 +11,6 @@ import Digraph
 import FastString
 import GHC
 import HscTypes
-import Data.Maybe
 import Panic
 
 -- Other imports
@@ -66,7 +65,7 @@ getModulesAsGraph drop_hs_boot_nodes summaries mb_root_mod
             -- the full set of nodes, and determining the reachable set from
             -- the specified node.
             let root | Just node <- lookup_node HsSrcFile root_mod, graph `hasVertexG` node = node
-                     | otherwise = throwGhcException (ProgramError "module does not exist")
+                     | otherwise = panic "module does not exist"
             in graphFromEdgedVertices (seq root (reachableG graph root))
 
 
@@ -127,7 +126,7 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
             , let out_keys = out_edge_keys hs_boot_key (map unLoc (ms_home_srcimps s)) ++
                              out_edge_keys HsSrcFile   (map unLoc (ms_home_imps s)) ++
                              (-- see [boot-edges] below
-                              if drop_hs_boot_nodes || ms_hsc_src s == HsBootFile 
+                              if drop_hs_boot_nodes || ms_hsc_src s == HsBootFile
                               then []
                               else case lookup_key HsBootFile (ms_mod_name s) of
                                     Nothing -> []
@@ -150,8 +149,15 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
         -- If we want keep_hi_boot_nodes, then we do lookup_key with
         -- the IsBootInterface parameter True; else False
 
+mapCatMaybes :: (a -> Maybe b) -> [a] -> [b]
+mapCatMaybes _ [] = []
+mapCatMaybes f (x:xs) = case f x of
+                        Just y  -> y : mapCatMaybes f xs
+                        Nothing -> mapCatMaybes f xs
+
+
 type NodeKey   = (ModuleName, HscSource)  -- The nodes of the graph are
-type NodeMap a = Map.Map NodeKey a	  -- keyed by (mod, src_file_type) pairs
+type NodeMap a = Map.Map NodeKey a        -- keyed by (mod, src_file_type) pairs
 
 {-
 msKey :: ModSummary -> NodeKey

@@ -7,11 +7,8 @@ data Constraint = Include String
 is_excluded stringQueueName (Include regex) = do
   reg <- mkr
   return True
-    where
-       mkr     = show regex
-    
-
+  where
+    mkr = show regex
 is_excluded stringQueueName (Exclude regex) = do
   -- reg <- mkr regex
   return False
-

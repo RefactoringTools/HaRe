@@ -12,11 +12,12 @@ foo = do
                = concatMap used t2
                 where
 
+                  usedInMatch _ _ = []
+
                   used :: LHsBind Name -> [Int]
                   used (L _ (FunBind _n _ (MatchGroup matches _) _ _ _))
                      = usedInMatch pns matches
 
-                  usedInMatch _ _ = []
 
 data HsBind a = FunBind a Int (MatchGroup a) Int Int Int
                | PatBind String String Int Int a

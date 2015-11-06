@@ -1,3 +1,21 @@
+2015-10-07 v0.8.2.0
+	* Work around a bug in GHC 7.10.2 that will not process pragmas
+	after a comment at the top of a file, when comments are returned
+	for ghc-exactprint processing.
+	* Add parameters to all use sites in the original location when
+	lifting a declaration.
+2015-10-05 v0.8.1.1
+	* Move to new/old home at https://github.com/RefactoringTools/HaRe
+2015-10-05 v0.8.1.0
+	* Reinstate processing of CPP directives as comments #36
+	* Fix problem in renaming in a client module when the old name is
+	not in scope in the client module. #35
+	* No longer mark a client module as refactored if no renaming
+	takes place in it.
+2015-10-04 v0.8.0.0
+	* Major rework, replacing haskell-token-utils with ghc-exactprint
+	* Now supports GHC 7.10.2 and up. ONLY.
+	* Functionally equivalent to v0.7.2.8
 2014-10-13 v0.7.2.8
 	lower bounds on parsec and haskell-token-utils
 2014-08-20 v0.7.2.7
@@ -87,18 +105,18 @@
 	* Now able to get tokens for a file pre-processed with CPP. But it
 	is the pre-processed output, so the CPP directives are stripped
 	out when writing out the refactored source.
-	
+
 2013-09-11  v0.7.0.4
 	* Correct Haddock compile error. Close #4
 	* hsWithBndrs only exists for GHC > 7.4.x
 2013-09-10  v0.7.0.3
-	
+
 	* Fix elisp, would not commit refactoring due to missing methods
-	
+
 2013-09-08  v0.7.0.2
 
 	* Fix issue #3: ifToCase formatting
-	
+
 2013-09-05  v0.7.0.1
 
 	* Fix issue #2: elisp

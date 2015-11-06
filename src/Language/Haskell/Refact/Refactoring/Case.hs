@@ -1,231 +1,147 @@
+{-# LANGUAGE StandaloneDeriving #-}
 module Language.Haskell.Refact.Refactoring.Case(ifToCase) where
 
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB
 
+import qualified BasicTypes    as GHC
 import qualified GHC           as GHC
 
-import Control.Monad
-import Control.Monad.IO.Class
-import Language.Haskell.GhcMod
+import qualified Language.Haskell.GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
+
+-- To be moved into HaRe API
+import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
+
+import System.Directory
+import qualified Data.Map as Map
+-- import Debug.Trace
 
 -- ---------------------------------------------------------------------
 
 -- | Convert an if expression to a case expression
-ifToCase :: RefactSettings -> Cradle -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
-ifToCase settings cradle fileName beginPos endPos =
-  runRefacSession settings cradle (comp fileName beginPos endPos)
+ifToCase :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
+ifToCase settings opts fileName beginPos endPos = do
+  absFileName <- canonicalizePath fileName
+  runRefacSession settings opts (comp absFileName beginPos endPos)
 
 comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName beginPos endPos = do
-       getModuleGhc fileName
-       renamed <- getRefactRenamed
-       logm $ "Case.comp:renamed=" ++ (SYB.showData SYB.Renamer 0 renamed) -- ++AZ++
-       let expr = locToExp beginPos endPos renamed
-       -- logm $ "Case.comp:expr=" ++ (SYB.showData SYB.Renamer 0 expr) -- ++AZ++
+       parseSourceFileGhc fileName
+       parsed <- getRefactParsed
+       oldAnns <- liftT getAnnsT
+       logm $ "Case.comp:parsed=" ++ (showAnnData oldAnns 0 parsed) -- ++AZ++
+       let expr = locToExp beginPos endPos parsed
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
                 -> do (refactoredMod,_) <- applyRefac (doIfToCaseInternal exp1) RSAlreadyLoaded
                       return [refactoredMod]
-         _      -> error $ "You haven't selected an if-then-else  expression!" --  ++ (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
+         _      -> error $ "You haven't selected an if-then-else  expression!" -- (show (beginPos,endPos,fileName)) ++ "]:" ++ (SYB.showData SYB.Parser 0 $ ast)
 
 doIfToCaseInternal ::
-  GHC.Located (GHC.HsExpr GHC.Name)
+  GHC.Located (GHC.HsExpr GHC.RdrName)
   -> RefactGhc ()
 doIfToCaseInternal expr = do
-  rs <- getRefactRenamed
+  rs <- getRefactParsed
   reallyDoIfToCase expr rs
 
 reallyDoIfToCase ::
-  GHC.Located (GHC.HsExpr GHC.Name)
-  -> GHC.RenamedSource
+  GHC.Located (GHC.HsExpr GHC.RdrName)
+  -> GHC.ParsedSource
   -> RefactGhc ()
-reallyDoIfToCase expr rs = do
+reallyDoIfToCase expr p = do
 
-   void $ everywhereMStaged SYB.Renamer (SYB.mkM inExp) rs
-   showLinesDebug "after refactoring"
+   p2 <- SYB.everywhereMStaged SYB.Parser (SYB.mkM inExp) p
+   putRefactParsed p2 mempty
    return ()
        where
-         inExp :: (GHC.Located (GHC.HsExpr GHC.Name)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-         inExp exp1@(GHC.L l (GHC.HsIf _se (GHC.L l1 _) (GHC.L l2 _) (GHC.L l3 _)))
+         inExp :: (GHC.Located (GHC.HsExpr GHC.RdrName)) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
+         inExp exp1@(GHC.L _ (GHC.HsIf _se (GHC.L _ _) (GHC.L _ _) (GHC.L _ _)))
            | sameOccurrence expr exp1
            = do
-               -- drawTokenTreeDetailed "reallyDoIfToCase" -- ++AZ++ debug
                newExp <- ifToCaseTransform exp1
-
-               -- let (GHC.RealSrcLoc rl) = GHC.srcSpanStart l
-               let caseTok = tokenise (gs2ss l) 0 False "case"
-               condToks <- getToksForSpan l1
-               let ofTok = tokenise
-                     (gs2ss $ tokenSrcSpan (glast "reallyDoIfToCase" condToks))
-                     -- (realSrcLocFromTok (glast "reallyDoIfToCase" condToks))
-                           1 True "of"
-               let trueToks = basicTokenise "True  ->"
-               let falseToks = basicTokenise "False ->"
-               thenToksRaw <- getToksForSpan l2
-               elseToksRaw <- getToksForSpan l3
-
-               let thenToks = dropWhile isEmpty thenToksRaw
-               let elseToks = dropWhile isEmpty elseToksRaw
-
-               logm $ "reallyDoIfToCase:elseToks=" ++ (show elseToks)
-
-               let t0 = reIndentToks PlaceAdjacent caseTok condToks
-               let t1' = reIndentToks PlaceAdjacent (caseTok ++ t0) ofTok
-               let t1 = caseTok ++ t0 ++ t1'
-
-               let t2 = reIndentToks (PlaceIndent 1 4 0) t1 trueToks
-               let t3 = reIndentToks PlaceAdjacent (t1++t2) thenToks
-
-               let (_,col) = tokenPos $ ghead "reallyDoIfToCase" t2
-
-               let t4 = reIndentToks (PlaceAbsCol 1 col 0) (t1++t2++t3) falseToks
-               -- logm $ "reallyDoIfToCase:(t1++t2++t3++t4)=" ++ (show (t1++t2++t3++t4))
-               let t5 = reIndentToks PlaceAdjacent (t1++t2++t3++t4) elseToks
-
-               let caseToks = t1++t2++t3++t4++t5 ++ [newLnToken (last t5)]
-
-               logm $ "reallyDoIfToCase:t1=[" ++ (GHC.showRichTokenStream t1) ++ "]"
-               logm $ "reallyDoIfToCase:t2=[" ++ (GHC.showRichTokenStream t2) ++ "]"
-               logm $ "reallyDoIfToCase:t3=[" ++ (GHC.showRichTokenStream t3) ++ "]"
-
-               -- logm $ "reallyDoIfToCase:t1++t2++t3=" ++ (show (t1++t2++t3))
-
-               logm $ "reallyDoIfToCase:t4=[" ++ (GHC.showRichTokenStream t4) ++ "]"
-               logm $ "reallyDoIfToCase:t5=[" ++ (GHC.showRichTokenStream t5) ++ "]"
-
-               logm $ "reallyDoIfToCase:caseToks=" ++ (show caseToks)
-
-               -- drawTokenTreeDetailed "reallyDoIfToCase"
-
-               void $ putToksForSpan l caseToks
-
-               -- drawTokenTree "reallyDoIfToCase after putToks"
-               -- drawTokenTreeDetailed "reallyDoIfToCase after putToks"
-
                return newExp
 
          inExp e = return e
 
--- TODO: rearrange the structure and preserve the comments in the original, e.g. in e1,e2,e3
-ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.Name) -> RefactGhc (GHC.Located (GHC.HsExpr GHC.Name))
-ifToCaseTransform (GHC.L l (GHC.HsIf _se e1 e2 e3)) = do
-  trueName  <- mkNewGhcName Nothing "True"
-  falseName <- mkNewGhcName Nothing "False"
-  let ret = GHC.L l (GHC.HsCase e1
-             (GHC.MatchGroup
+-- |Actually do the transformation
+ifToCaseTransform :: GHC.Located (GHC.HsExpr GHC.RdrName)
+                  -> RefactGhc (GHC.Located (GHC.HsExpr GHC.RdrName))
+ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
+  caseLoc        <- liftT uniqueSrcSpanT -- HaRe:-1:1
+  trueMatchLoc   <- liftT uniqueSrcSpanT -- HaRe:-1:2
+  trueLoc1       <- liftT uniqueSrcSpanT -- HaRe:-1:3
+  trueLoc        <- liftT uniqueSrcSpanT -- HaRe:-1:4
+  trueRhsLoc     <- liftT uniqueSrcSpanT -- HaRe:-1:5
+  falseLoc1      <- liftT uniqueSrcSpanT -- HaRe:-1:6
+  falseLoc       <- liftT uniqueSrcSpanT -- HaRe:-1:7
+  falseMatchLoc  <- liftT uniqueSrcSpanT -- HaRe:-1:8
+  falseRhsLoc    <- liftT uniqueSrcSpanT -- HaRe:-1:9
+  let trueName  = mkRdrName "True"
+  let falseName = mkRdrName "False"
+  let ret = GHC.L caseLoc (GHC.HsCase e1
+             (GHC.MG
               [
-                (GHC.noLoc $ GHC.Match
+                (GHC.L trueMatchLoc $ GHC.Match
+                 Nothing
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc trueName) (GHC.PrefixCon [])
+                   GHC.L trueLoc1 $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
                  ]
                  Nothing
-                 ((GHC.GRHSs
+                 (GHC.GRHSs
                    [
-                     GHC.noLoc $ GHC.GRHS [] e2
-                   ] GHC.EmptyLocalBinds))
+                     GHC.L trueRhsLoc $ GHC.GRHS [] e2
+                   ] GHC.EmptyLocalBinds)
                 )
-              , (GHC.noLoc $ GHC.Match
+              , (GHC.L falseMatchLoc $ GHC.Match
+                 Nothing
                  [
-                   GHC.noLoc $ GHC.ConPatIn (GHC.noLoc falseName) (GHC.PrefixCon [])
+                   GHC.L falseLoc1 $ GHC.ConPatIn (GHC.L falseLoc falseName) (GHC.PrefixCon [])
                  ]
                  Nothing
-                 ((GHC.GRHSs
+                 (GHC.GRHSs
                    [
-                     GHC.noLoc $ GHC.GRHS [] e3
-                   ] GHC.EmptyLocalBinds))
+                     GHC.L falseRhsLoc $ GHC.GRHS [] e3
+                   ] GHC.EmptyLocalBinds)
                 )
-              ] undefined))
+              ] [] GHC.placeHolderType GHC.FromSource))
+
+  oldAnns <- liftT $ getAnnsT
+  let annIf   = gfromJust "Case.annIf"   $ getAnnotationEP li oldAnns
+  let annThen = gfromJust "Case.annThen" $ getAnnotationEP e2 oldAnns
+  let annElse = gfromJust "Case.annElse" $ getAnnotationEP e3 oldAnns
+  logm $ "Case:annIf="   ++ show annIf
+  logm $ "Case:annThen=" ++ show annThen
+  logm $ "Case:annElse=" ++ show annElse
+
+  -- AZ:TODO: under some circumstances the GRHS annotations need LineSame, in others LineChanged.
+  let ifDelta     = gfromJust "Case.ifDelta"     $ lookup (G GHC.AnnIf) (annsDP annIf)
+  -- let ifSpanEntry = gfromJust "Case.ifSpanEntry" $ lookup (AnnSpanEntry) (annsDP annIf)
+  let anne2' =
+        [
+          ( AnnKey caseLoc       (CN "HsCase"),   annIf { annsDP = [ (G GHC.AnnCase, ifDelta)
+                                                                 , (G GHC.AnnOf,     DP (0,1))]
+                                                        } )
+        -- , ( AnnKey caseVirtualLoc (CN "(:)"),     Ann (DP (1,newCol)) (ColDelta newCol) (DP (1,newCol)) [] [(DP (1,0))])
+        , ( AnnKey trueMatchLoc  (CN "Match"),    Ann (DP (1,2)) [] [] [] Nothing Nothing )
+        , ( AnnKey trueLoc1      (CN "ConPatIn"), Ann (DP (0,0)) [] [] [] Nothing Nothing )
+        , ( AnnKey trueLoc       (CN "Unqual"),   Ann (DP (0,0)) [] [] [(G GHC.AnnVal, DP (0,0))]  Nothing Nothing)
+        , ( AnnKey trueRhsLoc    (CN "GRHS"),     Ann (DP (0,2)) [] [] [(G GHC.AnnRarrow, DP (0,0))]  Nothing Nothing)
+
+        , ( AnnKey falseMatchLoc (CN "Match"),    Ann (DP (1,0)) [] [] []  Nothing Nothing)
+        , ( AnnKey falseLoc1     (CN "ConPatIn"), Ann (DP (0,0)) [] [] []  Nothing Nothing)
+        , ( AnnKey falseLoc      (CN "Unqual"),   Ann (DP (0,0)) [] [] [(G GHC.AnnVal, DP (0,0))]  Nothing Nothing)
+        , ( AnnKey falseRhsLoc   (CN "GRHS"),     Ann (DP (0,1)) [] [] [(G GHC.AnnRarrow, DP (0,0))]  Nothing Nothing)
+        ]
+
+  liftT $ putAnnsT (oldAnns `Map.union` (Map.fromList anne2'))
   return ret
 ifToCaseTransform x = return x
 
 -- ---------------------------------------------------------------------
-{-
-HsIf (Maybe (SyntaxExpr id)) (LHsExpr id) (LHsExpr id) (LHsExpr id)
 
-[Can ignore The SyntaxExpr]
-
-
-HsCase (LHsExpr id) (MatchGroup id)
-
--}
-
-{-
-Need to move to
-
-(L {test/testdata/Case/B.hs:(9,10)-(11,17)} 
-                 (HsCase 
-                  (L {test/testdata/Case/B.hs:9:15-21} 
-                   (HsPar 
-                    (L {test/testdata/Case/B.hs:9:16-20} 
-                     (HsApp 
-                      (L {test/testdata/Case/B.hs:9:16-18} 
-                       (HsVar {Name: GHC.Real.odd})) 
-                      (L {test/testdata/Case/B.hs:9:20} 
-                       (HsVar {Name: x})))))) 
-                  (MatchGroup 
-                   [
-                    (L {test/testdata/Case/B.hs:10:3-15} 
-                     (Match 
-                      [
-                       (L {test/testdata/Case/B.hs:10:3-6} 
-                        (ConPatIn 
-                         (L {test/testdata/Case/B.hs:10:3-6} {Name: GHC.Types.True}) 
-                         (PrefixCon 
-                          [])))] 
-                      (Nothing) 
-                      (GRHSs 
-                       [
-                        (L {test/testdata/Case/B.hs:10:11-15} 
-                         (GRHS 
-                          [] 
-                          (L {test/testdata/Case/B.hs:10:11-15} 
-                           (HsLit 
-                            (HsString {FastString: "Odd"})))))] 
-                       (EmptyLocalBinds)))),
-                    (L {test/testdata/Case/B.hs:11:3-17} 
-                     (Match 
-                      [
-                       (L {test/testdata/Case/B.hs:11:3-7} 
-                        (ConPatIn 
-                         (L {test/testdata/Case/B.hs:11:3-7} {Name: GHC.Types.False}) 
-                         (PrefixCon 
-                          [])))] 
-                      (Nothing) 
-                      (GRHSs 
-                       [
-                        (L {test/testdata/Case/B.hs:11:12-17} 
-                         (GRHS 
-                          [] 
-                          (L {test/testdata/Case/B.hs:11:12-17} 
-                           (HsLit 
-                            (HsString {FastString: "Even"})))))] 
-                       (EmptyLocalBinds))))] {!type placeholder here?!})))
-
-from ---
-
-(L {test/testdata/Case/B.hs:4:9-41} 
-                 (HsIf 
-                  (Nothing) 
-                  (L {test/testdata/Case/B.hs:4:12-18} 
-                   (HsPar 
-                    (L {test/testdata/Case/B.hs:4:13-17} 
-                     (HsApp 
-                      (L {test/testdata/Case/B.hs:4:13-15} 
-                       (HsVar {Name: GHC.Real.odd})) 
-                      (L {test/testdata/Case/B.hs:4:17} 
-                       (HsVar {Name: x})))))) 
-                  (L {test/testdata/Case/B.hs:4:25-29} 
-                   (HsLit 
-                    (HsString {FastString: "Odd"}))) 
-                  (L {test/testdata/Case/B.hs:4:36-41} 
-                   (HsLit 
-                    (HsString {FastString: "Even"})))))
-
--}
 
 -- EOF
-
-
 

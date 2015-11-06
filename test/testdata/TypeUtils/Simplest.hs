@@ -1,4 +1,4 @@
 module Simplest where
 
 
-simple x = x 
+simple x = x

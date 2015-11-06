@@ -1,5 +1,9 @@
-{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE RankNTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE StandaloneDeriving #-}
 
 -- |
 
@@ -11,45 +15,35 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        (
        -- * Conveniences for state access
 
-         fetchLinesFinal
-       , fetchOrigToks
-       , fetchToks -- Deprecated
+         fetchAnnsFinal
        , getTypecheckedModule
+
        , getRefactStreamModified
+       , setRefactStreamModified
+
        , getRefactInscopes
+
        , getRefactRenamed
        , putRefactRenamed
+
        , getRefactParsed
+       , putRefactParsed
+
+       -- * Annotations
+       -- , addRefactAnns
+       , setRefactAnns
+
+       -- *
        , putParsedModule
        , clearParsedModule
        , getRefactFileName
+       , getRefactTargetModule
+       , getRefactModule
+       , getRefactModuleName
+       , getRefactNameMap
 
-       -- * TokenUtils API
-       , replaceToken
-       , putToksForSpan
-       , putDeclToksForSpan
-       , getToksForSpan
-       -- , getToksForSpanWithIntros
-       , getToksBeforeSpan
-       , putToksForPos
-       , addToksAfterSpan
-       , addToksAfterPos
-       , putDeclToksAfterSpan
-       , removeToksForSpan
-       , removeToksForPos
-       , syncDeclToLatestStash
-       , indentDeclAndToks
-
-       -- * LayoutUtils API
-       -- , getLayoutForSpan
-       -- , putDeclLayoutAfterSpan
-
-       -- * For debugging
-       , drawTokenTree
-       , drawTokenTreeDetailed
-       , getTokenTree
-       -- , showPprDebug
-       , showLinesDebug
+       -- * New ghc-exactprint interfacing
+       , liftT
 
        -- * State flags for managing generic traversals
        , getRefactDone
@@ -59,270 +53,55 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , setStateStorage
        , getStateStorage
 
-       -- , logm
+       -- * Parsing source
+       , parseDeclWithAnns
 
-       , updateToks
-       , updateToksWithPos
+       -- * Utility
+       , nameSybTransform, nameSybQuery
+       , fileNameFromModSummary
+       , mkNewGhcNamePure
+
+       , logDataWithAnns
+       , logAnns
+       , logParsedSource
 
        -- * For use by the tests only
        , initRefactModule
+       , initTokenCacheLayout
+       , initRdrNameMap
        ) where
 
 import Control.Monad.State
+import Data.List
 
-import qualified FastString    as GHC
 import qualified GHC           as GHC
+import qualified GhcMonad      as GHC
+import qualified Module        as GHC
+import qualified Name          as GHC
+import qualified Unique        as GHC
 
-import qualified Data.Data as SYB
+import qualified Data.Generics as SYB
 
-import Language.Haskell.Refact.Utils.GhcVersionSpecific
-import Language.Haskell.Refact.Utils.LocUtils
+import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Parsers
+import Language.Haskell.GHC.ExactPrint.Utils
+
 import Language.Haskell.Refact.Utils.Monad
-import Language.Haskell.Refact.Utils.TokenUtils
 import Language.Haskell.Refact.Utils.TypeSyn
-{-import Language.Haskell.TokenUtils.DualTree
-import Language.Haskell.TokenUtils.GHC.Layout
-import Language.Haskell.TokenUtils.TokenUtils
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.Utils
--}
+import Language.Haskell.Refact.Utils.Types
 
--- import Data.Time.Clock
-import Data.Tree
--- import System.Log.Logger
 import qualified Data.Map as Map
 
 -- ---------------------------------------------------------------------
 
--- |fetch the possibly modified tokens. Deprecated
-fetchToks :: RefactGhc [PosToken]
-fetchToks = do
+-- |fetch the final annotations
+fetchAnnsFinal :: RefactGhc Anns
+fetchAnnsFinal = do
   Just tm <- gets rsModule
-  let toks = retrieveTokensInterim $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- logm $ "fetchToks" ++ (showToks toks)
-  logm $ "fetchToks (not showing toks"
-  return toks
-
--- |fetch the final tokens in Ppr format
-fetchLinesFinal :: RefactGhc [Line PosToken]
-fetchLinesFinal = do
-  Just tm <- gets rsModule
-  let linesVal = retrieveLinesFromLayoutTree $ (tkCache $ rsTokenCache tm) Map.! mainTid
-  logm $ "fetchLinesFinal (not showing lines)"
-  return linesVal
-
--- |fetch the pristine token stream
-fetchOrigToks :: RefactGhc [PosToken]
-fetchOrigToks = do
-  logm "fetchOrigToks"
-  Just tm <- gets rsModule
-  return $ rsOrigTokenStream tm
-
--- |Get the current tokens for a given GHC.SrcSpan.
-getToksForSpan ::  GHC.SrcSpan -> RefactGhc [PosToken]
-getToksForSpan sspan = do
-  st <- get
-  let checkInv = rsetCheckTokenUtilsInvariant $ rsSettings st
-  let Just tm = rsModule st
-  let (tk',toks) = getTokensNoIntrosFromCache checkInv (rsTokenCache tm) (gs2ss sspan)
-  let rsModule' = Just (tm {rsTokenCache = tk'})
-  put $ st { rsModule = rsModule' }
-  logm $ "getToksForSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
-  return toks
-
-
--- |Get the current tokens preceding a given GHC.SrcSpan.
-getToksBeforeSpan ::  GHC.SrcSpan -> RefactGhc (ReversedToks PosToken)
-getToksBeforeSpan sspan = do
-  st <- get
-  let Just tm = rsModule st
-  let (tk', toks) = getTokensBeforeFromCache (rsTokenCache tm) (gs2ss sspan)
-  let rsModule' = Just (tm {rsTokenCache = tk'})
-  put $ st { rsModule = rsModule' }
-  logm $ "getToksBeforeSpan " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan,toks))
-  return toks
-
-
--- |Replace a token occurring in a given GHC.SrcSpan
-replaceToken ::  GHC.SrcSpan -> PosToken -> RefactGhc ()
-replaceToken sspan tok = do
-  logm $ "replaceToken " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show tok)
-  st <- get
-  let Just tm = rsModule st
-
-  let tk' = replaceTokenInCache (rsTokenCache tm) (gs2ss sspan) tok
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
-  put $ st { rsModule = rsModule' }
-  return ()
-
--- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
--- delimiting new tokens
-putToksForSpan ::  GHC.SrcSpan -> [PosToken] -> RefactGhc GHC.SrcSpan
-putToksForSpan sspan toks = do
-  logm $ "putToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
-  st <- get
-  let Just tm = rsModule st
-
-  let (tk',newSpan) = putToksInCache (rsTokenCache tm) (gs2ss sspan) toks
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
-  put $ st { rsModule = rsModule' }
-  return (ss2gs newSpan)
-
--- |Replace the tokens for a given GHC.SrcSpan, return new GHC.SrcSpan
--- delimiting new tokens, and update the AST fragment to reflect it
-putDeclToksForSpan ::  (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> [PosToken]
-   -> RefactGhc (GHC.SrcSpan,GHC.Located t)
-putDeclToksForSpan sspan t toks = do
-  logm $ "putDeclToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ (show toks)
-  st <- get
-  let Just tm = rsModule st
-  let (tk',newSpan,t') = putDeclToksInCache (rsTokenCache tm) sspan toks t
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
-  put $ st { rsModule = rsModule' }
-  return (newSpan,t')
-
--- |Replace the tokens for a given GHC.SrcSpan, return GHC.SrcSpan
--- they are placed in
-putToksForPos ::  (SimpPos,SimpPos) -> [PosToken] -> RefactGhc GHC.SrcSpan
-putToksForPos pos toks = do
-  logm $ "putToksForPos " ++ (show pos) ++ (showToks toks)
-  st <- get
-  let Just tm = rsModule st
-  let (tk',newSpan) = putToksInCache (rsTokenCache tm) pos toks
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True })
-  put $ st { rsModule = rsModule' }
-  -- drawTokenTree ""
-  return (ss2gs newSpan)
-
--- |Add tokens after a designated GHC.SrcSpan
-addToksAfterSpan :: GHC.SrcSpan -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
-addToksAfterSpan oldSpan pos toks = do
-  logm $ "putToksAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (showSrcSpanF oldSpan) ++ " at " ++ (show pos) ++ ":" ++ (showToks toks)
-  st <- get
-  let Just tm = rsModule st
-  let (tk',newSpan) = addTokensAfterSpanInCache (rsTokenCache tm) (gs2ss oldSpan) pos toks
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  return (ss2gs newSpan)
-
--- |Add tokens after a designated position
-addToksAfterPos :: (SimpPos,SimpPos) -> Positioning -> [PosToken] -> RefactGhc GHC.SrcSpan
-addToksAfterPos pos position toks = do
-  logm $ "putToksAfterPos " ++ (show pos) ++ " at "  ++ (show position) ++ ":" ++ (show toks)
-  st <- get
-  let Just tm = rsModule st
-  -- let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  -- let sspan = posToSrcSpan mainForest pos
-  let (tk',newSpan) = addTokensAfterSpanInCache (rsTokenCache tm) pos position toks
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  -- logm $ "putToksAfterPos result:" ++ (show forest') ++ "\ntree:\n" ++ (drawTreeEntry forest')
-  return (ss2gs newSpan)
-
--- |Add tokens after a designated GHC.SrcSpan, and update the AST
--- fragment to reflect it
-putDeclToksAfterSpan :: (SYB.Data t) => GHC.SrcSpan -> GHC.Located t -> Positioning -> [PosToken] -> RefactGhc (GHC.Located t)
-putDeclToksAfterSpan oldSpan t pos toks = do
-  logm $ "putDeclToksAfterSpan " ++ (showGhc oldSpan) ++ ":" ++ (show (showSrcSpanF oldSpan,pos,toks))
-  st <- get
-  let Just tm = rsModule st
-  let forest = getTreeFromCache (gs2ss oldSpan) (rsTokenCache tm)
-  let (forest',_newSpan, t') = addDeclToksAfterSrcSpan forest oldSpan pos toks t
-  let tk' = replaceTreeInCache (gs2ss oldSpan) forest' (rsTokenCache tm)
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  return t'
-
--- |Remove a GHC.SrcSpan and its associated tokens
-removeToksForSpan :: GHC.SrcSpan -> RefactGhc ()
-removeToksForSpan sspan = do
-  logm $ "removeToksForSpan " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan)
-  st <- get
-  let Just tm = rsModule st
-  let tk' = removeToksFromCache (rsTokenCache tm) (gs2ss sspan)
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  return ()
-
--- |Remove a GHC.SrcSpan and its associated tokens
-removeToksForPos :: (SimpPos,SimpPos) -> RefactGhc ()
-removeToksForPos pos = do
-  logm $ "removeToksForPos " ++ (show pos)
-  st <- get
-  let Just tm = rsModule st
-  let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  let sspan = posToSrcSpan mainForest pos
-  let tk' = removeToksFromCache (rsTokenCache tm) (gs2ss sspan)
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  -- drawTokenTree "removeToksForPos result"
-  return ()
+  let anns = (tkCache $ rsTokenCache tm) Map.! mainTid
+  return anns
 
 -- ---------------------------------------------------------------------
-
--- |Print the Token Tree for debug purposes
-drawTokenTree :: String -> RefactGhc ()
-drawTokenTree msg = do
-  st <- get
-  let Just tm = rsModule st
-  logm $ msg ++ "\ncurrent token tree:\n" ++ (drawTokenCache (rsTokenCache tm))
-  return ()
-
--- ---------------------------------------------------------------------
-
--- |Print detailed Token Tree for debug purposes
-drawTokenTreeDetailed :: String -> RefactGhc ()
-drawTokenTreeDetailed msg = do
-  st <- get
-  let Just tm = rsModule st
-  logm $ msg ++ "\ncurrent detailed token tree:\n" ++ (drawTokenCacheDetailed (rsTokenCache tm))
-  return ()
-
--- ---------------------------------------------------------------------
-
--- |Get the Token Tree for debug purposes
-getTokenTree :: RefactGhc (Tree (Entry PosToken))
-getTokenTree = do
-  st <- get
-  let Just tm = rsModule st
-  let mainForest = (tkCache $ rsTokenCache tm) Map.! mainTid
-  return mainForest
-
--- ---------------------------------------------------------------------
-
-showLinesDebug :: String -> RefactGhc ()
-showLinesDebug msg = do
-  pprVal <- fetchLinesFinal
-  logm $ msg ++ "\ncurrent [Line]:\n" ++ (showGhc pprVal)
-  return ()
-
--- ---------------------------------------------------------------------
-
-syncDeclToLatestStash :: (SYB.Data t) => (GHC.Located t) -> RefactGhc (GHC.Located t)
-syncDeclToLatestStash t = do
-  st <- get
-  let Just tm = rsModule st
-  let t' = syncAstToLatestCache (rsTokenCache tm) t
-  return t'
-
--- ---------------------------------------------------------------------
-
--- | Indent an AST fragment and its associated tokens by a set amount
-indentDeclAndToks :: (SYB.Data t) => (GHC.Located t) -> Int -> RefactGhc (GHC.Located t)
-indentDeclAndToks t offset = do
-  let (GHC.L sspan _) = t
-  logm $ "indentDeclAndToks " ++ (showGhc sspan) ++ ":" ++ (showSrcSpanF sspan) ++ ",offset=" ++ show offset
-  st <- get
-  let Just tm = rsModule st
-  let tk = rsTokenCache tm
-  let forest = (tkCache tk) Map.! mainTid
-  let (t',forest') = indentDeclToks syncAST t forest offset
-  let tk' = tk {tkCache = Map.insert mainTid forest' (tkCache tk) }
-  let rsModule' = Just (tm {rsTokenCache = tk', rsStreamModified = True})
-  put $ st { rsModule = rsModule' }
-  -- drawTokenTree "indentDeclToks result"
-  return t'
-
 
 getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
 getTypecheckedModule = do
@@ -331,10 +110,19 @@ getTypecheckedModule = do
     Just tm -> return $ rsTypecheckedMod tm
     Nothing -> error "HaRe: file not loaded for refactoring"
 
-getRefactStreamModified :: RefactGhc Bool
+getRefactStreamModified :: RefactGhc RefacResult
 getRefactStreamModified = do
   Just tm <- gets rsModule
   return $ rsStreamModified tm
+
+-- |For testing
+setRefactStreamModified :: RefacResult -> RefactGhc ()
+setRefactStreamModified rr = do
+  logm $ "setRefactStreamModified:rr=" ++ show rr
+  st <- get
+  let (Just tm) = rsModule st
+  put $ st { rsModule = Just (tm { rsStreamModified = rr })}
+  return ()
 
 getRefactInscopes :: RefactGhc InScopes
 getRefactInscopes = GHC.getNamesInScope
@@ -364,17 +152,149 @@ getRefactParsed = do
   let pm = GHC.tm_parsed_module t
   return $ GHC.pm_parsed_source pm
 
-putParsedModule
-  :: GHC.TypecheckedModule -> [PosToken] -> RefactGhc ()
-putParsedModule tm toks = do
+putRefactParsed :: GHC.ParsedSource -> Anns -> RefactGhc ()
+putRefactParsed parsed newAnns = do
+  logm $ "putRefactParsed:setting rsStreamModified"
   st <- get
-  put $ st { rsModule = initRefactModule tm toks }
+  mrm <- gets rsModule
+  let rm = gfromJust "putRefactParsed" mrm
+  let tm = rsTypecheckedMod rm
+  -- let tk' = modifyAnns (rsTokenCache rm) (const newAnns)
+  let tk' = modifyAnns (rsTokenCache rm) (mergeAnns newAnns)
+
+  let pm = (GHC.tm_parsed_module tm) { GHC.pm_parsed_source = parsed }
+  let tm' = tm { GHC.tm_parsed_module = pm }
+  let rm' = rm { rsTypecheckedMod = tm', rsTokenCache = tk', rsStreamModified = RefacModified }
+  put $ st {rsModule = Just rm'}
+
+-- ---------------------------------------------------------------------
+
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
+getRefactAnns :: RefactGhc Anns
+getRefactAnns =
+  (Map.! mainTid) . tkCache . rsTokenCache . gfromJust "getRefactAnns"
+    <$> gets rsModule
+
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
+setRefactAnns :: Anns -> RefactGhc ()
+setRefactAnns anns = modifyRefactAnns (const anns)
+
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
+modifyRefactAnns :: (Anns -> Anns) -> RefactGhc ()
+modifyRefactAnns f = do
+  -- logm $ "modifyRefactAnns:setting rsStreamModified"
+  st <- get
+  mrm <- gets rsModule
+  let rm = gfromJust "modifyRefactAnns" mrm
+  let tk' = modifyAnns (rsTokenCache rm) f
+  let rm' = rm { rsTokenCache = tk', rsStreamModified = RefacModified }
+  put $ st {rsModule = Just rm'}
+
+-- |Internal low level interface to access the current annotations from the
+-- RefactGhc state.
+modifyAnns :: TokenCache Anns -> (Anns -> Anns) -> TokenCache Anns
+modifyAnns tk f = tk'
+  where
+    anns = (tkCache tk) Map.! mainTid
+    tk' = tk {tkCache = Map.insert mainTid
+                                   (f anns)
+                                   (tkCache tk) }
+
+-- ----------------------------------------------------------------------
+
+putParsedModule :: [Comment] -> GHC.TypecheckedModule -> RefactGhc ()
+putParsedModule cppComments tm = do
+  st <- get
+  put $ st { rsModule = initRefactModule cppComments tm }
 
 clearParsedModule :: RefactGhc ()
 clearParsedModule = do
   st <- get
   put $ st { rsModule = Nothing }
 
+-- ---------------------------------------------------------------------
+
+{-
+-- |Replace the Located RdrName in the ParsedSource
+replaceRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
+replaceRdrName (GHC.L l newName) = do
+  -- ++AZ++ TODO: move this body to somewhere appropriate
+  logm $ "replaceRdrName:" ++ showGhcQual (l,newName)
+  parsed <- getRefactParsed
+  anns <- getRefactAnns
+  logm $ "replaceRdrName:before:parsed=" ++ showGhc parsed
+  let replaceRdr :: GHC.Located GHC.RdrName -> State Anns (GHC.Located GHC.RdrName)
+      replaceRdr old@(GHC.L ln _)
+        | l == ln = do
+           an <- get
+           let new = (GHC.L l newName)
+           put $ replaceAnnKey old new an
+           return new
+      replaceRdr x = return x
+
+      replaceHsVar :: GHC.LHsExpr GHC.RdrName -> State Anns (GHC.LHsExpr GHC.RdrName)
+      replaceHsVar (GHC.L ln (GHC.HsVar _))
+        | l == ln = return (GHC.L l (GHC.HsVar newName))
+      replaceHsVar x = return x
+
+      replaceHsTyVar (GHC.L ln (GHC.HsTyVar _))
+        | l == ln = return (GHC.L l (GHC.HsTyVar newName))
+      replaceHsTyVar x = return x
+
+      replacePat (GHC.L ln (GHC.VarPat _))
+        | l == ln = return (GHC.L l (GHC.VarPat newName))
+      replacePat x = return x
+
+      fn :: State Anns GHC.ParsedSource
+      fn = do
+             r <- SYB.everywhereM (SYB.mkM replaceRdr
+                              `SYB.extM` replaceHsTyVar
+                              `SYB.extM` replaceHsVar
+                              `SYB.extM` replacePat) parsed
+             return r
+      (parsed',anns') = runState fn anns
+  logm $ "replaceRdrName:after:parsed'=" ++ showGhc parsed'
+  putRefactParsed parsed' emptyAnns
+  setRefactAnns anns'
+  return ()
+-}
+
+-- ---------------------------------------------------------------------
+
+refactRunTransformId :: Transform a -> RefactGhc a
+refactRunTransformId transform = do
+  u <- gets rsUniqState
+  ans <- getRefactAnns
+  let (a,(ans',u'),logLines) = runTransformFrom u ans transform
+  putUnique u'
+  setRefactAnns ans'
+  when (not (null logLines)) $ do
+    logm $ intercalate "\n" logLines
+  return a
+
+-- ---------------------------------------------------------------------
+
+instance HasTransform RefactGhc where
+  liftT = refactRunTransformId
+
+-- ---------------------------------------------------------------------
+
+putUnique :: Int -> RefactGhc ()
+putUnique u = do
+  s <- get
+  put $ s { rsUniqState = u }
+
+-- ---------------------------------------------------------------------
+
+getRefactTargetModule :: RefactGhc TargetModule
+getRefactTargetModule = do
+  mt <- gets rsCurrentTarget
+  case mt of
+    Nothing -> error $ "HaRe:getRefactTargetModule:no module loaded"
+    Just t -> return t
 
 -- ---------------------------------------------------------------------
 
@@ -383,8 +303,45 @@ getRefactFileName = do
   mtm <- gets rsModule
   case mtm of
     Nothing  -> return Nothing
-    Just _tm -> do toks <- fetchOrigToks
-                   return $ Just (GHC.unpackFS $ fileNameFromTok $ ghead "getRefactFileName" toks)
+    Just tm -> return $ Just (fileNameFromModSummary $ GHC.pm_mod_summary
+                              $ GHC.tm_parsed_module $ rsTypecheckedMod tm)
+
+-- ---------------------------------------------------------------------
+
+fileNameFromModSummary :: GHC.ModSummary -> FilePath
+fileNameFromModSummary modSummary = fileName
+  where
+    -- TODO: what if we are loading a compiled only client and do not
+    -- have the original source?
+    Just fileName = GHC.ml_hs_file (GHC.ms_location modSummary)
+
+-- ---------------------------------------------------------------------
+
+getRefactModule :: RefactGhc GHC.Module
+getRefactModule = do
+  mtm <- gets rsModule
+  case mtm of
+    Nothing  -> error $ "Hare.MonadFunctions.getRefactModule:no module loaded"
+    Just tm -> do
+      let t  = rsTypecheckedMod tm
+      let pm = GHC.tm_parsed_module t
+      return (GHC.ms_mod $ GHC.pm_mod_summary pm)
+
+-- ---------------------------------------------------------------------
+
+getRefactModuleName :: RefactGhc GHC.ModuleName
+getRefactModuleName = do
+  modu <- getRefactModule
+  return $ GHC.moduleName modu
+
+-- ---------------------------------------------------------------------
+
+getRefactNameMap :: RefactGhc NameMap
+getRefactNameMap = do
+  mtm <- gets rsModule
+  case mtm of
+    Nothing  -> error $ "Hare.MonadFunctions.getRefacNameMap:no module loaded"
+    Just tm -> return (rsNameMap tm)
 
 -- ---------------------------------------------------------------------
 
@@ -420,54 +377,185 @@ getStateStorage = do
 
 -- ---------------------------------------------------------------------
 
-initRefactModule
-  :: GHC.TypecheckedModule -> [PosToken] -> Maybe RefactModule
-initRefactModule tm toks
+logDataWithAnns :: (SYB.Data a) => String -> a -> RefactGhc ()
+logDataWithAnns str ast = do
+  anns <- getRefactAnns
+  logm $ str ++ showAnnData anns 0 ast
+
+-- ---------------------------------------------------------------------
+
+logAnns :: String -> RefactGhc ()
+logAnns str = do
+  anns <- getRefactAnns
+  logm $ str ++ showGhc anns
+
+-- ---------------------------------------------------------------------
+
+logParsedSource :: String -> RefactGhc ()
+logParsedSource str = do
+  parsed <- getRefactParsed
+  logDataWithAnns str parsed
+
+-- ---------------------------------------------------------------------
+
+initRefactModule :: [Comment] -> GHC.TypecheckedModule -> Maybe RefactModule
+initRefactModule cppComments tm
   = Just (RefMod { rsTypecheckedMod = tm
-                 , rsOrigTokenStream = toks
-                 -- , rsTokenCache = initTokenCacheLayout (initTokenLayout
-                 , rsTokenCache = initTokenCacheLayout (allocTokens
+                 , rsNameMap = initRdrNameMap tm
+                 , rsTokenCache = initTokenCacheLayout (relativiseApiAnnsWithComments
+                                     cppComments
                                     (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
-                                    toks)
-                 , rsStreamModified = False
+                                    (GHC.pm_annotations $ GHC.tm_parsed_module tm))
+                 , rsStreamModified = RefacUnmodifed
                  })
 
--- ---------------------------------------------------------------------
 
-updateToks :: (SYB.Data t)
-  => GHC.Located t -- ^ Old element
-  -> GHC.Located t -- ^ New element
-  -> (GHC.Located t -> [Char]) -- ^ pretty printer
-  -> Bool         -- ^ Add trailing newline if required
-  -> RefactGhc () -- ^ Updates the RefactState
-updateToks (GHC.L sspan _) newAST printFun addTrailingNl
-  = do
-       logm $ "updateToks " ++ (showGhc sspan) ++ ":" ++ (show (showSrcSpanF sspan))
-       let newToks = basicTokenise (printFun newAST)
-       let newToks' = if addTrailingNl
-                       then newToks ++ [newLnToken (last newToks)]
-                       else newToks
-       void $ putToksForSpan sspan  newToks'
-       return ()
+initTokenCacheLayout :: a -> TokenCache a
+initTokenCacheLayout a = TK (Map.fromList [((TId 0),a)]) (TId 0)
 
 -- ---------------------------------------------------------------------
 
-updateToksWithPos :: (SYB.Data t)
-  => (SimpPos, SimpPos) -- ^Start and end pos of old element
-  -> t             -- ^ New element
-  -> (t -> [Char]) -- ^ pretty printer
-  -> Bool          -- ^ Add trailing newline if required
-  -> RefactGhc ()  -- ^ Updates the RefactState
-updateToksWithPos (startPos,endPos) newAST printFun addTrailingNl
-  = do
-       -- newToks <- liftIO $ basicTokenise (printFun newAST)
-       let newToks = basicTokenise (printFun newAST)
-       let newToks' = if addTrailingNl
-                       then newToks ++ [newLnToken (last newToks)]
-                       else newToks
-       void $ putToksForPos (startPos,endPos) newToks'
+-- |We need the ParsedSource because it more closely reflects the actual source
+-- code, but must be able to work with the renamed representation of the names
+-- involved. This function constructs a map from every Located RdrName in the
+-- ParsedSource to its corresponding name in the RenamedSource. It also deals
+-- with the wrinkle that we need to Location of the RdrName to make sure we have
+-- the right Name, but not all RdrNames have a Location.
+-- This function is called before the RefactGhc monad is active.
+initRdrNameMap :: GHC.TypecheckedModule -> NameMap
+initRdrNameMap tm = r
+  where
+    parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
+    renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
 
-       return ()
+    checkRdr :: GHC.Located GHC.RdrName -> Maybe [(GHC.SrcSpan,GHC.RdrName)]
+    checkRdr (GHC.L l n@(GHC.Unqual _)) = Just [(l,n)]
+    checkRdr (GHC.L l n@(GHC.Qual _ _)) = Just [(l,n)]
+    checkRdr (GHC.L _ _)= Nothing
+
+    checkName :: GHC.Located GHC.Name -> Maybe [GHC.Located GHC.Name]
+    checkName ln = Just [ln]
+
+    rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr ) parsed
+    names    = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
+
+    nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
+
+    -- If the name does not exist (e.g. a TH Splice that has been expanded, make a new one)
+    -- No attempt is made to make sure that equivalent ones have equivalent names.
+    lookupName l n i = case Map.lookup l nameMap of
+      Just v -> v
+      Nothing -> case n of
+                   GHC.Unqual u -> mkNewGhcNamePure 'h' i Nothing  (GHC.occNameString u)
+                   GHC.Qual q u -> mkNewGhcNamePure 'h' i (Just (GHC.Module (GHC.stringToPackageKey "") q)) (GHC.occNameString u)
+                   _            -> error "initRdrNameMap:should not happen"
+
+    r = Map.fromList $ map (\((l,n),i) -> (l,lookupName l n i)) $ zip rdrNames [1..]
+
+-- ---------------------------------------------------------------------
+
+mkNewGhcNamePure :: Char -> Int -> Maybe GHC.Module -> String -> GHC.Name
+mkNewGhcNamePure c i maybeMod name =
+  let un = GHC.mkUnique c i -- H for HaRe :)
+      n = case maybeMod of
+               Nothing   -> GHC.mkInternalName un      (GHC.mkVarOcc name) GHC.noSrcSpan
+               Just modu -> GHC.mkExternalName un modu (GHC.mkVarOcc name) GHC.noSrcSpan
+  in n
+
+-- ---------------------------------------------------------------------
+
+nameSybTransform :: (Monad m,SYB.Typeable t)
+             => (GHC.Located GHC.RdrName -> m (GHC.Located GHC.RdrName)) -> t -> m t
+nameSybTransform changer = q
+  where
+    q = SYB.mkM  worker
+        `SYB.extM` workerBind
+        `SYB.extM` workerExpr
+        `SYB.extM` workerLIE
+        `SYB.extM` workerHsTyVarBndr
+        `SYB.extM` workerLHsType
+
+    worker (pnt :: (GHC.Located GHC.RdrName))
+      = changer pnt
+
+    workerBind (GHC.L l (GHC.VarPat name))
+      = do
+        (GHC.L _ n) <- changer (GHC.L l name)
+        return (GHC.L l (GHC.VarPat n))
+    workerBind x = return x
+
+    workerExpr ((GHC.L l (GHC.HsVar name)))
+      = do
+          (GHC.L _ n) <- changer (GHC.L l name)
+          return (GHC.L l (GHC.HsVar n))
+    workerExpr x = return x
+
+    workerLIE ((GHC.L l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE GHC.RdrName))
+      = do
+          (GHC.L _ n) <- changer (GHC.L ln name)
+          return (GHC.L l (GHC.IEVar (GHC.L ln n)))
+    workerLIE x = return x
+
+    workerHsTyVarBndr (GHC.L l (GHC.UserTyVar name))
+      = do
+          (GHC.L _ n) <- changer (GHC.L l name)
+          return (GHC.L l (GHC.UserTyVar n))
+    workerHsTyVarBndr x = return x
+
+    workerLHsType (GHC.L l (GHC.HsTyVar name))
+      = do
+          (GHC.L _ n) <- changer (GHC.L l name)
+          return (GHC.L l (GHC.HsTyVar n))
+    workerLHsType x = return x
+
+-- ---------------------------------------------------------------------
+
+nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
+             => (GHC.Located a -> Maybe r) -> t -> Maybe r
+nameSybQuery checker = q
+  where
+    q = Nothing `SYB.mkQ`  worker
+                `SYB.extQ` workerBind
+                `SYB.extQ` workerExpr
+                `SYB.extQ` workerLIE
+                `SYB.extQ` workerHsTyVarBndr
+                `SYB.extQ` workerLHsType
+
+    worker (pnt :: (GHC.Located a))
+      = checker pnt
+
+    workerBind (GHC.L l (GHC.VarPat name))
+      = checker (GHC.L l name)
+    workerBind _ = Nothing
+
+    workerExpr ((GHC.L l (GHC.HsVar name)))
+      = checker (GHC.L l name)
+    workerExpr _ = Nothing
+
+    workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
+      = checker (GHC.L ln name)
+    workerLIE _ = Nothing
+
+    workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name)))
+      = checker (GHC.L l name)
+    workerHsTyVarBndr _ = Nothing
+
+    workerLHsType ((GHC.L l (GHC.HsTyVar name)))
+      = checker (GHC.L l name)
+    workerLHsType _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+parseDeclWithAnns :: String -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+parseDeclWithAnns src = do
+  let label = "<interactive"
+  r  <- GHC.liftIO $ withDynFlags (\df -> parseDecl df label src)
+  case r of
+    Left err -> error (show err)
+    Right (anns,decl) -> do
+      -- addRefactAnns anns
+      liftT $ modifyAnnsT (mergeAnns anns)
+      return decl
 
 -- EOF
 

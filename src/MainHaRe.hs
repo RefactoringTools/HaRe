@@ -7,7 +7,6 @@
 
 import Control.Exception
 import Data.List
-import Data.Maybe
 import Data.Typeable
 import Data.Version
 import Language.Haskell.GhcMod
@@ -43,9 +42,10 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
 ----------------------------------------------------------------
 
 argspec :: [OptDescr (RefactSettings -> RefactSettings)]
-argspec = [ Option "m" ["mainfile"]
-              (ReqArg (\mf opts -> opts { rsetMainFile = Just [mf] }) "FILE")
-              "Main file name if not specified in cabal file"
+argspec = [
+             -- Option "m" ["mainfile"]
+             --  (ReqArg (\mf opts -> opts { rsetMainFile = Just [mf] }) "FILE")
+             --  "Main file name if not specified in cabal file"
 
           -- , Option "l" ["tolisp"]
           --     (NoArg (\opts -> opts { outputStyle = LispStyle }))
@@ -53,21 +53,21 @@ argspec = [ Option "m" ["mainfile"]
           -- , Option "h" ["hlintOpt"]
           --     (ReqArg (\h opts -> opts { hlintOpts = h : hlintOpts opts }) "hlintOpt")
           --     "hlint options"
-          , Option "g" ["ghcOpt"]
-              (ReqArg (\g opts -> opts { rsetGhcOpts = g : rsetGhcOpts opts }) "ghcOpt")
-              "GHC options"
+          -- , Option "g" ["ghcOpt"]
+          --     (ReqArg (\g opts -> opts { rsetGhcOpts = g : rsetGhcOpts opts }) "ghcOpt")
+          --     "GHC options"
           -- , Option "o" ["operators"]
           --     (NoArg (\opts -> opts { operators = True }))
           --     "print operators, too"
           -- , Option "d" ["detailed"]
           --     (NoArg (\opts -> opts { detailed = True }))
           --     "print detailed info"
-          , Option "v" ["verbose"]
+            Option "v" ["verbose"]
               (NoArg (\opts -> opts { rsetVerboseLevel = Debug }))
               "debug logging on"
-          , Option "b" ["boundary"]
-            (ReqArg (\s opts -> opts { rsetLineSeparator = LineSeparator s }) "sep")
-            "specify line separator (default is Nul string)"
+          -- , Option "b" ["boundary"]
+          --   (ReqArg (\s opts -> opts { rsetLineSeparator = LineSeparator s }) "sep")
+          --   "specify line separator (default is Nul string)"
           ]
 
 parseArgs :: [OptDescr (RefactSettings -> RefactSettings)] -> [String] -> (RefactSettings, [String])
@@ -89,56 +89,44 @@ instance Exception HareError
 
 main :: IO ()
 main = flip catches handlers $ do
--- #if __GLASGOW_HASKELL__ >= 611
     hSetEncoding stdout utf8
--- #endif
-    -- currentDirectory <- getCurrentDirectory
     args <- getArgs
     let (opt,cmdArg) = parseArgs argspec args
-    cradle <- findCradle
-    -- case (cradleCabalDir cradle) of
-    --   Nothing -> return ()
-    --   Just dir -> setCurrentDirectory dir
-    -- hPutStrLn stderr $ "cabal file=" ++ show (cradleCabalFile cradle) -- ++AZ++ debug
     let cmdArg0 = cmdArg !. 0
         cmdArg1 = cmdArg !. 1
         cmdArg2 = cmdArg !. 2
         cmdArg3 = cmdArg !. 3
         cmdArg4 = cmdArg !. 4
         cmdArg5 = cmdArg !. 5
-        cmdArg6 = cmdArg !. 6
+    -- putStrLn $ "cmdArg0=" ++ cmdArg0
     res <- case cmdArg0 of
-
       -- demote wants FilePath -> SimpPos
-      "demote" -> runFunc cradle $ demote opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "demote" -> runFunc $ demote opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- dupdef wants FilePath -> String -> SimpPos
-      "dupdef" -> runFunc cradle $ duplicateDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+      "dupdef" -> runFunc $ duplicateDef opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 
       -- iftocase wants FilePath -> SimpPos -> SimpPos
-      "iftocase" -> runFunc cradle $ ifToCase opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
+      "iftocase" -> runFunc $ ifToCase opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) (parseSimpPos cmdArg4 cmdArg5)
 
       -- liftOneLevel wants FilePath -> SimpPos
-      "liftOneLevel" -> runFunc cradle $ liftOneLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "liftOneLevel" -> runFunc $ liftOneLevel opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- liftToTopLevel wants FilePath -> SimpPos
-      "liftToTopLevel" -> runFunc cradle $ liftToTopLevel opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "liftToTopLevel" -> runFunc $ liftToTopLevel opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
 
       -- rename wants FilePath -> String -> SimpPos
-      "rename" -> runFunc cradle $ rename opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+      "rename" -> runFunc $ rename opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 
-      -- gendef takes a FilePath -> String -> SimpPos -> SimpPos
- --     "gendef" -> runFunc cradle $ generaliseDef opt cradle cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4) (parseSimpPos cmdArg5 cmdArg6) 
-      "deletedef" -> runFunc cradle $ deleteDef opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
-
+      -- roundtrip wants FilePath
+      "roundtrip" -> runFunc $ roundTrip opt defaultOptions cmdArg1
       "typesyn" -> runFunc cradle $ introduceTypeSyn opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4 cmdArg5
-      
-      "show" -> putStrLn  (show (opt,cradle))
+      "show" -> putStrLn  (show (opt))
 
       cmd      -> throw (NoSuchCommand cmd)
-    -- setCurrentDirectory currentDirectory
-    putStr (show res)
+    -- putStr (show res)
     -- putStr $ "(ok " ++ showLisp mfs ++ ")"
+    return ()
   where
     handlers = [Handler handler1, Handler handler2]
 
@@ -158,13 +146,6 @@ main = flip catches handlers $ do
         printUsage
 
     printUsage = hPutStrLn stderr $ '\n' : usageInfo usage argspec
-{-
-    withFile cmd file = do
-        exist <- doesFileExist file
-        if exist
-            then cmd file
-            else throw (FileNotExist file)
--}
     xs !. idx
       | length xs <= idx = throw SafeList
       | otherwise = xs !! idx
@@ -172,11 +153,11 @@ main = flip catches handlers $ do
 
 ----------------------------------------------------------------
 
-runFunc :: Cradle -> IO [String] -> IO ()
-runFunc cradle f = do
+runFunc :: IO [String] -> IO ()
+runFunc f = do
   r <- catchException f
   let ret = case r of
-       Left s    -> "(error " ++ (show s) ++ "[" ++ (show $ cradleCabalFile cradle) ++ "])"
+       Left s    -> "(error " ++ (show s) ++ ")"
        Right mfs -> "(ok " ++ showLisp mfs ++ ")"
   putStrLn ret
 
@@ -194,7 +175,6 @@ catchException f = do
 ----------------------------------------------------------------
 
 parseSimpPos :: String -> String -> SimpPos
--- parseSimpPos str1 str2 = case (parse rowCol "" (T.pack (str1 ++ " " ++ str2))) of
 parseSimpPos str1 str2 = case (parse rowCol "" ((str1 ++ " " ++ str2))) of
                           Left err -> throw (CmdArg [(show err)])
                           Right val -> val
@@ -208,12 +188,6 @@ rowCol = do
 
 type P = Parsec String ()
 
-{-
-instance (Monad m) => Stream String m Char where
-    -- uncons = return . T.uncons
-    uncons [] = return Nothing
-    uncons s  = return $ Just (head s,tail s)
--}
 
 number :: String -> P Integer
 number expectedStr = do { ds <- many1 digit; return (read ds) } <?> expectedStr

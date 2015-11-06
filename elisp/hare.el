@@ -91,6 +91,7 @@
     (define-key haskell-mode-map "\C-c\C-rlo"  'hare-refactor-lift-one)
     (define-key haskell-mode-map "\C-c\C-rlt"  'hare-refactor-lifttotop)
     (define-key haskell-mode-map "\C-c\C-rr"   'hare-refactor-rename)
+    (define-key haskell-mode-map "\C-c\C-rt"   'hare-refactor-roundtrip)
     (define-key haskell-mode-map "\C-c\C-rsh"  'hare-refactor-show)
     (hare-init-menu)
     (setq hare-initialized t)))
@@ -112,7 +113,8 @@
   (define-key haskell-mode-map [menu-bar mymenu lo] '("Lift one level"       . hare-refactor-lift-one))
   (define-key haskell-mode-map [menu-bar mymenu lt] '("Lift to top level"    . hare-refactor-lifttotop))
   (define-key haskell-mode-map [menu-bar mymenu r ] '("Rename"               . hare-refactor-rename))
-  (define-key haskell-mode-map [menu-bar mymenu sh ] '("Show"                 . hare-refactor-show))
+  (define-key haskell-mode-map [menu-bar mymenu r ] '("Round trip"           . hare-refactor-roundtrip))
+  (define-key haskell-mode-map [menu-bar mymenu sh ] '("Show"                . hare-refactor-show))
 )
 
 (defun hare-init-interactive ()
@@ -920,16 +922,14 @@
   (let (changed)
       (dolist (b (buffer-list) changed)
         (let* ((n (buffer-name b)) (n1 (substring n 0 1)))
-          (if (and (not (or (string= " " n1) (string= "*" n1))) (buffer-modified-p b))
+          (if (and (buffer-file-name b) (buffer-modified-p b))
               (setq changed (cons (buffer-name b) changed)))))
       (if changed
           (if (y-or-n-p (format "There are modified buffers: %s, which HaRe needs to save before refactoring, continue?" changed))
               (progn
-                (save-some-buffers t)
-                t)
+                (save-some-buffers t) t)
             nil)
-        t)
-      ))
+        t)))
 
 
 (defun buffers-changed-warning()
@@ -1048,6 +1048,23 @@
     (if (buffers-saved)
         (hare-refactor-command current-file-name line-no column-no
                          `("rename" ,current-file-name ,name
+                         ,(number-to-string line-no) ,(number-to-string column-no)
+                         )
+                         hare-search-paths 'emacs tab-width)
+      (message "Refactoring aborted."))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+
+(defun hare-refactor-roundtrip ()
+  "Round trip a source file, to check HaRe plumbing."
+  (interactive)
+  (let ((current-file-name (buffer-file-name))
+        (line-no           (current-line-no))
+        (column-no         (current-column-no))
+        (buffer (current-buffer)))
+    (if (buffers-saved)
+        (hare-refactor-command current-file-name line-no column-no
+                         `("roundtrip" ,current-file-name
                          ,(number-to-string line-no) ,(number-to-string column-no)
                          )
                          hare-search-paths 'emacs tab-width)
