@@ -51,11 +51,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
     ,usedWithoutQualR,isUsedInRhs
 
-    ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
-    ,isQualifiedPN {- , isFunName, isPatName-}, isFunOrPatName {-,isTypeCon-} ,isTypeSig
-    ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,hsBindLRIsSimple
-    ,isComplexPatBind,isFunOrPatBindP,isFunOrPatBindR -- ,isClassDecl,isInstDecl -- ,isDirectRecursiveDef
-    ,usedWithoutQualR {- ,canBeQualified, hasFreeVars -},isUsedInRhs
     -- ** Getting
     ,findNameInRdr
     ,findPNT,findPN,findAllNameOccurences
@@ -76,8 +71,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ** Locations
     ,defineLoc, useLoc, locToExp
     ,locToName, locToRdrName
-    ,getName,
-     locToType
+    ,getName
 
  -- * Program transformation
     -- ** Adding
@@ -138,10 +132,7 @@ import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
-import Language.Haskell.TokenUtils.GHC.Layout
-import Language.Haskell.TokenUtils.TokenUtils
-import Language.Haskell.TokenUtils.Types
-import Language.Haskell.TokenUtils.Utils
+
 -- Modules from GHC
 import qualified Bag           as GHC
 import qualified FastString    as GHC
@@ -623,11 +614,6 @@ isSimplePatBind :: (GHC.DataId t) => GHC.LHsBind t-> Bool
 isSimplePatBind decl = case decl of
      (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> hsPNs p /= []
      _ -> False
-
-hsBindLRIsSimple :: (SYB.Data t) => GHC.HsBindLR t t -> Bool
-hsBindLRIsSimple decl = case decl of
-  (GHC.PatBind p _rhs _ty _fvs _) -> hsPNs p /= []
-  _ -> False
 
 -- | Return True if a declaration is a pattern binding but not a simple one.
 isComplexPatDecl::GHC.LHsDecl name -> Bool
@@ -2258,7 +2244,6 @@ locToExp beginPos endPos t = res
 --------------------------------------------------------------------------------
 
 
-
 ghcToPN :: GHC.RdrName -> PName
 ghcToPN rdr = PN rdr
 
@@ -2301,4 +2286,3 @@ pNtoPat :: name -> GHC.Pat name
 pNtoPat pname = GHC.VarPat pname
 
 -- EOF
-
