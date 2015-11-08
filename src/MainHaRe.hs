@@ -11,10 +11,6 @@ import           Data.Version (showVersion)
 import           Development.GitRev (gitCommitCount)
 import           Distribution.System (buildArch)
 import           Distribution.Text (display)
--- import           Haskell.Ide.Monad
--- import           Haskell.Ide.Options
--- import           Haskell.Ide.Plugin
--- import           Haskell.Ide.Types
 import           Options.Applicative.Simple
 
 import Control.Exception
@@ -32,7 +28,6 @@ import System.IO (hPutStr, hPutStrLn, stdout, stderr, hSetEncoding, utf8)
 
 import Options.Applicative.Simple
 import Text.Parsec.Combinator
--- import Text.Parsec.Prim
 import Text.Parsec.Char
 
 main :: IO ()
