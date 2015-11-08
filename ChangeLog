@@ -1,3 +1,7 @@
+2015-11-08 v0.8.2.1
+	* Set GHC-Opts to -O0 for sane compile times
+	* Make the ghc-hare depend on the library, rather than rebuilding
+	all of it.
 2015-10-07 v0.8.2.0
 	* Work around a bug in GHC 7.10.2 that will not process pragmas
 	after a comment at the top of a file, when comments are returned

@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.8.2.0
+Version:                        0.8.2.1
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
 Maintainer:                     Alan Zimmerman
 Stability:                      Alpha
@@ -137,6 +137,7 @@ Library
                                 , monad-control
                                 , Cabal >= 1.22
 
+        GHC-Options:            -O0
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
         Exposed-modules:
@@ -172,30 +173,10 @@ Library
 Executable ghc-hare
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
-        -- GHC-Options:            -Wall -O0
+        GHC-Options:            -O0
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./src
-        other-modules:
-             Language.Haskell.Refact.API
-           , Language.Haskell.Refact.HaRe
-           , Language.Haskell.Refact.Refactoring.AddRmParam
-           , Language.Haskell.Refact.Refactoring.Case
-           , Language.Haskell.Refact.Refactoring.RoundTrip
-           , Language.Haskell.Refact.Utils.Binds
-           , Language.Haskell.Refact.Utils.ExactPrint
-           , Language.Haskell.Refact.Utils.GhcModuleGraph
-           , Language.Haskell.Refact.Utils.GhcUtils
-           , Language.Haskell.Refact.Utils.GhcVersionSpecific
-           , Language.Haskell.Refact.Utils.LocUtils
-           , Language.Haskell.Refact.Utils.Monad
-           , Language.Haskell.Refact.Utils.MonadFunctions
-           , Language.Haskell.Refact.Utils.TypeSyn
-           , Language.Haskell.Refact.Utils.TypeUtils
-           , Language.Haskell.Refact.Utils.Types
-           , Language.Haskell.Refact.Utils.Utils
-           , Language.Haskell.Refact.Utils.Variables
-           , Paths_HaRe
 
         -- GHC 7.10.2 ships with base 4.8.1.0
         Build-Depends:          base >= 4.8.1.0  && < 4.9
@@ -229,7 +210,7 @@ Executable ghc-hare
                                 , monad-control
                                 , Cabal >= 1.22
                                 -- , Paths_HaRe
-                                , HaRe >= 0.8
+                                , HaRe >= 0.8.2.1
         Extensions:      CPP
         if impl (ghc < 7.10.2)
             buildable: False
@@ -238,7 +219,7 @@ test-suite spec
   type:
       exitcode-stdio-1.0
   ghc-options:
-      -- -O0
+      -O0
       -- reinstate these later  -Wall
       -- -Wall
       -- reinstate these later  -Werror
@@ -266,25 +247,25 @@ test-suite spec
     , TypeUtilsSpec
     , UtilsSpec
 
-    , Language.Haskell.Refact.API
-    , Language.Haskell.Refact.HaRe
-    , Language.Haskell.Refact.Refactoring.AddRmParam
-    , Language.Haskell.Refact.Refactoring.Case
-    , Language.Haskell.Refact.Refactoring.RoundTrip
-    , Language.Haskell.Refact.Utils.Binds
-    , Language.Haskell.Refact.Utils.ExactPrint
-    , Language.Haskell.Refact.Utils.GhcModuleGraph
-    , Language.Haskell.Refact.Utils.GhcUtils
-    , Language.Haskell.Refact.Utils.GhcVersionSpecific
-    , Language.Haskell.Refact.Utils.LocUtils
-    , Language.Haskell.Refact.Utils.Monad
-    , Language.Haskell.Refact.Utils.MonadFunctions
-    , Language.Haskell.Refact.Utils.TypeSyn
-    , Language.Haskell.Refact.Utils.TypeUtils
-    , Language.Haskell.Refact.Utils.Types
-    , Language.Haskell.Refact.Utils.Utils
-    , Language.Haskell.Refact.Utils.Variables
-    , Paths_HaRe
+    -- , Language.Haskell.Refact.API
+    -- , Language.Haskell.Refact.HaRe
+    -- , Language.Haskell.Refact.Refactoring.AddRmParam
+    -- , Language.Haskell.Refact.Refactoring.Case
+    -- , Language.Haskell.Refact.Refactoring.RoundTrip
+    -- , Language.Haskell.Refact.Utils.Binds
+    -- , Language.Haskell.Refact.Utils.ExactPrint
+    -- , Language.Haskell.Refact.Utils.GhcModuleGraph
+    -- , Language.Haskell.Refact.Utils.GhcUtils
+    -- , Language.Haskell.Refact.Utils.GhcVersionSpecific
+    -- , Language.Haskell.Refact.Utils.LocUtils
+    -- , Language.Haskell.Refact.Utils.Monad
+    -- , Language.Haskell.Refact.Utils.MonadFunctions
+    -- , Language.Haskell.Refact.Utils.TypeSyn
+    -- , Language.Haskell.Refact.Utils.TypeUtils
+    -- , Language.Haskell.Refact.Utils.Types
+    -- , Language.Haskell.Refact.Utils.Utils
+    -- , Language.Haskell.Refact.Utils.Variables
+    -- , Paths_HaRe
   build-depends:
       -- GHC 7.10.2 ships with base 4.8.1.0
       base        >= 4.8.1.0  && < 4.9
@@ -323,7 +304,7 @@ test-suite spec
     , monad-control
     , Cabal >= 1.22
     -- , Paths_HaRe
-    -- , HaRe >= 0.8
+    , HaRe >= 0.8.2.1
   Extensions:      CPP
   if impl (ghc < 7.10.2)
     buildable: False
