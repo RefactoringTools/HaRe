@@ -151,7 +151,7 @@ module Language.Haskell.Refact.API
     -- *** Locations
     ,defineLoc, useLoc, locToExp
     ,locToName, locToRdrName
-    ,getName, locToType
+    ,getName
 
  -- * Program transformation
     -- *** Adding
@@ -244,4 +244,3 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint.Utils
-

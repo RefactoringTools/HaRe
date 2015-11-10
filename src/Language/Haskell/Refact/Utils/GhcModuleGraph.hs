@@ -145,7 +145,7 @@ moduleGraphNodes drop_hs_boot_nodes summaries = (graphFromEdgedVertices nodes, l
                 | otherwise          = HsBootFile
 
     out_edge_keys :: HscSource -> [ModuleName] -> [Int]
-    out_edge_keys hi_boot ms = mapMaybe (lookup_key hi_boot) ms
+    out_edge_keys hi_boot ms = mapCatMaybes (lookup_key hi_boot) ms
         -- If we want keep_hi_boot_nodes, then we do lookup_key with
         -- the IsBootInterface parameter True; else False
 

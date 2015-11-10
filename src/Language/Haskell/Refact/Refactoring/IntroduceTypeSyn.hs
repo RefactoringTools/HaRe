@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.IntroduceTypeSyn where
-
+{-
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 import qualified GHC
@@ -26,7 +26,7 @@ introduceTypeSyn settings cradle fileName (row,col) newName typeRep=
 
 comp ::FilePath -> SimpPos -> String -> String -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) newName typeRep = do
-  getModuleGhc fileName
+  getModule fileName
   renamed <- getRefactRenamed
   m <- getModule
   (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (addSyn (row,col) newName typeRep fileName) RSAlreadyLoaded
@@ -182,3 +182,4 @@ unwrapSrcLoc loc =
 
 wrapSrcLoc :: RealSrcLoc -> SrcLoc
 wrapSrcLoc rl = RealSrcLoc rl
+-}
