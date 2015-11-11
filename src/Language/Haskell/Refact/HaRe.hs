@@ -7,8 +7,8 @@ module Language.Haskell.Refact.HaRe
  , defaultSettings
  , SimpPos
  -- ** Re-exported from ghc-mod
- , GM.Options
- , defaultOptions
+ , GM.Options(..)
+ , GM.defaultOptions
 
  -- * Refactorings
  , ifToCase
