@@ -10,14 +10,14 @@ import Control.Monad.State
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
+import qualified Language.Haskell.GhcMod as GM
 
-deleteDef :: RefactSettings -> Cradle -> FilePath -> SimpPos -> IO [FilePath]
+deleteDef :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 deleteDef settings cradle fileName (row,col) =
   runRefacSession settings cradle (comp fileName (row,col))
 
 comp ::FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) = do
-  getModuleGhc fileName
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
   m <- getModule
@@ -32,7 +32,7 @@ comp fileName (row,col) = do
            then error "The def to be deleted is still being used"
           else do
           logm $ "Result of is used: " ++ (show pnIsUsed)
-          (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (doDeletion pn) RSAlreadyLoaded
+          (refactoredMod@(_fp,(ismod,nn)) <- applyRefac (doDeletion pn) RSAlreadyLoaded
           case (ismod) of
             False -> do
               error "The def deletion failed"
@@ -52,7 +52,7 @@ isPNUsed pn modName filePath = do
 
 pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
-  res <- applyTU (stop_tdTUGhc (failTU `adhocTU` bind `adhocTU` var)) t'
+  res <- applyTU (stop_tdTU (failTU `adhocTU` bind `adhocTU` var)) t'
   return $ (length res) > 0
     where
       bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
@@ -79,7 +79,7 @@ isPNUsedInClients pn modName = do
                   
 pnUsedInClientScope :: GHC.Name -> Bool -> TargetModule -> RefactGhc Bool
 pnUsedInClientScope name b mod@(fps, _sum) = do
-  void $ activateModule mod
+  getTargetGhc mod
   isInScope <- isInScopeAndUnqualifiedGhc (nameToString name) Nothing
   logm $ "The module file path: " ++ (show fps) ++ "\n is pn in scope: " ++ (show isInScope)
   return (b || isInScope)

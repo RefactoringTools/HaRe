@@ -14,7 +14,9 @@ module Language.Haskell.Refact.HaRe
  , liftOneLevel
  , demote
  , rename
+ , deleteDef
  -- , swapArgs
+ , multRename  
  , roundTrip
  )
 where
@@ -24,9 +26,11 @@ import Language.Haskell.Refact.Refactoring.DupDef
 import Language.Haskell.Refact.Refactoring.MoveDef
 import Language.Haskell.Refact.Refactoring.Renaming
 import Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
+import Language.Haskell.Refact.Refactoring.DeleteDef
 -- import Language.Haskell.Refact.Refactoring.SwapArgs
 import Language.Haskell.Refact.Refactoring.RoundTrip
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.Refact.Refactoring.MultiRename
 
 
