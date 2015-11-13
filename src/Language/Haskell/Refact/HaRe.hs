@@ -6,6 +6,9 @@ module Language.Haskell.Refact.HaRe
  , VerboseLevel (..)
  , defaultSettings
  , SimpPos
+ -- ** Re-exported from ghc-mod
+ , GM.Options
+ , GM.defaultOptions
 
  -- * Refactorings
  , ifToCase
@@ -18,6 +21,7 @@ module Language.Haskell.Refact.HaRe
  -- , swapArgs
 -- , multRename  
  , roundTrip
+
  )
 where
 
@@ -32,5 +36,6 @@ import Language.Haskell.Refact.Refactoring.RoundTrip
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
 --import Language.Haskell.Refact.Refactoring.MultiRename
+import qualified Language.Haskell.GhcMod as GM (Options(..),defaultOptions)
 
 
