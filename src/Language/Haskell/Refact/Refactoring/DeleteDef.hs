@@ -11,6 +11,7 @@ import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import qualified Language.Haskell.GhcMod as GM
+import qualified Language.Haskell.GhcMod.Internal as GM
 
 deleteDef :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 deleteDef settings cradle fileName (row,col) =
@@ -32,12 +33,12 @@ comp fileName (row,col) = do
            then error "The def to be deleted is still being used"
           else do
           logm $ "Result of is used: " ++ (show pnIsUsed)
-          (refactoredMod@(_fp,(ismod,nn)) <- applyRefac (doDeletion pn) RSAlreadyLoaded
+          (refRes@((_fp,ismod), _),()) <- applyRefac (doDeletion pn) RSAlreadyLoaded
           case (ismod) of
-            False -> do
+            RefacUnmodifed -> do
               error "The def deletion failed"
-            True -> return ()
-          return [refactoredMod]
+            RefacModified -> return ()
+          return [refRes]
     Nothing -> error "Invalid cursor position!"
 
 
@@ -48,7 +49,8 @@ isPNUsed pn modName filePath = do
   if pnUsedLocally
      then return True
     else do
-      isPNUsedInClients pn modName
+    let modPath = GM.ModulePath{GM.mpModule = modName, GM.mpPath = filePath} in
+      isPNUsedInClients pn modPath
 
 pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
@@ -67,21 +69,21 @@ pnUsedInScope pn t' = do
       var other = mzero
                   
      
-isPNUsedInClients :: GHC.Name -> GHC.ModuleName -> RefactGhc Bool
-isPNUsedInClients pn modName = do
+isPNUsedInClients :: GHC.Name -> GM.ModulePath -> RefactGhc Bool
+isPNUsedInClients pn modPath = do
         pnIsExported <- isExported pn
         if pnIsExported
-          then do clients <- clientModsAndFiles modName
+          then do clients <- clientModsAndFiles modPath
                   logm $ "DeleteDef : clients: " ++ (showGhc clients)
                   res <- foldM (pnUsedInClientScope pn) False clients
                   return res
           else do return False
                   
 pnUsedInClientScope :: GHC.Name -> Bool -> TargetModule -> RefactGhc Bool
-pnUsedInClientScope name b mod@(fps, _sum) = do
+pnUsedInClientScope name b mod = do
   getTargetGhc mod
   isInScope <- isInScopeAndUnqualifiedGhc (nameToString name) Nothing
-  logm $ "The module file path: " ++ (show fps) ++ "\n is pn in scope: " ++ (show isInScope)
+  logm $ "The module file path: " ++ (show (GM.mpPath mod)) ++ "\n is pn in scope: " ++ (show isInScope)
   return (b || isInScope)
 
 doDeletion :: GHC.Located GHC.Name -> RefactGhc ()
