@@ -19,8 +19,10 @@ deleteDef settings cradle fileName (row,col) =
 
 comp ::FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) = do
+  parseSourceFileGhc fileName
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
+  targetModule <- getRefactTargetModule
   m <- getModule
   let (Just (modName,_)) = getModuleName parsed
   let maybePn = locToName (row, col) renamed
@@ -28,7 +30,7 @@ comp fileName (row,col) = do
     Just pn@(GHC.L _ n) ->
       do
         logm $ "DeleteDef.comp: before isPNUsed"
-        pnIsUsed <- isPNUsed n modName fileName
+        pnIsUsed <- isPNUsed n targetModule fileName
         if pnIsUsed
            then error "The def to be deleted is still being used"
           else do
@@ -42,14 +44,13 @@ comp fileName (row,col) = do
     Nothing -> error "Invalid cursor position!"
 
 
-isPNUsed :: GHC.Name -> GHC.ModuleName -> FilePath -> RefactGhc Bool
-isPNUsed pn modName filePath = do
+isPNUsed :: GHC.Name -> GM.ModulePath -> FilePath -> RefactGhc Bool
+isPNUsed pn modPath filePath = do
   renamed <- getRefactRenamed
   pnUsedLocally <- pnUsedInScope pn renamed
   if pnUsedLocally
      then return True
     else do
-    let modPath = GM.ModulePath{GM.mpModule = modName, GM.mpPath = filePath} in
       isPNUsedInClients pn modPath
 
 pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool

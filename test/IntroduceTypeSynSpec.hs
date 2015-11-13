@@ -1,4 +1,4 @@
-module IntroduceTypeSynSpec (main, spec) where
+module IntroduceTypeSynSpec (spec,main) where
 
 
 import Test.Hspec
@@ -7,6 +7,10 @@ import Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
 import TestUtils
 
 main :: IO ()
+main = return ()
+
+spec = undefined
+{-main :: IO ()
 main = do
   hspec spec
 
@@ -26,3 +30,4 @@ spec = do
       diff <- compareFiles "./test/testdata/IntroduceTypeSyn/TS2.refactored.hs"
                            "./test/testdata/IntroduceTypeSyn/TS2.hs.expected"
       diff `shouldBe` []
+-}
