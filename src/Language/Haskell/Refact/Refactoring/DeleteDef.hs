@@ -41,11 +41,10 @@ comp fileName (row,col) = do
           else do
           logm $ "Result of is used: " ++ (show pnIsUsedLocal) ++ " pnUsedClients: " ++ (show pnUsedClients)
           (refRes@((_fp,ismod), _),()) <- applyRefac (doDeletion pn) RSAlreadyLoaded
-          {-case (ismod) of
+          case (ismod) of
             RefacUnmodifed -> do
               error "The def deletion failed"
             RefacModified -> return ()
-          return [refRes]-}
           return [refRes]
     Nothing -> error "Invalid cursor position!"
 
