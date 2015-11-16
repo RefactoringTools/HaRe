@@ -12,10 +12,12 @@ import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import qualified Language.Haskell.GhcMod as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
+import System.Directory
 
 deleteDef :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
-deleteDef settings cradle fileName (row,col) =
-  runRefacSession settings cradle (comp fileName (row,col))
+deleteDef settings cradle fileName (row,col) = do
+  absFileName <- canonicalizePath fileName
+  runRefacSession settings cradle (comp absFileName (row,col))
 
 comp ::FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) = do
@@ -30,16 +32,20 @@ comp fileName (row,col) = do
     Just pn@(GHC.L _ n) ->
       do
         logm $ "DeleteDef.comp: before isPNUsed"
-        pnIsUsed <- isPNUsed n targetModule fileName
-        if pnIsUsed
+        pnIsUsedLocal <- isPNUsed n targetModule fileName
+        clients <- clientModsAndFiles targetModule
+        logm $ "DeleteDef: Clients: " ++ (show clients)
+        pnUsedClients <- isPNUsedInClients n targetModule
+        if (pnIsUsedLocal || pnUsedClients)
            then error "The def to be deleted is still being used"
           else do
-          logm $ "Result of is used: " ++ (show pnIsUsed)
+          logm $ "Result of is used: " ++ (show pnIsUsedLocal) ++ " pnUsedClients: " ++ (show pnUsedClients)
           (refRes@((_fp,ismod), _),()) <- applyRefac (doDeletion pn) RSAlreadyLoaded
-          case (ismod) of
+          {-case (ismod) of
             RefacUnmodifed -> do
               error "The def deletion failed"
             RefacModified -> return ()
+          return [refRes]-}
           return [refRes]
     Nothing -> error "Invalid cursor position!"
 
@@ -50,8 +56,7 @@ isPNUsed pn modPath filePath = do
   pnUsedLocally <- pnUsedInScope pn renamed
   if pnUsedLocally
      then return True
-    else do
-      isPNUsedInClients pn modPath
+    else return False
 
 pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
@@ -89,6 +94,6 @@ pnUsedInClientScope name b mod = do
 
 doDeletion :: GHC.Located GHC.Name -> RefactGhc ()
 doDeletion (GHC.L _ n) = do
-  renamed <- getRefactRenamed
-  void $ rmDecl n True renamed
+  parsed <- getRefactParsed
+  void $ rmDecl n True parsed
   return ()

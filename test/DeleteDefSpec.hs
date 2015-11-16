@@ -3,7 +3,7 @@ module DeleteDefSpec (main, spec) where
 
 import Test.Hspec
 import Language.Haskell.Refact.Refactoring.DeleteDef
-
+import System.Directory
 import TestUtils
 
 main :: IO ()
@@ -14,10 +14,11 @@ spec :: Spec
 spec = do
   describe "doDeleteDef" $ do
     it "removes a small definition from the top level of a function" $ do
-      res <- deleteDef logTestSettings testOptions "./test/testdata/DeleteDef/Dd1.hs"  (5,1)
-      (show res) `shouldBe` "[\"./test/testdata/DeleteDef/Dd1.hs\"]"
-      diff <- compareFiles "./test/testdata/DeleteDef/Dd1.refactored.hs"
-                           "./test/testdata/DeleteDef/Dd1.hs.expected"
+      res <- ct $ deleteDef logTestSettings testOptions "./DeleteDef/Dd1.hs"  (5,1)
+      res' <- ct $ mapM makeRelativeToCurrentDirectory res
+      res' `shouldBe` ["DeleteDef/Dd1.hs"]
+      diff <- ct $ compareFiles "./DeleteDef/Dd1.refactored.hs"
+                                "./DeleteDef/Dd1.hs.expected"
       diff `shouldBe` []
     it "checks that a definition used in another module is not deleted" $ do
       res <- catchException (deleteDef logTestSettings testOptions "./test/testdata/DeleteDef/Dd2.hs" (4,1))
