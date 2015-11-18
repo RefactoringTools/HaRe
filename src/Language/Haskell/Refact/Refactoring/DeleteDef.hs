@@ -34,10 +34,9 @@ comp fileName (row,col) = do
     Just pn@(GHC.L _ n) ->
       do
         logm $ "DeleteDef.comp: before isPNUsed"
-        pnIsUsedLocal <- isPNUsed n targetModule fileName
-        clients <- clientModsAndFiles targetModule
-        logm $ "DeleteDef: Clients: " ++ (show clients)
         let (Just (GHC.L _ ghcn)) = locToName (row,col) renamed
+        pnIsUsedLocal <- isPNUsed ghcn targetModule fileName
+        clients <- clientModsAndFiles targetModule
         pnUsedClients <- isPNUsedInClients ghcn n targetModule
         if (pnIsUsedLocal || pnUsedClients)
            then error "The def to be deleted is still being used"
@@ -52,29 +51,30 @@ comp fileName (row,col) = do
     Nothing -> error "Invalid cursor position!"
 
 
-isPNUsed :: GHC.RdrName -> GM.ModulePath -> FilePath -> RefactGhc Bool
+isPNUsed :: GHC.Name -> GM.ModulePath -> FilePath -> RefactGhc Bool
 isPNUsed pn modPath filePath = do
   renamed <- getRefactRenamed
-  pnUsedLocally <- pnUsedInScope pn renamed
-  if pnUsedLocally
-     then return True
-    else return False
+  pnUsedInScope pn renamed
 
-pnUsedInScope :: (SYB.Data t) => GHC.RdrName -> t -> RefactGhc Bool
+
+pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
+  logm $ "Start of pnUsedInScope"
   res <- applyTU (stop_tdTU (failTU `adhocTU` bind `adhocTU` var)) t'
   return $ (length res) > 0
     where
-      bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.RdrName GHC.RdrName)
+      bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
         | name == pn = do
             logm $ "Found Binding at: " ++ (showGhc l) 
             return []
-      bind other = mzero
-      var ((GHC.HsVar name) :: GHC.HsExpr GHC.RdrName)
+      bind other = do
+        mzero
+      var ((GHC.HsVar name) :: GHC.HsExpr GHC.Name)
         | name == pn = do
             logm $ "Found var"
             return [pn]
-      var other = mzero
+      var other = do
+        mzero
                   
      
 isPNUsedInClients :: GHC.Name -> GHC.RdrName -> GM.ModulePath -> RefactGhc Bool

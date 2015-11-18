@@ -21,7 +21,7 @@ spec = do
                                 "./DeleteDef/Dd1.hs.expected"
       diff `shouldBe` []
     it "checks that a definition used in another module is not deleted" $ do
-      res <- ct $ catchException (deleteDef logTestSettings testOptions "./DeleteDef/Dd2.hs" (4,1))
+      res <- ct $ catchException (deleteDef defaultTestSettings testOptions "./DeleteDef/Dd2.hs" (4,1))
       (show res) `shouldBe` "Just \"The def to be deleted is still being used\""
     it "checks that a definition used in the same module is not deleted" $ do
       res <- ct $ catchException (deleteDef defaultTestSettings testOptions "./DeleteDef/Dd3.hs" (4,1))
