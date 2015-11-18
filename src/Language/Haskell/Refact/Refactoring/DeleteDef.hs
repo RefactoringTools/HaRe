@@ -14,6 +14,8 @@ import qualified Language.Haskell.GhcMod as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
 import System.Directory
 
+import Language.Haskell.GHC.ExactPrint
+
 deleteDef :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 deleteDef settings cradle fileName (row,col) = do
   absFileName <- canonicalizePath fileName
@@ -27,20 +29,21 @@ comp fileName (row,col) = do
   targetModule <- getRefactTargetModule
   m <- getModule
   let (Just (modName,_)) = getModuleName parsed
-  let maybePn = locToName (row, col) renamed
-  case maybePn of
+      maybeRdrPn = locToRdrName (row,col) parsed
+  case maybeRdrPn of
     Just pn@(GHC.L _ n) ->
       do
         logm $ "DeleteDef.comp: before isPNUsed"
         pnIsUsedLocal <- isPNUsed n targetModule fileName
         clients <- clientModsAndFiles targetModule
         logm $ "DeleteDef: Clients: " ++ (show clients)
-        pnUsedClients <- isPNUsedInClients n targetModule
+        let (Just (GHC.L _ ghcn)) = locToName (row,col) renamed
+        pnUsedClients <- isPNUsedInClients ghcn n targetModule
         if (pnIsUsedLocal || pnUsedClients)
            then error "The def to be deleted is still being used"
           else do
           logm $ "Result of is used: " ++ (show pnIsUsedLocal) ++ " pnUsedClients: " ++ (show pnUsedClients)
-          (refRes@((_fp,ismod), _),()) <- applyRefac (doDeletion pn) RSAlreadyLoaded
+          (refRes@((_fp,ismod), _),()) <- applyRefac (doDeletion ghcn) RSAlreadyLoaded
           case (ismod) of
             RefacUnmodifed -> do
               error "The def deletion failed"
@@ -49,7 +52,7 @@ comp fileName (row,col) = do
     Nothing -> error "Invalid cursor position!"
 
 
-isPNUsed :: GHC.Name -> GM.ModulePath -> FilePath -> RefactGhc Bool
+isPNUsed :: GHC.RdrName -> GM.ModulePath -> FilePath -> RefactGhc Bool
 isPNUsed pn modPath filePath = do
   renamed <- getRefactRenamed
   pnUsedLocally <- pnUsedInScope pn renamed
@@ -57,25 +60,25 @@ isPNUsed pn modPath filePath = do
      then return True
     else return False
 
-pnUsedInScope :: (SYB.Data t) => GHC.Name -> t -> RefactGhc Bool
+pnUsedInScope :: (SYB.Data t) => GHC.RdrName -> t -> RefactGhc Bool
 pnUsedInScope pn t' = do
   res <- applyTU (stop_tdTU (failTU `adhocTU` bind `adhocTU` var)) t'
   return $ (length res) > 0
     where
-      bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
+      bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.RdrName GHC.RdrName)
         | name == pn = do
             logm $ "Found Binding at: " ++ (showGhc l) 
             return []
       bind other = mzero
-      var ((GHC.HsVar name) :: GHC.HsExpr GHC.Name)
+      var ((GHC.HsVar name) :: GHC.HsExpr GHC.RdrName)
         | name == pn = do
             logm $ "Found var"
             return [pn]
       var other = mzero
                   
      
-isPNUsedInClients :: GHC.Name -> GM.ModulePath -> RefactGhc Bool
-isPNUsedInClients pn modPath = do
+isPNUsedInClients :: GHC.Name -> GHC.RdrName -> GM.ModulePath -> RefactGhc Bool
+isPNUsedInClients pn rdrn modPath = do
         pnIsExported <- isExported pn
         if pnIsExported
           then do clients <- clientModsAndFiles modPath
@@ -91,8 +94,9 @@ pnUsedInClientScope name b mod = do
   logm $ "The module file path: " ++ (show (GM.mpPath mod)) ++ "\n is pn in scope: " ++ (show isInScope)
   return (b || isInScope)
 
-doDeletion :: GHC.Located GHC.Name -> RefactGhc ()
-doDeletion (GHC.L _ n) = do
+doDeletion :: GHC.Name -> RefactGhc ()
+doDeletion n = do
   parsed <- getRefactParsed
-  void $ rmDecl n True parsed
+  (res,decl, mSig) <- rmDecl n True parsed
+  (liftT getAnnsT) >>= putRefactParsed res
   return ()

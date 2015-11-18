@@ -14,7 +14,7 @@ spec :: Spec
 spec = do
   describe "doDeleteDef" $ do
     it "removes a small definition from the top level of a function" $ do
-      res <- ct $ deleteDef logTestSettings testOptions "./DeleteDef/Dd1.hs"  (5,1)
+      res <- ct $ deleteDef defaultTestSettings testOptions "./DeleteDef/Dd1.hs"  (5,1)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["DeleteDef/Dd1.hs"]
       diff <- ct $ compareFiles "./DeleteDef/Dd1.refactored.hs"
