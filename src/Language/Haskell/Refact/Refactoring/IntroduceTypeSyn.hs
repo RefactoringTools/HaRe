@@ -1,6 +1,6 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.IntroduceTypeSyn where
-{-
+
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 import qualified GHC
@@ -182,4 +182,3 @@ unwrapSrcLoc loc =
 
 wrapSrcLoc :: RealSrcLoc -> SrcLoc
 wrapSrcLoc rl = RealSrcLoc rl
--}

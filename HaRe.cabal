@@ -151,8 +151,8 @@ Library
            , Language.Haskell.Refact.Refactoring.Simple
            , Language.Haskell.Refact.Refactoring.SwapArgs
            , Language.Haskell.Refact.Refactoring.MultiRename
---           , Language.Haskell.Refact.Refactoring.DeleteDef
---           , Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
+           , Language.Haskell.Refact.Refactoring.DeleteDef
+           , Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
            , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
@@ -248,7 +248,8 @@ test-suite spec
     , TestUtils
     , TypeUtilsSpec
     , UtilsSpec
---    , DeleteDefSpec
+    , DeleteDefSpec
+    , IntroduceTypeSynSpec
 
     -- , Language.Haskell.Refact.API
     -- , Language.Haskell.Refact.HaRe
