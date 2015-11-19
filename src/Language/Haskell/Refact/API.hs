@@ -200,6 +200,7 @@ module Language.Haskell.Refact.API
     , everywhereStaged'
     , onelayerStaged
     , listifyStaged
+    , everywhereButMStaged
 
     -- ** Scrap Your Zipper versions
     , zeverywhereStaged

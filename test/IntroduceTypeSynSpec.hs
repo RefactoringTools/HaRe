@@ -14,7 +14,7 @@ spec :: Spec
 spec = do
   describe "doIntroduceTypeSyn" $ do
     it "Introduces a small synonym and modifies the type of a single function." $ do
-      res <- ct $ introduceTypeSyn logTestSettings testOptions "./IntroduceTypeSyn/TS1.hs" (3,0) "Name" "String"
+      res <- ct $ introduceTypeSyn defaultTestSettings testOptions "./IntroduceTypeSyn/TS1.hs" (3,0) "Name" "String"
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["IntroduceTypeSyn/TS1.hs"]
       diff <- ct $ compareFiles "./IntroduceTypeSyn/TS1.refactored.hs"
@@ -22,7 +22,7 @@ spec = do
       diff `shouldBe` []
       
     it "Intruduces the synonym for a tuple and changes the type of two functions" $ do
-      res <- ct$ introduceTypeSyn defaultTestSettings testOptions "./IntroduceTypeSyn/TS2.hs" (3,0) "Foo" "(String,Int)"
+      res <- ct$ introduceTypeSyn logTestSettings testOptions "./IntroduceTypeSyn/TS2.hs" (3,0) "Foo" "(String,Int)"
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["IntroduceTypeSyn/TS2.hs"]
       diff <- ct $ compareFiles "./IntroduceTypeSyn/TS2.refactored.hs"

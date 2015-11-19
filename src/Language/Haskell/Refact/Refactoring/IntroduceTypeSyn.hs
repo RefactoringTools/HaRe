@@ -2,7 +2,7 @@
 module Language.Haskell.Refact.Refactoring.IntroduceTypeSyn where
 
 import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+import GHC.SYB.Utils
 import qualified GHC
 import qualified Name as GHC
 import qualified RdrName as GHC
@@ -76,8 +76,35 @@ addSyn (row, col) newName typeRep fileName = do
 
 updateTypeDecs :: GHC.RdrName -> GHC.HsType GHC.RdrName -> RefactGhc ()
 updateTypeDecs synName ty = do
-
+  parsed <- getRefactParsed
+  newParsed <- everywhereButMStaged Parser (SYB.mkQ False skipSig) (SYB.mkM replaceSig) parsed  
+  (liftT getAnnsT) >>= putRefactParsed newParsed
+  --parsedFin <- getRefactParsed
+  --logm $ "Final parsed AST:\n" ++ (showData Parser 2 parsedFin)
+  
   return ()
+  where
+    skipSig :: (GHC.LHsDecl GHC.RdrName) -> Bool
+    skipSig sig@(GHC.L _ (GHC.TyClD syn@(GHC.SynDecl (GHC.L _ name) _ _ _)))
+      | name == synName = True
+    skipSig x = False
+    replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
+    replaceSig old@(GHC.L l oldTy)
+      | compareHsType oldTy ty
+      = do
+          return (GHC.L l (GHC.HsTyVar synName))
+    replaceSig x = return x
+        
+compareHsType :: (Eq name) => (GHC.HsType name) -> (GHC.HsType name) -> Bool
+compareHsType (GHC.HsTyVar n1) (GHC.HsTyVar n2) = n1 == n2
+compareHsType (GHC.HsTupleTy _ lst1) (GHC.HsTupleTy _ lst2) = compareTyList lst1 lst2
+compareHsType _ _ = False
+
+compareTyList :: (Eq name) => [GHC.LHsType name] -> [GHC.LHsType name] -> Bool
+compareTyList [] [] = True
+compareTyList ((GHC.L _ ty1):rst1) ((GHC.L _ ty2):rst2) = (compareHsType ty1 ty2) && (compareTyList rst1 rst2)
+compareTyList _ _ = False
+
 {-
 mkName :: String -> GHC.Name
 mkName str = GHC.mkSystemName unique occ
