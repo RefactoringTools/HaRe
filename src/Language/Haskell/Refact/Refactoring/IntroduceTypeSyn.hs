@@ -1,8 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.IntroduceTypeSyn where
-{-
+
 import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+import GHC.SYB.Utils
 import qualified GHC
 import qualified Name as GHC
 import qualified RdrName as GHC
@@ -10,6 +10,10 @@ import Control.Monad
 import Language.Haskell.GhcMod
 import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
+import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Parsers
+import qualified Language.Haskell.GhcMod as GM
+import qualified Language.Haskell.GhcMod.Internal as GM
 --import Language.Haskell.TokenUtils.GHC.Layout (newNameTok)
 import FastString
 import Unique
@@ -20,20 +24,17 @@ import Bag
 import SrcLoc
 import Outputable
 
-introduceTypeSyn :: RefactSettings -> Cradle -> FilePath -> SimpPos -> String -> String -> IO [FilePath]
-introduceTypeSyn settings cradle fileName (row,col) newName typeRep=
-  runRefacSession settings cradle (comp fileName (row,col) newName typeRep)
+introduceTypeSyn :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> String -> IO [FilePath]
+introduceTypeSyn settings opts fileName (row,col) newName typeRep=
+  runRefacSession settings opts (comp fileName (row,col) newName typeRep)
 
 comp ::FilePath -> SimpPos -> String -> String -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) newName typeRep = do
-  getModule fileName
-  renamed <- getRefactRenamed
-  m <- getModule
-  (refactoredMod@((_fp,ismod),(_,_toks',renamed')),_) <- applyRefac (addSyn (row,col) newName typeRep fileName) RSAlreadyLoaded
+  (refRes@((_fp,ismod), _),()) <- applyRefac (addSyn (row,col) newName typeRep fileName) (RSFile fileName)
   case ismod of
-    False -> error "Introduce type synonym failed"
-    True -> return ()
-  return [refactoredMod]
+    RefacUnmodifed -> error "Introduce type synonym failed"
+    RefacModified -> return ()
+  return [refRes]
   {-let (Just (modName,_)) = getModuleName parsed
       maybePn = locToType (row, col) renamed
   case maybePn of
@@ -55,24 +56,56 @@ addSyn (row, col) newName typeRep fileName = do
   parsed <- getRefactParsed
   let maybePn = locToName (row,col) renamed
   case maybePn of
-    Just _ -> error "Introduce type synonym failed value already defined at source location"
+    Just _ -> error "Introduce type synonym failed value already defined at given source location"
     Nothing -> do
+      flags <- GHC.getSessionDynFlags
       let fullStr = "type " ++ newName ++ " = " ++ typeRep
           (modName, str) = gfromJust "Tried to get mod name" $ getModuleName parsed
           buff = stringToStringBuffer fullStr
-      modSum <- GHC.getModSummary modName
-      let newSum = modSum {GHC.ms_hspp_buf = Just buff}
-      typedMod <- GHC.parseModule newSum >>= GHC.typecheckModule
-      let Just (group, _ , _ , _ ) = GHC.tm_renamed_source typedMod
-          [[(GHC.L _ decl)]] = GHC.hs_tyclds group
-          GHC.L _ syn = GHC.td_synRhs $ GHC.tcdTyDefn decl
-          name = mkName newName
-{-TODO syn is the type synonym that needs to be inserted into the renamed AST -}
-      --error $ SYB.showData SYB.TypeChecker 3 syn
-      addTypeDecl fullStr (row, col) decl
-      doIntro name syn 
-      return ()
+          eTypeSyn = parseDecl flags fileName fullStr
+      case eTypeSyn of
+        Left _ -> error "Failed to parse new type synonym."
+        Right (ann, decl@(GHC.L _ (GHC.TyClD inDecl))) -> do
+          logm $ "Decl looks like: " ++ (showGhc decl)
+          newParsed <- addDecl parsed Nothing ([decl], (Just ann))
+          (liftT getAnnsT) >>= putRefactParsed newParsed
+          let (GHC.L _ declName) = GHC.tcdLName inDecl
+              (GHC.L _ declRHS) = GHC.tcdRhs inDecl
+          updateTypeDecs declName declRHS
 
+
+updateTypeDecs :: GHC.RdrName -> GHC.HsType GHC.RdrName -> RefactGhc ()
+updateTypeDecs synName ty = do
+  parsed <- getRefactParsed
+  newParsed <- everywhereButMStaged Parser (SYB.mkQ False skipSig) (SYB.mkM replaceSig) parsed  
+  (liftT getAnnsT) >>= putRefactParsed newParsed
+  --parsedFin <- getRefactParsed
+  --logm $ "Final parsed AST:\n" ++ (showData Parser 2 parsedFin)
+  
+  return ()
+  where
+    skipSig :: (GHC.LHsDecl GHC.RdrName) -> Bool
+    skipSig sig@(GHC.L _ (GHC.TyClD syn@(GHC.SynDecl (GHC.L _ name) _ _ _)))
+      | name == synName = True
+    skipSig x = False
+    replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
+    replaceSig old@(GHC.L l oldTy)
+      | compareHsType oldTy ty
+      = do
+          return (GHC.L l (GHC.HsTyVar synName))
+    replaceSig x = return x
+        
+compareHsType :: (Eq name) => (GHC.HsType name) -> (GHC.HsType name) -> Bool
+compareHsType (GHC.HsTyVar n1) (GHC.HsTyVar n2) = n1 == n2
+compareHsType (GHC.HsTupleTy _ lst1) (GHC.HsTupleTy _ lst2) = compareTyList lst1 lst2
+compareHsType _ _ = False
+
+compareTyList :: (Eq name) => [GHC.LHsType name] -> [GHC.LHsType name] -> Bool
+compareTyList [] [] = True
+compareTyList ((GHC.L _ ty1):rst1) ((GHC.L _ ty2):rst2) = (compareHsType ty1 ty2) && (compareTyList rst1 rst2)
+compareTyList _ _ = False
+
+{-
 mkName :: String -> GHC.Name
 mkName str = GHC.mkSystemName unique occ
   where unique = getUnique $ fsLit str

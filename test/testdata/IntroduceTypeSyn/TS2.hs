@@ -1,7 +1,5 @@
 module TS2 where
 
-
-
 getInt :: (String, Int) -> Int
 getInt (_, i) = i
 

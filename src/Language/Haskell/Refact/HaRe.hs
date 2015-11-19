@@ -19,8 +19,9 @@ module Language.Haskell.Refact.HaRe
  , rename
  , deleteDef
  -- , swapArgs
--- , multRename  
+ , multRename  
  , roundTrip
+ , introduceTypeSyn
 
  )
 where
@@ -35,7 +36,7 @@ import Language.Haskell.Refact.Refactoring.DeleteDef
 import Language.Haskell.Refact.Refactoring.RoundTrip
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
+import Language.Haskell.Refact.Refactoring.MultiRename
 import qualified Language.Haskell.GhcMod as GM (Options(..),defaultOptions)
---import Language.Haskell.Refact.Refactoring.MultiRename
 
 

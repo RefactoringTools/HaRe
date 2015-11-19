@@ -119,11 +119,11 @@ main = flip catches handlers $ do
       "rename" -> runFunc $ rename opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
 
       -- multRename wants the same as rename and might ask for more info as well
---      "mRename" -> runFunc $ multRename opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
+      "mRename" -> runFunc $ multRename opt defaultOptions cmdArg1 cmdArg2 (parseSimpPos cmdArg3 cmdArg4)
       
       -- roundtrip wants FilePath
       "roundtrip" -> runFunc $ roundTrip opt defaultOptions cmdArg1
---      "typesyn" -> runFunc cradle $ introduceTypeSyn opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4 cmdArg5
+      "typesyn" -> runFunc  $ introduceTypeSyn opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4 cmdArg5
 
       "deletedef"-> runFunc $ deleteDef opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
       "show" -> putStrLn  (show (opt))
