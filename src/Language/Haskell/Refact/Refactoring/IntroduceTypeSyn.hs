@@ -68,31 +68,46 @@ addSyn (row, col) newName typeRep fileName = do
         Right (ann, decl@(GHC.L _ (GHC.TyClD inDecl))) -> do
           logm $ "Decl looks like: " ++ (showGhc decl)
           newParsed <- addDecl parsed Nothing ([decl], (Just ann))
+          logm $ "Ann from parsing: " ++ (show ann)
           (liftT getAnnsT) >>= putRefactParsed newParsed
           let (GHC.L _ declName) = GHC.tcdLName inDecl
               (GHC.L _ declRHS) = GHC.tcdRhs inDecl
-          updateTypeDecs declName declRHS
+          updateTypeDecs declName declRHS ann
 
 
-updateTypeDecs :: GHC.RdrName -> GHC.HsType GHC.RdrName -> RefactGhc ()
-updateTypeDecs synName ty = do
+updateTypeDecs :: GHC.RdrName -> GHC.HsType GHC.RdrName -> Anns -> RefactGhc ()
+updateTypeDecs synName ty newAnns = do
   parsed <- getRefactParsed
   newParsed <- everywhereButMStaged Parser (SYB.mkQ False skipSig) (SYB.mkM replaceSig) parsed  
   (liftT getAnnsT) >>= putRefactParsed newParsed
   --parsedFin <- getRefactParsed
   --logm $ "Final parsed AST:\n" ++ (showData Parser 2 parsedFin)
-  
+  --anns <- liftT getAnnsT
+  --logm $ "Anns:\n" ++ (show anns)
   return ()
   where
     skipSig :: (GHC.LHsDecl GHC.RdrName) -> Bool
     skipSig sig@(GHC.L _ (GHC.TyClD syn@(GHC.SynDecl (GHC.L _ name) _ _ _)))
       | name == synName = True
     skipSig x = False
+{-
+   When we replace the signature we also need to modify the annotations.
+
+   The traversal is going to need to work over GHC.LHsDecl rather than LHsType because we are going to need to be able to look up the annotations and that requires creating a key:
+
+-- |Make an unwrapped @AnnKey@ for the @LHsDecl@ case, a normal one otherwise.
+mkAnnKey :: (Data a) => GHC.Located a -> AnnKey
+
+
+-}
     replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
     replaceSig old@(GHC.L l oldTy)
       | compareHsType oldTy ty
       = do
-          return (GHC.L l (GHC.HsTyVar synName))
+          currAnns <- fetchAnnsFinal
+          let correctSig = (GHC.L l (GHC.HsTyVar synName))
+              sigStr     = exactPrint 
+          return correctSig
     replaceSig x = return x
         
 compareHsType :: (Eq name) => (GHC.HsType name) -> (GHC.HsType name) -> Bool
