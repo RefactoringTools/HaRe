@@ -74,7 +74,7 @@ module Language.Haskell.Refact.API
 
        , setStateStorage
        , getStateStorage
-
+       , fetchAnnsFinal
        -- , logm
 
 
