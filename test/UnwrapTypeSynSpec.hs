@@ -12,7 +12,7 @@ spec :: Spec
 spec = do
   describe "doUnwrapTypeSyn" $ do
     it "Removes a simply synonym for String" $ do
-      res <- ct $ unwrapTypeSyn defaultTestSettings testOptions "./UnwrapTypeSyn/UTS1.hs" "Foo"
+      res <- ct $ unwrapTypeSyn defaultTestSettings testOptions "./UnwrapTypeSyn/UTS1.hs" (3,5) "Foo"
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["UnwrapTypeSyn/UTS1.hs"]
       diff <- ct $ compareFiles "./UnwrapTypeSyn/UTS1.refactored.hs"
