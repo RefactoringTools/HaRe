@@ -123,8 +123,8 @@ main = flip catches handlers $ do
       
       -- roundtrip wants FilePath
       "roundtrip" -> runFunc $ roundTrip opt defaultOptions cmdArg1
-      "typesyn" -> runFunc  $ introduceTypeSyn opt cradle cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4 cmdArg5
-
+      "typesyn" -> runFunc  $ introduceTypeSyn opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4 cmdArg5
+      "unwrapsyn" -> runFunc $ unwrapTypeSyn opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4
       "deletedef"-> runFunc $ deleteDef opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
       "show" -> putStrLn  (show (opt))
 
