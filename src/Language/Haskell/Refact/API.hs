@@ -39,6 +39,7 @@ module Language.Haskell.Refact.API
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
+       , lookupAllAnns  
 
 
  -- * from `Language.Haskell.Refact.Utils.MonadFunctions`
@@ -88,7 +89,9 @@ module Language.Haskell.Refact.API
                      , getLocatedEnd
                      , getStartEndLoc
                      , startEndLocGhc
-                     , emptyList, nonEmptyList
+                     , emptyList
+                     , nonEmptyList
+
 
  -- * from `Language.Haskell.Refact.Utils.TypeSyn`
     , InScopes
