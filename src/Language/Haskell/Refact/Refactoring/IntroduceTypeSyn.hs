@@ -100,8 +100,4 @@ compareHsType _ _ = False
 compareTyList :: (Eq name) => [GHC.LHsType name] -> [GHC.LHsType name] -> Bool
 compareTyList [] [] = True
 compareTyList ((GHC.L _ ty1):rst1) ((GHC.L _ ty2):rst2) = (compareHsType ty1 ty2) && (compareTyList rst1 rst2)
-compareTyList _ _ = False         
-
-lookupAllAnns :: Anns -> GHC.SrcSpan -> Anns
-lookupAllAnns anns (Loc.RealSrcSpan span) = Map.filterWithKey isInSpan anns
-  where isInSpan k@(AnnKey (Loc.RealSrcSpan annSpan) conN) v = Loc.containsSpan span annSpan
+compareTyList _ _ = False

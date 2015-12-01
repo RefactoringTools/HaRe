@@ -25,7 +25,7 @@ module Language.Haskell.Refact.Utils.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-
+       , lookupAllAnns
        ) where
 
 import Control.Exception
@@ -50,6 +50,7 @@ import System.FilePath.Posix
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
+import qualified SrcLoc        as GHC
 -- import qualified Outputable    as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
@@ -200,6 +201,25 @@ runRefacSession settings opt comp = do
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
   return $ modifiedFiles refactoredMods
+
+-- ---------------------------------------------------------------------
+
+-- | Like runRefacSession but instead takes an ordered list of RefactGhc computations and runs all of them threading the state through all of the computations
+
+runMultRefacSession :: RefactSettings -> GM.Options -> [RefactGhc [ApplyRefacResult]] -> IO [FilePath]
+runMultRefacSession settings opt comps = do
+  let
+    initialState = RefSt
+        { rsSettings      = settings
+        , rsUniqState     = 1
+        , rsSrcSpanCol    = 1
+        , rsFlags         = RefFlags False
+        , rsStorage       = StorageNone
+        , rsCurrentTarget = Nothing
+        , rsModule        = Nothing
+        }
+  
+  return []
 
 -- ---------------------------------------------------------------------
 
@@ -457,3 +477,9 @@ serverModsAndFiles m = do
 
   return serverMods
 
+-- ---------------------------------------------------------------------
+
+-- | Finds all anotations that are contained within the given source span
+lookupAllAnns :: Anns -> GHC.SrcSpan -> Anns
+lookupAllAnns anns (GHC.RealSrcSpan span) = Map.filterWithKey isInSpan anns
+  where isInSpan k@(AnnKey (GHC.RealSrcSpan annSpan) conN) v = GHC.containsSpan span annSpan
