@@ -29,7 +29,9 @@ module Language.Haskell.Refact.API
 
        -- ** The bits that do the work
        , runRefacSession
+       , runMultRefacSession
        , applyRefac
+       , applyRefac'
        , refactDone
        , ApplyRefacResult
        , RefacSource(..)

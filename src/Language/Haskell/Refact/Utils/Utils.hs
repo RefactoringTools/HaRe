@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils.Utils
        , runRefacSession
        , runRefactGhcCd
        , applyRefac
+       , applyRefac'
        , refactDone
 
        -- , Update(..)
@@ -220,17 +221,40 @@ runMultRefacSession settings opt comps = do
         , rsModule        = Nothing
         }
   results <- threadState opt initialState comps
-  (_, finState) <- last results
-  let verbosity = rsetVerboseLevel (rsSettings finState)
-  return []
+  --putStrLn $  "====Mult refact session results===\n" ++ (show results)
+  let (_, finState) = last results
+      verbosity = rsetVerboseLevel (rsSettings finState)
+      refResults = map fst results
+      merged = mergeRefResults refResults
+  putStrLn $ "===Results: " ++ (debugPr refResults)
+  writeRefactoredFiles verbosity merged
+  return $ modifiedFiles merged
 
+mergeRefResults :: [[ApplyRefacResult]] -> [ApplyRefacResult]
+mergeRefResults lst = Map.elems $ mergeHelp lst Map.empty
+  where mergeHelp []  mp = mp
+        mergeHelp (x:xs) mp = mergeHelp xs (foldl insertRefRes mp x)
+        insertRefRes mp res@((fp,RefacModified), _) = Map.insert fp res mp
+        insertRefRes mp _ = mp
 
+threadState :: GM.Options -> RefactState -> [RefactGhc [ApplyRefacResult]] -> IO [([ApplyRefacResult], RefactState)]
 threadState _ _ [] = return []
 threadState opt currState (rGhc : rst) = do
   res@(refMods, newState) <- runRefactGhcCd rGhc currState opt
-  rest <- threadState opt newState rst
+  --putStrLn $ "===State: " ++ (show newState)
+--  putStrLn $ "Refmods: " ++ (debugPrint refMods)
+  let (Just mod) = rsModule newState
+      newMod = mod {rsStreamModified = RefacUnmodifed}
+      nextState = newState {rsModule = Just newMod }
+  rest <- threadState opt nextState rst
   return (res : rest)
-  
+
+debugPr :: [[ApplyRefacResult]] -> String
+debugPr lst = foldl (++) "" lst'
+  where lst' = map debugPrint lst
+debugPrint :: [ApplyRefacResult] -> String
+debugPrint x = "===Debug print: " ++ (foldl putApp "" x)
+  where putApp x (info, (anns, ps)) = x ++ (exactPrint ps anns)
   
 -- ---------------------------------------------------------------------
 
@@ -275,12 +299,17 @@ canonicalizeTargets tgts = do
 -- afresh each time.
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
-applyRefac
-    :: RefactGhc a       -- ^ The refactoring
+
+applyRefac = applyRefac' True
+
+applyRefac'
+    ::
+       Bool               -- ^ Boolean that determines if the state should be cleared
+    -> RefactGhc a        -- ^ The refactoring
     -> RefacSource        -- ^ where to get the module and toks
     -> RefactGhc (ApplyRefacResult,a)
 
-applyRefac refac source = do
+applyRefac' clearSt refac source = do
 
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
@@ -303,8 +332,9 @@ applyRefac refac source = do
     m    <- getRefactStreamModified
 
     -- Clear the refactoring state
-    clearParsedModule
-
+    if clearSt
+      then clearParsedModule
+      else return ()
     absFileName <- liftIO $ canonicalizePath fileName
     return (((absFileName,m),(anns, mod')),res)
 

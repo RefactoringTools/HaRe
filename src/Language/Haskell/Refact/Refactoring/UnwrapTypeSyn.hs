@@ -17,6 +17,10 @@ import qualified Data.List as List
 unwrapTypeSyn :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> IO [FilePath]
 unwrapTypeSyn settings opts fileName pos synName = do
   absFileName <- canonicalizePath fileName
+  let comp1 = comp absFileName pos synName
+      comp2 = DelDef.comp absFileName pos
+  runMultRefacSession settings opts [comp1,comp2]
+  {-
   ref1 <- runRefacSession settings opts (comp absFileName pos synName)
   --[ref2] <- runRefacSession settings opts (DelDef.comp absFileName pos)
   return ref1
@@ -25,7 +29,7 @@ unwrapTypeSyn settings opts fileName pos synName = do
           mergeRefResults res1@((fp1, _), _) (res2@((fp2, _), _):rst)
             | fp1 == fp2 = (res1:rst)
             | otherwise  = (res2: (mergeRefResults res1 rst))
-
+-}
   
 
 {-
@@ -39,7 +43,7 @@ comp :: FilePath -> SimpPos -> String -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) synName = do
   parseSourceFileGhc fileName
   (rdrName, decl, relevantAnns) <- getTypeAndAnns fileName (row,col) synName                      
-  (refRes@((fp,ismod), _),isExported) <- applyRefac (doReplace rdrName decl relevantAnns) (RSFile fileName)
+  (refRes@((fp,ismod), _),isExported) <- applyRefac' False (doReplace rdrName decl relevantAnns) (RSFile fileName)
   case ismod of
     RefacUnmodifed -> error "Unwrap type synonym failed"
     RefacModified -> return [refRes]

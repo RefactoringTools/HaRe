@@ -1,3 +1,4 @@
+{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
 module Language.Haskell.Refact.Utils.Types
        (
         ApplyRefacResult
@@ -16,7 +17,6 @@ module Language.Haskell.Refact.Utils.Types
 import qualified GHC      as GHC
 
 import Language.Haskell.GHC.ExactPrint
-
 import qualified Data.Map as Map
 
 
