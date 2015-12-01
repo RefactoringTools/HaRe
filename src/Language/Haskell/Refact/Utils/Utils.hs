@@ -26,6 +26,7 @@ module Language.Haskell.Refact.Utils.Utils
        , clientModsAndFiles
        , serverModsAndFiles
        , lookupAllAnns
+       , runMultRefacSession
        ) where
 
 import Control.Exception
@@ -218,9 +219,19 @@ runMultRefacSession settings opt comps = do
         , rsCurrentTarget = Nothing
         , rsModule        = Nothing
         }
-  
+  results <- threadState opt initialState comps
+  (_, finState) <- last results
+  let verbosity = rsetVerboseLevel (rsSettings finState)
   return []
 
+
+threadState _ _ [] = return []
+threadState opt currState (rGhc : rst) = do
+  res@(refMods, newState) <- runRefactGhcCd rGhc currState opt
+  rest <- threadState opt newState rst
+  return (res : rest)
+  
+  
 -- ---------------------------------------------------------------------
 
 runRefactGhcCd ::
