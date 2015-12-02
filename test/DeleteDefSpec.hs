@@ -34,7 +34,7 @@ spec = do
                            "./DeleteDef/Dd1.hs.expected2"
       diff `shouldBe` []
     it "checks possible bug found by tests in unwrap type synonym" $ do
-      res <- ct $ deleteDef logTestSettings testOptions "./DeleteDef/UTS1.hs" (3,6)
+      res <- ct $ deleteDef defaultTestSettings testOptions "./DeleteDef/UTS1.hs" (3,6)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["DeleteDef/UTS1.hs"]
       diff <- ct $ compareFiles "./DeleteDef/UTS1.hs.expected" "./DeleteDef/UTS1.refactored.hs"
