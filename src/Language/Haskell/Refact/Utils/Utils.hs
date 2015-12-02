@@ -221,7 +221,6 @@ runMultRefacSession settings opt comps = do
         , rsModule        = Nothing
         }
   results <- threadState opt initialState comps
-  --putStrLn $  "====Mult refact session results===\n" ++ (show results)
   let (_, finState) = last results
       verbosity = rsetVerboseLevel (rsSettings finState)
       refResults = map fst results
@@ -248,13 +247,6 @@ threadState opt currState (rGhc : rst) = do
       nextState = newState {rsModule = Just newMod }
   rest <- threadState opt nextState rst
   return (res : rest)
-
-debugPr :: [[ApplyRefacResult]] -> String
-debugPr lst = foldl (++) "" lst'
-  where lst' = map debugPrint lst
-debugPrint :: [ApplyRefacResult] -> String
-debugPrint x = "===Debug print: " ++ (foldl putApp "" x)
-  where putApp x (info, (anns, ps)) = x ++ (exactPrint ps anns)
   
 -- ---------------------------------------------------------------------
 
