@@ -20,17 +20,6 @@ unwrapTypeSyn settings opts fileName pos synName = do
   let comp1 = comp absFileName pos synName
       comp2 = DelDef.comp absFileName pos
   runMultRefacSession settings opts [comp1,comp2]
-  {-
-  ref1 <- runRefacSession settings opts (comp absFileName pos synName)
-  --[ref2] <- runRefacSession settings opts (DelDef.comp absFileName pos)
-  return ref1
-    where mergeRefResults :: ApplyRefacResult -> [ApplyRefacResult] -> [ApplyRefacResult]
-          mergeRefResults _ [] = []
-          mergeRefResults res1@((fp1, _), _) (res2@((fp2, _), _):rst)
-            | fp1 == fp2 = (res1:rst)
-            | otherwise  = (res2: (mergeRefResults res1 rst))
--}
-  
 
 {-
 1. Get RHS definition of type synonym
@@ -53,6 +42,8 @@ doReplace synName lDecl@(GHC.L l dec) rhcAnns = do
   parsed <- getRefactParsed
   newParsed <- everywhereMStaged Parser (SYB.mkM replaceSig) parsed
   (liftT getAnnsT) >>= putRefactParsed newParsed
+  ans <- fetchAnnsFinal
+  logm $ "Anns after all sigs are replaced: " ++ (show ans)
   return False
   where replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
         replaceSig old@(GHC.L l (GHC.HsTyVar name)) = do
