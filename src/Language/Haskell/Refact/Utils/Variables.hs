@@ -1501,7 +1501,7 @@ definesRdr nameMap n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) =
   elem n (map (rdrName2NamePure nameMap) (hsNamessRdr p))
 definesRdr _ _ _= False
 
--- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
+-- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind or calls clsDeclDefinesRdr if a TyClD
 definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
 definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
 definesDeclRdr nameMap nin (GHC.L l (GHC.TyClD ty)) = clsDeclDefinesRdr nameMap nin ty
