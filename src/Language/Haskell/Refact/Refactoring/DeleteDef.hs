@@ -13,7 +13,6 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import qualified Language.Haskell.GhcMod as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
 import System.Directory
-
 import Language.Haskell.GHC.ExactPrint
 
 deleteDef :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
@@ -42,11 +41,12 @@ comp fileName (row,col) = do
            then error "The def to be deleted is still being used"
           else do
           logm $ "Result of is used: " ++ (show pnIsUsedLocal) ++ " pnUsedClients: " ++ (show pnUsedClients)
-          (refRes@((_fp,ismod), _),()) <- applyRefac (doDeletion ghcn) RSAlreadyLoaded
+          (refRes@((_fp,ismod), (anns,ps)),()) <- applyRefac (doDeletion ghcn) RSAlreadyLoaded
           case (ismod) of
             RefacUnmodifed -> do
-              error "The def deletion failed"
+              error "The def deletion failed" 
             RefacModified -> return ()
+          logm $ "Res after delete === " ++ (exactPrint ps anns)
           return [refRes]
     Nothing -> error "Invalid cursor position!"
 

@@ -14,7 +14,7 @@ spec :: Spec
 spec = do
   describe "doDeleteDef" $ do
     it "removes a small definition from the top level of a function" $ do
-      res <- ct $ deleteDef logTestSettings testOptions "./DeleteDef/Dd1.hs"  (5,1)
+      res <- ct $ deleteDef defaultTestSettings testOptions "./DeleteDef/Dd1.hs"  (5,1)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["DeleteDef/Dd1.hs"]
       diff <- ct $ compareFiles "./DeleteDef/Dd1.refactored.hs"
@@ -32,4 +32,10 @@ spec = do
       res' `shouldBe` ["DeleteDef/Dd1.hs"]
       diff <- ct $ compareFiles "./DeleteDef/Dd1.refactored.hs"
                            "./DeleteDef/Dd1.hs.expected2"
+      diff `shouldBe` []
+    it "checks possible bug found by tests in unwrap type synonym" $ do
+      res <- ct $ deleteDef logTestSettings testOptions "./DeleteDef/UTS1.hs" (3,6)
+      res' <- ct $ mapM makeRelativeToCurrentDirectory res
+      res' `shouldBe` ["DeleteDef/UTS1.hs"]
+      diff <- ct $ compareFiles "./DeleteDef/UTS1.hs.expected" "./DeleteDef/UTS1.refactored.hs"
       diff `shouldBe` []
