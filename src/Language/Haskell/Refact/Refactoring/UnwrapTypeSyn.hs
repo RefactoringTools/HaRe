@@ -58,23 +58,44 @@ doReplace synName lDecl@(GHC.L l dec) tyAnns = do
   parsed <- getRefactParsed
   newParsed <- everywhereMStaged Parser (SYB.mkM replaceSig) parsed
   currAnns <- fetchAnnsFinal
-  logm $ "lDecl: " ++ (SYB.showData Parser 2 lDecl)
+--  logm $ "lDecl: " ++ (SYB.showData Parser 2 lDecl)
   let rhsAnns = lookupAllAnns currAnns l
       diffAnns = (Map.difference currAnns rhsAnns)
       oldAnns = head . Map.toList $ rhsAnns
       newKey = mkAnnKey lDecl
 --      newAnn
-  logm $ "Anns: " ++ (show tyAnns)
+--  logm $ "Anns: " ++ (show rhsAnns)
   putRefactParsed newParsed diffAnns
   setRefactAnns diffAnns
-  logm $ "Final parsed: " ++ (SYB.showData Parser 2 newParsed)
+--  logm $ "Final parsed: " ++ (SYB.showData Parser 2 newParsed)
   return False
   where replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
         replaceSig old@(GHC.L l2 (GHC.HsTyVar name)) = do
           if name == synName
-            then return (GHC.L l2 dec)
+            then do
+               newDec <- everywhereMStaged Parser (SYB.mkM updateLocations) lDecl
+               logm $ "New dec: " ++ (SYB.showData Parser 3 newDec)
+               return newDec
             else return old
         replaceSig x = return x
+        updateLocations :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
+        updateLocations lTy@(GHC.L l ty) = do
+          newSpn <- liftT uniqueSrcSpanT
+          currAnns <- fetchAnnsFinal
+          let annKey = mkAnnKey lTy
+              mAnn = Map.lookup annKey currAnns
+              res = (GHC.L newSpn ty)
+          case mAnn of
+            Nothing -> return ()
+            (Just ann) -> do
+              let newKey = mkAnnKey res
+              setRefactAnns (Map.insert newKey ann currAnns)
+          return res
+        updateLocations x = return x
+
+{- With more complex RHS types just replacing the root's location is not sufficient.
+   I will have to decend the AST piece get new 
+-}
 
 getTypeAndAnns :: FilePath -> SimpPos -> String -> RefactGhc (GHC.RdrName, GHC.LHsType GHC.RdrName, Anns)
 getTypeAndAnns fileName (row,col) synName = do
