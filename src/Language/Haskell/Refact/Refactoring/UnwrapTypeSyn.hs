@@ -13,6 +13,8 @@ import GHC.SYB.Utils
 import System.Directory
 import qualified Language.Haskell.Refact.Refactoring.DeleteDef as DelDef
 import qualified Data.List as List
+import qualified Data.Map as Map
+import qualified GHC.SYB.Utils as SYB
 
 unwrapTypeSyn :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> IO [FilePath]
 unwrapTypeSyn settings opts fileName pos synName = do
@@ -48,16 +50,29 @@ comp fileName (row,col) synName = do
     RefacUnmodifed -> error "Unwrap type synonym failed"
     RefacModified -> return [refRes]
 
+-- synName is the name of the synonym to remove
+-- lDecl is the RHS of that synonym
+-- tyAnns are the annotations from the RHS of the synonym
 doReplace :: GHC.RdrName -> (GHC.LHsType GHC.RdrName) -> Anns -> RefactGhc Bool
-doReplace synName lDecl@(GHC.L l dec) rhcAnns = do
+doReplace synName lDecl@(GHC.L l dec) tyAnns = do
   parsed <- getRefactParsed
   newParsed <- everywhereMStaged Parser (SYB.mkM replaceSig) parsed
-  (liftT getAnnsT) >>= putRefactParsed newParsed
+  currAnns <- fetchAnnsFinal
+  logm $ "lDecl: " ++ (SYB.showData Parser 2 lDecl)
+  let rhsAnns = lookupAllAnns currAnns l
+      diffAnns = (Map.difference currAnns rhsAnns)
+      oldAnns = head . Map.toList $ rhsAnns
+      newKey = mkAnnKey lDecl
+--      newAnn
+  logm $ "Anns: " ++ (show tyAnns)
+  putRefactParsed newParsed diffAnns
+  setRefactAnns diffAnns
+  logm $ "Final parsed: " ++ (SYB.showData Parser 2 newParsed)
   return False
   where replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
-        replaceSig old@(GHC.L l (GHC.HsTyVar name)) = do
+        replaceSig old@(GHC.L l2 (GHC.HsTyVar name)) = do
           if name == synName
-            then return lDecl
+            then return (GHC.L l2 dec)
             else return old
         replaceSig x = return x
 
@@ -71,7 +86,7 @@ getTypeAndAnns fileName (row,col) synName = do
       synRhs@(GHC.L l _) <- getRhs name
       anns <- fetchAnnsFinal
       let rhsAnns = lookupAllAnns anns l
-      return (nm, synRhs, anns)
+      return (nm, synRhs, rhsAnns)
 
 getRhs :: (GHC.Located GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
 getRhs (GHC.L l name) = do

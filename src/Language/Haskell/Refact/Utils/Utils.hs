@@ -225,7 +225,6 @@ runMultRefacSession settings opt comps = do
       verbosity = rsetVerboseLevel (rsSettings finState)
       refResults = map fst results
       merged = mergeRefResults refResults
-  putStrLn $ "===Results: " ++ (debugPr refResults)
   writeRefactoredFiles verbosity merged
   return $ modifiedFiles merged
 
@@ -240,8 +239,6 @@ threadState :: GM.Options -> RefactState -> [RefactGhc [ApplyRefacResult]] -> IO
 threadState _ _ [] = return []
 threadState opt currState (rGhc : rst) = do
   res@(refMods, newState) <- runRefactGhcCd rGhc currState opt
-  --putStrLn $ "===State: " ++ (show newState)
---  putStrLn $ "Refmods: " ++ (debugPrint refMods)
   let (Just mod) = rsModule newState
       newMod = mod {rsStreamModified = RefacUnmodifed}
       nextState = newState {rsModule = Just newMod }
