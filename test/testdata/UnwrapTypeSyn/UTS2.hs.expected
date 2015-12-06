@@ -1,0 +1,6 @@
+module UTS2 where
+
+type Bar = String
+
+getInt :: (  Int,    String  ) -> Int
+getInt (i, _) = i
