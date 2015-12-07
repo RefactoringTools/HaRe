@@ -11,7 +11,7 @@ main = hspec spec
 spec :: Spec
 spec = do
   describe "doUnwrapTypeSyn" $ do
-    it "Removes a simply synonym for String" $ do
+    it "Removes a simple synonym for String" $ do
       res <- ct $ unwrapTypeSyn defaultTestSettings testOptions "./UnwrapTypeSyn/UTS1.hs" (3,6) "Foo"
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["UnwrapTypeSyn/UTS1.hs"]
