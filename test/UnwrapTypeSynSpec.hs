@@ -19,9 +19,17 @@ spec = do
                            "./UnwrapTypeSyn/UTS1.hs.expected"
       diff `shouldBe` []
     it "Removes a more complicated tuple type" $ do
-      res <- ct $ unwrapTypeSyn logTestSettings testOptions "./UnwrapTypeSyn/UTS2.hs" (3,6) "Foo"
+      res <- ct $ unwrapTypeSyn defaultTestSettings testOptions "./UnwrapTypeSyn/UTS2.hs" (3,6) "Foo"
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["UnwrapTypeSyn/UTS2.hs"]
       diff <- ct $ compareFiles "./UnwrapTypeSyn/UTS2.refactored.hs"
               "./UnwrapTypeSyn/UTS2.hs.expected"
       diff `shouldBe` []
+    it "Has to replace a type synonym that is in the middle of a type signature" $ do
+      res <- ct $ unwrapTypeSyn defaultTestSettings testOptions "./UnwrapTypeSyn/UTS3.hs" (5,6) "Bar"
+      res' <- ct $ mapM makeRelativeToCurrentDirectory res
+      res' `shouldBe` ["UnwrapTypeSyn/UTS3.hs"]
+      diff <- ct $ compareFiles "./UnwrapTypeSyn/UTS3.refactored.hs"
+              "./UnwrapTypeSyn/UTS3.hs.expected"
+      diff `shouldBe` []
+

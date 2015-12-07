@@ -58,23 +58,22 @@ doReplace synName lDecl@(GHC.L l dec) tyAnns = do
   parsed <- getRefactParsed
   newParsed <- everywhereMStaged Parser (SYB.mkM replaceSig) parsed
   currAnns <- fetchAnnsFinal
---  logm $ "lDecl: " ++ (SYB.showData Parser 2 lDecl)
   let rhsAnns = lookupAllAnns currAnns l
       diffAnns = (Map.difference currAnns rhsAnns)
-      oldAnns = head . Map.toList $ rhsAnns
-      newKey = mkAnnKey lDecl
---      newAnn
---  logm $ "Anns: " ++ (show rhsAnns)
   putRefactParsed newParsed diffAnns
   setRefactAnns diffAnns
---  logm $ "Final parsed: " ++ (SYB.showData Parser 2 newParsed)
   return False
   where replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
         replaceSig old@(GHC.L l2 (GHC.HsTyVar name)) = do
           if name == synName
             then do
                newDec <- everywhereMStaged Parser (SYB.mkM updateLocations) lDecl
-               logm $ "New dec: " ++ (SYB.showData Parser 3 newDec)
+               currAnns <- fetchAnnsFinal
+               let k = (mkAnnKey newDec)
+                   (Just decAnn) = Map.lookup k currAnns
+                   -- Setting the delta pos to (0,0) here to prevent one extra space following the colon in the type signature
+                   newAnns = Map.insert k (decAnn{annEntryDelta = (DP (0,0))}) currAnns
+               setRefactAnns newAnns
                return newDec
             else return old
         replaceSig x = return x
