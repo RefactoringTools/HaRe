@@ -37,6 +37,7 @@ usage =    "ghc-hare version " ++ showVersion version ++ "\n"
         ++ "\t ghc-hare gendef"         ++ ghcOptHelp ++ "filename newname startline startcol endline endcol\n"
         ++ "\t ghc-hare deletedef"      ++ ghcOptHelp ++ "filename line col\n"
         ++ "\t ghc-hare typesyn"        ++ ghcOptHelp ++ "filename line col typename type\n"
+        ++ "\t ghc-hare maybetomp"      ++ ghcOptHelp ++ "filename line col  functionname\n"
         ++ "\t ghc-hare help\n"
 
 ----------------------------------------------------------------
@@ -126,6 +127,7 @@ main = flip catches handlers $ do
       "typesyn" -> runFunc  $ introduceTypeSyn opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4 cmdArg5
       "unwrapsyn" -> runFunc $ unwrapTypeSyn opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4
       "deletedef"-> runFunc $ deleteDef opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3)
+      "maybetomp" -> runFunc $ maybeToMonadPlus opt defaultOptions cmdArg1 (parseSimpPos cmdArg2 cmdArg3) cmdArg4
       "show" -> putStrLn  (show (opt))
 
       cmd      -> throw (NoSuchCommand cmd)

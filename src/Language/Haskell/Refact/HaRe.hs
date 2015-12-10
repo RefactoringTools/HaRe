@@ -23,6 +23,7 @@ module Language.Haskell.Refact.HaRe
  , roundTrip
  , introduceTypeSyn
  , unwrapTypeSyn
+ , maybeToMonadPlus
 
  )
 where
@@ -39,6 +40,7 @@ import Language.Haskell.Refact.Refactoring.RoundTrip
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Refactoring.MultiRename
+import Language.Haskell.Refact.Refactoring.MaybeToMonadPlus
 import qualified Language.Haskell.GhcMod as GM (Options(..),defaultOptions)
 
 

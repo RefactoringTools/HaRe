@@ -1,0 +1,5 @@
+module MMP1 where
+import Control.Monad
+
+f :: (MonadPlus m) => m Int -> m Int
+f mp = mp >>= (\i -> return i + 1)

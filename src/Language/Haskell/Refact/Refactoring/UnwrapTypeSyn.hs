@@ -61,7 +61,7 @@ doReplace synName lDecl@(GHC.L l dec) tyAnns = do
                let k = (mkAnnKey newDec)
                    (Just decAnn) = Map.lookup k currAnns
                    -- Setting the delta pos to (0,0) here to prevent one extra space following the colon in the type signature
-                   newAnns = Map.insert k (decAnn{annEntryDelta = (DP (0,0))}) currAnns
+                   newAnns = Map.insert k (decAnn{annEntryDelta = (DP (0,-1))}) currAnns
                setRefactAnns newAnns
                return newDec
             else return old
