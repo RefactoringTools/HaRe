@@ -32,4 +32,10 @@ spec = do
       diff <- ct $ compareFiles "./UnwrapTypeSyn/UTS3.refactored.hs"
               "./UnwrapTypeSyn/UTS3.hs.expected"
       diff `shouldBe` []
-
+    it "Has to remove the synonym from multiple function definitions" $ do
+      res <- ct $ unwrapTypeSyn defaultTestSettings testOptions "./UnwrapTypeSyn/UTS4.hs" (3,6) "Foo"
+      res' <- ct $ mapM makeRelativeToCurrentDirectory res
+      res' `shouldBe` ["UnwrapTypeSyn/UTS4.hs"]
+      diff <- ct $ compareFiles "./UnwrapTypeSyn/UTS4.refactored.hs"
+              "./UnwrapTypeSyn/UTS4.hs.expected"
+      diff `shouldBe` []
