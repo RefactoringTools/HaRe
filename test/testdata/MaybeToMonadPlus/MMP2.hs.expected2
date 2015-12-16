@@ -7,9 +7,11 @@ f i =
     then return (show i)
     else Nothing
 
-f2 :: (Show a, MonadPlus m) => m a -> IO ()
-f2 m =
-  case m of
-  Nothing -> putStrLn "Something went wrong"
-  (Just i) -> putStrLn $ "The result is: " ++ (show i)
-  
+f2 :: (Show a, MonadPlus m) => (m a -> Maybe a) -> m a -> IO ()
+f2 f = f2_old . f
+   where
+	f2_old :: Maybe a -> IO ()
+   	f2_old m =
+   	  case m of
+  	  Nothing -> putStrLn "Something went wrong"
+  	  (Just i) -> putStrLn $ "The result is: " ++ (show i)
