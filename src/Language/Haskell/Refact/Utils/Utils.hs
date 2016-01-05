@@ -16,7 +16,6 @@ module Language.Haskell.Refact.Utils.Utils
 
        -- * The bits that do the work
        , runRefacSession
-       , runRefactGhcCd
        , applyRefac
        , refactDone
 
@@ -198,29 +197,11 @@ runRefacSession settings opt comp = do
         , rsModule        = Nothing
         }
 
-  (refactoredMods,_s) <- runRefactGhcCd comp initialState opt
+  (refactoredMods,_s) <- runRefactGhc comp initialState opt
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
   return $ modifiedFiles refactoredMods
-
--- ---------------------------------------------------------------------
-
-runRefactGhcCd ::
-  RefactGhc a -> RefactState -> GM.Options -> IO (a, RefactState)
-runRefactGhcCd comp initialState opt = do
-
-  let
-    runMain :: IO a -> IO a
-    runMain progMain = do
-      catches progMain [
-        Handler $ \(GM.GMEWrongWorkingDirectory projDir _curDir) -> do
-          cdAndDo projDir progMain
-        ]
-
-    fullComp = runRefactGhc comp initialState opt
-
-  runMain fullComp
 
 -- ---------------------------------------------------------------------
 
