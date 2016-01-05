@@ -29,11 +29,14 @@ module Language.Haskell.Refact.Utils.Utils
        ) where
 
 import Control.Exception
+import Control.Monad.Identity
 import Control.Monad.State
 import Data.List
 
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
+import Language.Haskell.GHC.ExactPrint.Print
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Language.Haskell.GhcMod          as GM
@@ -374,7 +377,15 @@ writeRefactoredFiles verbosity files
      where
        modifyFile ((fileName,_),(ann,parsed)) = do
 
-           let source = exactPrint parsed ann
+           let rigidOptions :: PrintOptions Identity String
+               rigidOptions = printOptions (\_ b -> return b) return return RigidLayout
+
+               exactPrintRigid  ast as = runIdentity (exactPrintWithOptions rigidOptions ast as)
+               exactPrintNormal ast as = runIdentity (exactPrintWithOptions stringOptions ast as)
+
+           -- let source = exactPrint parsed ann
+           -- let source = exactPrintRigid parsed ann
+           let source = exactPrintNormal parsed ann
            let (baseFileName,ext) = splitExtension fileName
            seq (length source) (writeFile (baseFileName ++ ".refactored" ++ ext) source)
 

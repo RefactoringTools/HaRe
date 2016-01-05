@@ -121,7 +121,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.4
+                                , ghc-mod == 5.4.*
                                 , mtl
                                 , old-time
                                 , pretty
@@ -133,7 +133,7 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.4.1
+                                , ghc-exactprint >= 0.4.1 && < 5.0.0.1
                                 , monad-control
                                 , Cabal >= 1.22
 
@@ -193,7 +193,7 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.4
+                                , ghc-mod == 5.4.*
                                 , mtl
                                 , old-time
                                 , parsec >= 3.1.6
@@ -206,7 +206,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.4.1
+                                , ghc-exactprint >= 0.4.1 && < 5.0.0.1
                                 , monad-control
                                 , Cabal >= 1.22
                                 -- , Paths_HaRe
@@ -285,7 +285,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 5.4
+    , ghc-mod == 5.4.*
     , hspec
     , mtl
     , old-time
@@ -300,7 +300,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , ghc-exactprint >= 0.4.1
+    , ghc-exactprint >= 0.4.1 && < 5.0.0.1
     , monad-control
     , Cabal >= 1.22
     -- , Paths_HaRe
