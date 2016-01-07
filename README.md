@@ -38,6 +38,7 @@ See https://github.com/kazu-yamamoto/ghc-mod/issues/615
 ### Getting Started
 
     cabal install HaRe
+    stack install HaRe --resolver=lts-4.0
 
 Check that it works from the command line
 
@@ -106,7 +107,7 @@ E.g., after renaming in Foo.hs, there will be two files
 This allows a sequence of refactorings to be undone manually if
 required. In theory.
 
-### VIM integration
+#### VIM integration
 
 See https://github.com/glittershark/vim-hare
 
