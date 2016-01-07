@@ -104,6 +104,9 @@ E.g., after renaming in Foo.hs, there will be two files
 This allows a sequence of refactorings to be undone manually if
 required. In theory.
 
+### VIM integration
+
+See https://github.com/glittershark/vim-hare
 
 ### Development & Support
 
