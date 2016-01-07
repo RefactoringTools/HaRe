@@ -10,6 +10,8 @@ execute identity transformation!
 [![Available on Hackage][badge-hackage]][hackage]
 [![License BSD3][badge-license]][license]
 [![Build Status][badge-travis]][travis]
+[![Stackage LTS](http://stackage.org/package/HaRe/badge/lts)](http://stackage.org/lts/package/HaRe)
+[![Stackage Nightly](http://stackage.org/package/HaRe/badge/nightly)](http://stackage.org/nightly/package/HaRe)
 
 [badge-travis]: https://travis-ci.org/RefactoringTools/HaRe.png?branch=master
 [travis]: https://travis-ci.org/RefactoringTools/HaRe
