@@ -40,7 +40,7 @@ Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 
-tested-with:                    GHC == 7.10.2
+tested-with:                    GHC == 7.10.2, GHC == 7.10.3
 
 data-files:                     elisp/*.el
                                 configure.sh
