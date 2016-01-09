@@ -354,7 +354,7 @@ spec = do
     it "naming clash at top level IdIn3" $ do
      -- rename logTestSettings testOptions Nothing "./Renaming/IdIn3.hs" "foo" (10,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn3.hs" "foo" (10,1))
-     (show res) `shouldBe` "Just \"Name 'foo'  already existed\\n\""
+     (show res) `shouldBe` "Just \"Name 'foo' already exists in this module\\n\""
 
     -- ---------------------------------
 
@@ -368,7 +368,7 @@ spec = do
     it "naming clash IdIn5" $ do
      -- rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1))
-     (show res) `shouldBe` "Just \"Name 'y'  already existed, or rename 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
+     (show res) `shouldBe` "Just \"Name 'y' already exists, or renaming 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
 
     -- ---------------------------------
 
@@ -382,14 +382,14 @@ spec = do
     it "will not rename existing name Field2" $ do
      -- rename logTestSettings testOptions Nothing "./Renaming/Field2.hs" "absPoint" (5,18)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Field2.hs" "absPoint" (5,18))
-     (show res) `shouldBe` "Just \"Name 'absPoint'  already existed\\n\""
+     (show res) `shouldBe` "Just \"Name 'absPoint' already exists in this module\\n\""
 
     -- ---------------------------------
 
     it "must qualify clashes Qualifier" $ do
      -- rename logTestSettings testOptions "./Renaming/Qualifier.hs" "sum" (13,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Qualifier.hs" "sum" (13,1))
-     (show res) `shouldBe` "Just \"The new name will cause ambiguous occurrence problem, please select another new name or qualify the use of ' sum' before renaming!\\n\""
+     (show res) `shouldBe` "Just \"The new name will cause an ambiguous occurrence problem, please select another new name or qualify the use of 'sum' before renaming!\\n\""
 
     -- ---------------------------------
 
@@ -610,6 +610,6 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      (show r') `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
      -}
- 
+
 -- ---------------------------------------------------------------------
 -- Helper functions
