@@ -25,6 +25,9 @@ module Language.Haskell.Refact.Utils.Utils
        , clientModsAndFiles
        , serverModsAndFiles
 
+       , modifiedFiles
+       , writeRefactoredFiles
+
        ) where
 
 import Control.Exception
@@ -448,4 +451,3 @@ serverModsAndFiles m = do
                  $ map summaryNodeSummary $ GHC.reachableG mg modNode
 
   return serverMods
-
