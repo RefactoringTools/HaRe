@@ -3,7 +3,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Language.Haskell.Refact.Refactoring.DupDef(duplicateDef) where
+module Language.Haskell.Refact.Refactoring.DupDef
+  ( duplicateDef
+  , compDuplicateDef ) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -30,10 +32,10 @@ import System.Directory
 duplicateDef :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 duplicateDef settings opts fileName newName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts (comp absFileName newName (row,col))
+  runRefacSession settings opts (compDuplicateDef absFileName newName (row,col))
 
-comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName newName (row, col) = do
+compDuplicateDef :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
+compDuplicateDef fileName newName (row, col) = do
   if isVarId newName
     then
       do
@@ -41,14 +43,14 @@ comp fileName newName (row, col) = do
         renamed <- getRefactRenamed
         parsed  <- getRefactParsed
         targetModule <- getRefactTargetModule
-        logm $ "DupDef.comp:got targetModule"
+        logm $ "DupDef.compDuplicateDef:got targetModule"
 
         let (Just (modName,_)) = getModuleName parsed
         let maybePn = locToName (row, col) renamed
         case maybePn of
           Just pn ->
             do
-              logm $ "DupDef.comp:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
+              logm $ "DupDef.compDuplicateDef:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
               (refactoredMod,(isDone,nn)) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
               logm $ "DupDef.com:isDone=" ++ show isDone
               case isDone of
@@ -58,7 +60,7 @@ comp fileName newName (row, col) = do
                   if modIsExported modName renamed
                    then
                     do
-                       logm $ "DupDef.comp:about to clientMods"
+                       logm $ "DupDef.compDuplicateDef:about to clientMods"
                        clients <- clientModsAndFiles targetModule
                        logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
                        refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName nn)
@@ -75,9 +77,9 @@ data DupDefResult = DupDefFailed | DupDefTopLevel | DupDefLowerLevel
 doDuplicating :: GHC.Located GHC.Name -> String
               -> RefactGhc (DupDefResult,GHC.Name)
 doDuplicating pn newName = do
-   logm $ "DupDef.comp:doDuplicating entered"
+   logm $ "DupDef.compDuplicateDef:doDuplicating entered"
    inscopes <- getRefactInscopes
-   logm $ "DupDef.comp:doDuplicating got inscopes"
+   logm $ "DupDef.compDuplicateDef:doDuplicating got inscopes"
    reallyDoDuplicating pn newName inscopes
 
 
@@ -286,4 +288,3 @@ willBeUnQualImportedBy modName (_,imps,_,_)
          where getModName (GHC.L _ (GHC.ImportDecl _ _modName1 _qualify _source _safe _isQualified _isImplicit as _h))
                  = if isJust as then (fromJust as)
                                 else modName
-

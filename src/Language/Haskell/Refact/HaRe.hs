@@ -12,11 +12,17 @@ module Language.Haskell.Refact.HaRe
 
  -- * Refactorings
  , ifToCase
+ , compIfToCase
  , duplicateDef
+ , compDuplicateDef
  , liftToTopLevel
+ , compLiftToTopLevel
  , liftOneLevel
+ , compLiftOneLevel
  , demote
+ , compDemote
  , rename
+ , compRename
  -- , swapArgs
  , roundTrip
 
@@ -32,5 +38,3 @@ import Language.Haskell.Refact.Refactoring.RoundTrip
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
 import qualified Language.Haskell.GhcMod as GM (Options(..),defaultOptions)
-
-
