@@ -1,5 +1,8 @@
 {-# LANGUAGE StandaloneDeriving #-}
-module Language.Haskell.Refact.Refactoring.Case(ifToCase) where
+module Language.Haskell.Refact.Refactoring.Case
+  ( ifToCase
+  , compIfToCase
+  ) where
 
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB
@@ -25,14 +28,14 @@ import qualified Data.Map as Map
 ifToCase :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 ifToCase settings opts fileName beginPos endPos = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts (comp absFileName beginPos endPos)
+  runRefacSession settings opts (compIfToCase absFileName beginPos endPos)
 
-comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName beginPos endPos = do
+compIfToCase :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
+compIfToCase fileName beginPos endPos = do
        parseSourceFileGhc fileName
        parsed <- getRefactParsed
        oldAnns <- liftT getAnnsT
-       logm $ "Case.comp:parsed=" ++ (showAnnData oldAnns 0 parsed) -- ++AZ++
+       logm $ "Case.compIfToCase:parsed=" ++ (showAnnData oldAnns 0 parsed) -- ++AZ++
        let expr = locToExp beginPos endPos parsed
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
@@ -144,4 +147,3 @@ ifToCaseTransform x = return x
 
 
 -- EOF
-

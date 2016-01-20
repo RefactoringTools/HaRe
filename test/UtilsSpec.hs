@@ -581,14 +581,15 @@ spec = do
   describe "directoryManagement" $ do
     it "loads a file from a sub directory" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
+      fileName <- canonicalizePath "./test/testdata/FreeAndDeclared/DeclareS.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let
         comp = do
-          parseSourceFileGhc "./FreeAndDeclared/DeclareS.hs"
+          parseSourceFileGhc fileName
           r <- hsFreeAndDeclaredPNs renamed
           return r
       ((res),_s) <- cdAndDo "./test/testdata/FreeAndDeclared" $
-                     runRefactGhcCd comp initialState testOptions
+                     runRefactGhc comp initialState testOptions
 
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe` "[]"

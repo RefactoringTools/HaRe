@@ -1,4 +1,7 @@
-module Language.Haskell.Refact.Refactoring.Renaming (rename) where
+module Language.Haskell.Refact.Refactoring.Renaming
+  ( rename
+  , compRename
+  ) where
 
 import qualified Data.Generics.Schemes as SYB
 import qualified Data.Generics.Aliases as SYB
@@ -53,11 +56,11 @@ rename :: RefactSettings
        -> IO [FilePath]
 rename settings opts fileName newName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts (comp absFileName newName (row,col))
+  runRefacSession settings opts (compRename absFileName newName (row,col))
 
 -- | Body of the refactoring
-comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName newName (row,col) = do
+compRename :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
+compRename fileName newName (row,col) = do
     logm $ "Renaming.comp: (fileName,newName,(row,col))=" ++ show (fileName,newName,(row,col))
     parseSourceFileGhc fileName
 
@@ -327,3 +330,5 @@ isValidNewName oldName rdrNameStr newName = res
         | otherwise = True
 
     res = tyconOk && dataConOk {- && fieldOk && instanceOk -} && tyVarOk && matchNamesOk
+
+-- EOF

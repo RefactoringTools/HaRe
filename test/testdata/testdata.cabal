@@ -4,7 +4,7 @@ Author: Alan Zimmerman
 Maintainer: Alan Zimmerman
 Cabal-Version: >= 1.10
 Build-Type: Simple
-Other-Extensions: CPP
+-- Other-Extensions: CPP
 
 Executable bcpp
   Main-Is: BCpp.hs
