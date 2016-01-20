@@ -1,3 +1,9 @@
+2016-01-20 v0.8.2.3
+	* Use ghc-mod version to 5.5 now it is released
+	* Expose commands working in RefactGhc, so the ghc-mod session can
+	be shared in haskell-ide-engine. By @cocreature
+	* Internal only, heavily clean up the ...Refactoring.Rename
+	module. By @glittershark
 2016-01-07 v0.8.2.2
 	* Lock ghc-mod version to 0.5.4 to prevent issues when 0.5.5 comes out
 	* Set minimum bound on ghc-exactprint, the behaviour of layout has
