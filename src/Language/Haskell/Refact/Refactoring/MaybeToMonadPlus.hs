@@ -20,6 +20,16 @@ maybeToMonadPlus settings cradle fileName pos funNm = do
 
 comp :: FilePath -> SimpPos -> String -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) funNm = do
+  (refRes@((_fp,ismod), _),()) <- applyRefac (doMaybeToPlus fileName (row,col) funNm) (RSFile fileName)
+  case ismod of
+    RefacUnmodifed -> error "Introduce type synonym failed"
+    RefacModified -> return ()
+  return [refRes]
+      
+
+doMaybeToPlus :: FilePath -> SimpPos -> String -> RefactGhc ()  
+doMaybeToPlus fileName (row,col) funNm = do
+  parsed <- getRefactParsed
   let nToNStr = funNm ++ " Nothing = Nothing"
   logm $ "The n to n string is: " ++ nToNStr
   dFlags <- GHC.getInteractiveDynFlags
@@ -34,7 +44,7 @@ comp fileName (row,col) funNm = do
       c2 :: [(Compare GHC.RdrName)] = constructCompare b
   logm $ "Compare: " ++ (show (c1 == c2))
     -}  
-  return []
+  return ()
 {-
 containsNothingToNothing :: String -> GHC.HsBindLR GHC.RdrName GHC.RdrName -> RefactGhc Bool
 containsNothingToNothing fname fBind@(GHC.FunBind _ _ _ _ _ _) = do
