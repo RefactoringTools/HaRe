@@ -234,6 +234,10 @@ module Language.Haskell.Refact.API
  , replace
  , setRefactAnns
 
+ -- * from `Language.Haskell.Refact.Utils.Compare`
+ , constructCompare
+ , Compare
+   
  ) where
 
 import Language.Haskell.Refact.Utils.Binds
@@ -250,3 +254,4 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.Refact.Utils.Compare

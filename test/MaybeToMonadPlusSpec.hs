@@ -13,7 +13,7 @@ spec :: Spec
 spec = do
   describe "doMaybeToMonadPlus" $ do
     it "Simple function that uses pattern matching to be collapsed into a bind." $ do
-      res <- ct $ maybeToMonadPlus defaultTestSettings testOptions "./MaybeToMonadPlus/MMP1.hs" (4,1) "f"
+      res <- ct $ maybeToMonadPlus logTestSettings testOptions "./MaybeToMonadPlus/MMP1.hs" (4,1) "f"
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["MaybeToMonadPlus/MMP1.hs"]
       diff <- ct $ compareFiles "./MaybeToMonadPlus/MMP1.refactored.hs"

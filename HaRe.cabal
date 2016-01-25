@@ -168,6 +168,7 @@ Library
            , Language.Haskell.Refact.Utils.Types
            , Language.Haskell.Refact.Utils.Utils
            , Language.Haskell.Refact.Utils.Variables
+           , Language.Haskell.Refact.Utils.Compare
            , Paths_HaRe
         if impl (ghc < 7.10.2)
             buildable: False
