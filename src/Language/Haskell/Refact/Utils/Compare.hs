@@ -3,17 +3,22 @@ module Language.Haskell.Refact.Utils.Compare
 (constructCompare, Compare) where
 import Data.Generics as SYB
 import qualified GHC as GHC
-data Compare a = Rep TypeRep
+data Compare a = Rep TypeRep 
                | Comp a
-                 deriving (Show, Eq, Typeable, Data)
+                 deriving (Show, Typeable, Data)
 
+instance (Eq a) => Eq (Compare a) where
+  Comp a == Comp b = a == b
+  Rep a == Rep b = a == b
+  _ == _ = False
+  a /= b = not (a == b)
 
-constructCompare :: (Data a, Eq b, Data b) => a -> [Compare b]
+constructCompare :: (Data a, Eq b, Typeable a) => a -> [Compare b]
 constructCompare = SYB.everything (++) ([] `SYB.mkQ` isLocated `SYB.extQ` isEq `SYB.extQ` getTypeRep)
-  where isLocated :: (GHC.Located a) -> [Compare a]
+  where --isLocated :: (GHC.Located a) -> [Compare b]
         isLocated l = []
-        isEq :: (Eq a) => a -> [Compare a]
+        isEq :: (Eq b) => b -> [Compare b]
         isEq a = [Comp a]
-        getTypeRep :: (Typeable a) => a -> [Compare a]
+        getTypeRep :: (Typeable a) => a -> [Compare b]
         getTypeRep a = [res]
           where res = (Rep . typeOf) a
