@@ -14,11 +14,11 @@ instance (Eq a) => Eq (Compare a) where
   a /= b = not (a == b)
 
 constructCompare :: (Data a, Eq b, Typeable a) => a -> [Compare b]
-constructCompare = SYB.everything (++) ([] `SYB.mkQ` isLocated `SYB.extQ` isEq `SYB.extQ` getTypeRep)
-  where --isLocated :: (GHC.Located a) -> [Compare b]
-        isLocated l = []
-        isEq :: (Eq b) => b -> [Compare b]
-        isEq a = [Comp a]
-        getTypeRep :: (Typeable a) => a -> [Compare b]
+constructCompare = SYB.everything (++) ([] `SYB.mkQ` isLocated)--`SYB.extQ` isEq `SYB.extQ` getTypeRep)
+  where isLocated :: (GHC.GenLocated t0 t1) -> [Compare b]
+        isLocated (GHC.L _ _) = []
+        --isEq :: (Eq b, Typeable b) => b -> [Compare b]
+        --isEq a = [Comp a]
+        {-getTypeRep :: (Typeable a) => a -> [Compare b]
         getTypeRep a = [res]
-          where res = (Rep . typeOf) a
+          where res = (Rep . typeOf) a-}
