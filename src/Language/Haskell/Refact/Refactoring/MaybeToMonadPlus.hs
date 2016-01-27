@@ -37,6 +37,7 @@ doMaybeToPlus fileName pos@(row,col) funNm = do
     Nothing -> error "Function bind not found"
     Just funBind -> do
       hasNtoN <- containsNothingToNothing funNm funBind
+      logm $ "Result of searching for nothing to nothing: " ++ (show hasNtoN)
       return ()
   {-
   let (Right (_ , (GHC.L _ a))) :: (Either (GHC.SrcSpan, String) (Anns, GHC.LHsDecl GHC.RdrName))
@@ -64,16 +65,17 @@ containsNothingToNothing funNm a = do
   let nToNStr = funNm ++ " Nothing = Nothing"
   (_, pRes) <- handleParseResult "containsNothingToNothing" $ parseDecl dFlags "MaybeToMonad.hs" nToNStr
   let (Just match) = extractMatch pRes
-      c1 = constructCompare match
-      res = SYB.everythingStaged SYB.Parser (||) False (False `SYB.mkQ` (isNToNMatch c1)) a
-  return res
+      c1 :: ([Compare GHC.RdrName]) = constructCompare match
+      match2 = extractMatch a
+      c2 :: ([Compare GHC.RdrName]) = constructCompare match2
+  return $ c1 == c2
     where
       extractMatch :: (Data (a b)) => a b -> Maybe (GHC.Match GHC.RdrName GHC.RdrName)
       extractMatch = SYB.everythingStaged SYB.Parser (<|>) Nothing (Nothing `SYB.mkQ` (\ m@(GHC.Match _ _ _ _)-> Just m))
-      --isNToNMatch :: (Data (a b), Eq b, Data b) => [Compare GHC.RdrName] -> a b -> Bool
+      {-isNToNMatch :: (Data (a b), Eq b, Data b) => [Compare GHC.RdrName] -> a b -> Bool
       isNToNMatch c1 (m2@(GHC.Match _ _ _ _)) =
         let c2 = constructCompare m2 in
-        c1 == c2
+        c1 == c2-}
 
 handleParseResult :: String -> Either (GHC.SrcSpan, String) (Anns, a) -> RefactGhc (Anns, a)
 handleParseResult msg e = case e of
