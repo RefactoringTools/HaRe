@@ -134,6 +134,7 @@ Library
                                 , syz
                                 , ghc-exactprint >= 0.4.1
                                 , monad-control
+                                , syb-with-class
                                 , Cabal >= 1.22
 
         GHC-Options:            -O0
@@ -213,6 +214,7 @@ Executable ghc-hare
                                 , ghc-exactprint >= 0.4.1
                                 , monad-control
                                 , Cabal >= 1.22
+                                , syb-with-class
                                 -- , Paths_HaRe
                                 , HaRe >= 0.8.2.1
         Extensions:      CPP
@@ -310,6 +312,7 @@ test-suite spec
     , ghc-exactprint >= 0.4.1
     , monad-control
     , Cabal >= 1.22
+    , syb-with-class
     -- , Paths_HaRe
     , HaRe >= 0.8.2.1
   Extensions:      CPP

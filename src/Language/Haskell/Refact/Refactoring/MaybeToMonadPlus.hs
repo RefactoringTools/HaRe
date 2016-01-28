@@ -64,14 +64,18 @@ containsNothingToNothing funNm a = do
   dFlags <- GHC.getSessionDynFlags
   let nToNStr = funNm ++ " Nothing = Nothing"
   (_, pRes) <- handleParseResult "containsNothingToNothing" $ parseDecl dFlags "MaybeToMonad.hs" nToNStr
-  let (Just match) = extractMatch pRes
-      c1 :: ([Compare GHC.RdrName]) = constructCompare match
+  let match = gfromJust "containsNothingToNothing" $ extractMatch pRes
+      --c1 :: ([Compare GHC.RdrName]) = constructCompare match
       match2 = extractMatch a
-      c2 :: ([Compare GHC.RdrName]) = constructCompare match2
-  return $ c1 == c2
+      --c2 :: ([Compare GHC.RdrName]) = constructCompare match2
+  --logm $ (show c1)
+  return False
+  --return $ c1 == c2
     where
-      extractMatch :: (Data (a b)) => a b -> Maybe (GHC.Match GHC.RdrName GHC.RdrName)
-      extractMatch = SYB.everythingStaged SYB.Parser (<|>) Nothing (Nothing `SYB.mkQ` (\ m@(GHC.Match _ _ _ _)-> Just m))
+      extractMatch :: (Data (a b)) => a b -> Maybe (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+      extractMatch = SYB.something (Nothing `SYB.mkQ` isMatch)
+      isMatch :: (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> Maybe (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+      isMatch m@(GHC.Match _ _ _ _) = Just m
       {-isNToNMatch :: (Data (a b), Eq b, Data b) => [Compare GHC.RdrName] -> a b -> Bool
       isNToNMatch c1 (m2@(GHC.Match _ _ _ _)) =
         let c2 = constructCompare m2 in
