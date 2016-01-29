@@ -1,4 +1,4 @@
-## <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
+## <img src="https://rawgit.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
 
 Home is now https://github.com/RefactoringTools/HaRe
 
@@ -33,7 +33,7 @@ HaRe with 7.10.2 and then using it against projects using an earlier compiler
 will not work, as HaRe needs to be able to invoke GHC to the type checker stage
 on the project using GHC 7.10.2.
 
-See https://github.com/kazu-yamamoto/ghc-mod/issues/615
+See https://github.com/DanielG/ghc-mod/issues/615
 
 ### Getting Started
 
@@ -129,17 +129,17 @@ To run the test suite do:
 The `configure.sh` script simply makes sure that all the cabal projects used in
 the tests are also configured.
 
-See <http://hspec.github.com/> for details on hspec
+See <http://hspec.github.io/> for details on hspec
 
-see <http://travis-ci.org/#alanz/HaRe> for continuous build results
+see <https://travis-ci.org/#alanz/HaRe> for continuous build results
 
 ### Resources
 
   * [GHC chapter](http://aosabook.org/en/ghc.html) of
     [AOSA](http://aosabook.org "Architecture of Open Source
     Applications") (if only for the diagram of GHC phases and data structures)
-  * [GHC 7.6.3 API docs](http://www.haskell.org/ghc/docs/7.6.3/html/libraries/ghc-7.6.3/GHC.html)
-  * [GHC 7.4.2 API docs](http://www.haskell.org/ghc/docs/7.4.2/html/libraries/ghc-7.4.2/GHC.html)
+  * [GHC 7.6.3 API docs](https://downloads.haskell.org/~ghc/7.6.3/docs/html/libraries/ghc-7.6.3/GHC.html)
+  * [GHC 7.4.2 API docs](https://downloads.haskell.org/~ghc/7.4.2/docs/html/libraries/ghc-7.4.2/GHC.html)
   * [Monoids: Theme and Variations](http://www.cis.upenn.edu/~byorgey/pub/monoid-pearl.pdf) 
     The background to how the dual tree data structure used for token
     output works
@@ -168,5 +168,5 @@ Please put a pull request for this list if you are missing.
 width="400" height="300" />
 
 The logo was designed by Christi du Toit,
-<http://www.behance.net/christidutoit>
+<https://www.behance.net/christidutoit>
 
