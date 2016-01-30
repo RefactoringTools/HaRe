@@ -10,6 +10,8 @@ execute identity transformation!
 [![Available on Hackage][badge-hackage]][hackage]
 [![License BSD3][badge-license]][license]
 [![Build Status][badge-travis]][travis]
+[![Stackage LTS](http://stackage.org/package/HaRe/badge/lts)](http://stackage.org/lts/package/HaRe)
+[![Stackage Nightly](http://stackage.org/package/HaRe/badge/nightly)](http://stackage.org/nightly/package/HaRe)
 
 [badge-travis]: https://travis-ci.org/RefactoringTools/HaRe.png?branch=master
 [travis]: https://travis-ci.org/RefactoringTools/HaRe
@@ -36,6 +38,7 @@ See https://github.com/kazu-yamamoto/ghc-mod/issues/615
 ### Getting Started
 
     cabal install HaRe
+    stack install HaRe --resolver=lts-4.0
 
 Check that it works from the command line
 
@@ -104,6 +107,9 @@ E.g., after renaming in Foo.hs, there will be two files
 This allows a sequence of refactorings to be undone manually if
 required. In theory.
 
+#### VIM integration
+
+See https://github.com/glittershark/vim-hare
 
 ### Development & Support
 

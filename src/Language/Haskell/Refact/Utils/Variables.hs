@@ -1995,7 +1995,7 @@ hsVisibleDsRdr nm e t = do
         Just ex -> hsVisibleDsRdr nm e ex
       return $ fds <> fdu <> fdb
     lstmt (GHC.L _ (GHC.RecStmt stmts _ _ _ _ _ _ _ _)) = hsVisibleDsRdr nm e stmts
-    lstmt _ = return (DN [])
+    -- lstmt _ = return (DN [])
 
     -- -----------------------
 

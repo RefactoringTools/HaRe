@@ -6,8 +6,11 @@
 
 module Language.Haskell.Refact.Refactoring.MoveDef
   ( liftToTopLevel
+  , compLiftToTopLevel
   , liftOneLevel
+  , compLiftOneLevel
   , demote
+  , compDemote
   -- ,liftingInClientMod
   ) where
 
