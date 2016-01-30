@@ -14,7 +14,7 @@ import qualified GHC.SYB.Utils as SYB
 import qualified GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
-import qualified RdrName               as GHC
+-- import qualified RdrName               as GHC
 
 import qualified Language.Haskell.GhcMod as GM
 import Language.Haskell.GhcMod.Internal  as GM
@@ -65,7 +65,7 @@ compAdd fileName paramName (row, col) = do
         let (Just (modName,_)) = getModuleName parsed
         let maybePn = locToName (row, col) renamed
         case maybePn of
-          Just pnt@(GHC.L _ pn) ->
+          Just (GHC.L _ pn) ->
             do
               logm $ "AddRmParam.compAdd:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
               -- make sure this name is defined in this module
@@ -250,6 +250,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                        logm $ "doAddingParam.doAdding: defaultParamPName=" ++ showGhc defaultParamPName
                        parent1 <- liftT $ replaceDecls parent ds'
                        parent' <- addDefaultActualArg False pn defaultParamPName parent1
+                       -- parent' <- addDefaultActualArg True pn defaultParamPName parent1
                        parent''<- addDefaultActualArgDecl defaultParamPName parent' pn isExported
                        ds2 <- liftT $ hsDecls parent''
                        ds'' <- addArgToSig pn ds2
@@ -455,7 +456,17 @@ mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t
 -}
 -- ---------------------------------------------------------------------
 
-addDefaultActualArg :: (SYB.Data t) => Bool -> GHC.Name -> GHC.Located GHC.RdrName -> t -> RefactGhc t
+-- |Add the default argument to each call site of the function receiving the new parameter (AZ)
+addDefaultActualArg :: (SYB.Data t)
+                    => Bool -- ^If True recursively add the parameter to all
+                            -- occurences of the function call site. If False,
+                            -- stop the recursion when hitting the function
+                            -- itself.
+                    -> GHC.Name -- ^ The function name to receive the new parameter
+                    -> GHC.Located GHC.RdrName -- ^The new parameter name
+                        -- ++AZ++: why is it located?
+                    -> t -- ^The AST fragment to be updated
+                    -> RefactGhc t
 addDefaultActualArg recursion pn argPName t = do
   logm $ "addDefaultActualArg:(recursion,pn,argPName):" ++ showGhc (recursion,pn,argPName)
   logDataWithAnns "addDefaultActualArg:t=:" t
@@ -464,10 +475,12 @@ addDefaultActualArg recursion pn argPName t = do
                else (applyTP (stop_tdTP (failTP `adhocTP` (inDecl nm)
                                                 `adhocTP` (funApp nm)))) t
        where
-         inDecl :: NameMap -> GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName)
-         inDecl nm fun@(GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t))
+         inDecl :: NameMap -> GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+         inDecl nm fun@(GHC.L l (GHC.ValD (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t)))
            | rdrName2NamePure nm n == pn
-           = return fun -- Stop the recursion by not returning mzero
+           = do
+               -- logm $ "addDefaultActualArg.inDecl:fun=" ++ showGhc fun
+               return fun -- Stop the recursion by not returning mzero
 
          -- inDecl (pat@(Dec (HsPatBind loc1 ps rhs ds))::HsDeclP)
          --   | pn == patToPN  ps

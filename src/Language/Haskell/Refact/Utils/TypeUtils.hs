@@ -139,7 +139,7 @@ import Language.Haskell.GHC.ExactPrint.Utils
 -- Modules from GHC
 -- import qualified Outputable    as GHC
 import qualified Bag           as GHC
-import qualified Exception     as GHC
+-- import qualified Exception     as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
@@ -1520,7 +1520,7 @@ addItemsToExport modu@(GHC.L l (GHC.HsModule modName exps imps ds deps hs)) (Jus
                         else return modu
        Nothing   -> return modu
 
-addItemsToExport mod@(GHC.L l (GHC.HsModule _ (Just ents) _ _ _ _)) Nothing createExp ids
+addItemsToExport modu@(GHC.L l (GHC.HsModule _ (Just ents) _ _ _ _)) Nothing createExp ids
   = assert False undefined
     -- = do ((toks,_),others)<-get
     --      let es = case ids of
@@ -1532,10 +1532,10 @@ addItemsToExport mod@(GHC.L l (GHC.HsModule _ (Just ents) _ _ _ _)) Nothing crea
     --          pos'= simpPos pos
     --          toks' = replaceToks toks pos' pos' [newToken]
     --      put ((toks',modified),others)
-    --      return mod {hsModExports=Just (es++ ents)}
+    --      return modu {hsModExports=Just (es++ ents)}
 
 -- addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _)  Nothing createExp ids
-addItemsToExport mod@(GHC.L l (GHC.HsModule modName Nothing _ _ _ _))  Nothing createExp ids
+addItemsToExport modu@(GHC.L l (GHC.HsModule modName Nothing _ _ _ _))  Nothing createExp ids
   = assert False undefined
   -- =case createExp of
   --      True ->do ((toks,_),others)<-get
@@ -1547,8 +1547,8 @@ addItemsToExport mod@(GHC.L l (GHC.HsModule modName Nothing _ _ _ _))  Nothing c
   --                                        ++ showEntities (render.ppi) es++")")
   --                    toks' = replaceToks toks pos pos [newToken]
   --                put  ((toks', modified), others)
-  --                return mod {hsModExports=Just es}
-  --      False ->return mod
+  --                return modu {hsModExports=Just es}
+  --      False ->return modu
 
 
 {-
