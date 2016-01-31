@@ -138,8 +138,8 @@ see <https://travis-ci.org/#alanz/HaRe> for continuous build results
   * [GHC chapter](http://aosabook.org/en/ghc.html) of
     [AOSA](http://aosabook.org "Architecture of Open Source
     Applications") (if only for the diagram of GHC phases and data structures)
-  * [GHC 7.6.3 API docs](https://downloads.haskell.org/~ghc/7.6.3/docs/html/libraries/ghc-7.6.3/GHC.html)
-  * [GHC 7.4.2 API docs](https://downloads.haskell.org/~ghc/7.4.2/docs/html/libraries/ghc-7.4.2/GHC.html)
+  * [GHC 7.6.3 API docs](http://www.haskell.org/ghc/docs/7.6.3/html/libraries/ghc-7.6.3/GHC.html)
+  * [GHC 7.4.2 API docs](http://www.haskell.org/ghc/docs/7.4.2/html/libraries/ghc-7.4.2/GHC.html)
   * [Monoids: Theme and Variations](http://www.cis.upenn.edu/~byorgey/pub/monoid-pearl.pdf) 
     The background to how the dual tree data structure used for token
     output works
