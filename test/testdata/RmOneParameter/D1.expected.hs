@@ -1,11 +1,11 @@
-module D1 where
+module RmOneParameter.D1 where
 
 {-remove parameter 'ys' from function 'sumSquares'. This refactoring
   affects module 'D1', and 'A1'-}
 
-sumSquares (x:xs)  = sq x + sumSquares xs
+sumSquares (x:xs) = sq x +sumSquares xs
 
-sumSquares []  = 0
+sumSquares [] = 0
 
 sq x = x ^ pow
 

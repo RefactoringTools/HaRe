@@ -2455,16 +2455,6 @@ findAllNameOccurences  name t
 
 -- ---------------------------------------------------------------------
 
-findNameInRdr :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
-findNameInRdr nm pn t =
- isJust $ SYB.something (Nothing `SYB.mkQ` worker) t
-   where
-      worker (ln :: GHC.Located GHC.RdrName)
-         | GHC.nameUnique pn == GHC.nameUnique (rdrName2NamePure nm ln) = Just True
-      worker _ = Nothing
-
--- ---------------------------------------------------------------------
-
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
 findPNT (GHC.L _ pn) = findPN pn
@@ -2488,6 +2478,12 @@ findPNs pns
         worker (n::GHC.Name)
            | elem (GHC.nameUnique n) uns = Just True
         worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if the specified Name ocuurs in the given syntax phrase.
+findNameInRdr :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
+findNameInRdr nm pn t = findNamesRdr nm [pn] t
 
 -- ---------------------------------------------------------------------
 

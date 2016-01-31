@@ -1,6 +1,6 @@
-module A1 where
+module RmOneParameter.A1 where
 
-import D1
+import RmOneParameter.D1
 
 sumSq xs ys= sum (map sq xs) + sumSquares xs
 

@@ -116,7 +116,7 @@ module Language.Haskell.Refact.API
     , isClassName
     , isInstanceName
     , hsTypeVbls
-    , hsPNs
+    , hsPNs, hsNamess, hsNamessRdr
     , hsBinds
     , HsValBinds(..)
     ,isDeclaredIn,isDeclaredInRdr

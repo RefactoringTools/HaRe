@@ -1,4 +1,4 @@
-module D1 where
+module RmOneParameter.D1 where
 
 {-remove parameter 'ys' from function 'sumSquares'. This refactoring
   affects module 'D1', and 'A1'-}

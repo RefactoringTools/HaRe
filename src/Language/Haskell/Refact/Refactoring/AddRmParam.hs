@@ -781,10 +781,14 @@ compRm fileName (row, col) = do
       exported <- isExported pn
       if exported
         then do
+          logm $ "compRm: exported"
           (refactoredMod,_) <- applyRefac (doRmParam pn pnth) (RSFile fileName)
           targetModule <- getRefactTargetModule
           clients <- clientModsAndFiles targetModule
-          assert False undefined
+          logm $ "compRm: clients:" ++ showGhc clients
+          refactoredClients <- mapM (rmParamInClientMod pn pnth) clients
+          -- let refactoredClients = []
+          return $ refactoredMod:refactoredClients
         else do
           logm $ "compRm:not exported"
           (refactoredMod,_) <- applyRefac (doRmParam pn pnth) (RSFile fileName)
@@ -896,24 +900,22 @@ doRmParam pn nth = do
              -- just remove the nth formal parameter.
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
              rmFormalArg pn nth updateToks checking t = do
-                applyTP (stop_tdTP (failTP `adhocTP` rmInMatch)) t
+               nm <- getRefactNameMap
+               applyTP (stop_tdTP (failTP `adhocTP` (rmInMatch nm))) t
 
                where
                  -- a formal parameter only exists in a match
-                 rmInMatch (match@(GHC.L l (GHC.Match (Just (fun,_)) pats typ (GHC.GRHSs rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-                   | GHC.unLoc fun == pn = do
-                       nm <- getRefactNameMap
+                 rmInMatch nm (match@(GHC.L l (GHC.Match (Just (fun,b)) pats typ (GHC.GRHSs rhs decls)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+                   | rdrName2NamePure nm fun == pn =
                        let  pat = pats!!nth     --get the nth formal parameter
+                            pats' = take nth pats ++ drop (nth + 1) pats
                             -- pNames = hsPNs pat  --get all the names in this pat. (the pat may be just be a variable)
-                            pNames = map (rdrName2NamePure nm) $ hsNamesRdr pat  --get all the names in this pat. (the pat may be just be a variable)
-                       in if checking && not ( all (==False) ((map (flip findPN rhs) pNames)) && --not used in rhs
-                                               all (==False) ((map (flip findPN decls) pNames))) --not used in the where clause
+                            pNames = map (rdrName2NamePure nm) $ hsNamessRdr pat  --get all the names in this pat. (the pat may be just be a variable)
+                       in if checking && not ( all (==False) ((map (flip (findNameInRdr nm) rhs) pNames)) && --not used in rhs
+                                               all (==False) ((map (flip (findNameInRdr nm) decls) pNames))) --not used in the where clause
                             then error  "This parameter can not be removed, as it is used!"
-                            else if updateToks
-                                   then  do  pats'<-delete pat pats
-                                             return (HsMatch loc fun pats' rhs decls)
-                                   else return (HsMatch loc fun (pats\\[pat]) rhs decls)
-                 rmInMatch _=mzero
+                            else return (GHC.L l (GHC.Match (Just (fun,b)) pats' typ (GHC.GRHSs rhs decls)))
+                 rmInMatch _ _ = mzero
                  -- rmInMatch (match@(HsMatch loc  fun  pats rhs decls)::HsMatchP) --a formal parameter only exists in a match
                  --   |pNTtoPN fun==pn
                  --   =let  pat=pats!!nth   --get the nth formal parameter
@@ -1055,7 +1057,36 @@ rmNthArgInFunCall pn nth updateToks=applyTP (stop_tdTP (failTP `adhocTP` funApp)
 
 -- ---------------------------------------------------------------------
 
-rmNthArgInSig pn nth decls = assert False undefined
+rmNthArgInSig :: GHC.Name -> Int -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+rmNthArgInSig pn nth decls = do
+  nm <- getRefactNameMap
+  let (before,after)=break (\d ->definesSigDRdr nm pn d) decls
+  if null after
+       then  return decls
+       else  do newSig<-rmNthArgInSig' nm nth  [(head after)]  --no problem with 'head'
+                return (before++newSig++(tail after))
+
+   where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is tp c))]
+          =do let newSig=if length is ==1
+                            then --this type signature only defines the type of pn
+                                 [GHC.L l (GHC.SigD (GHC.TypeSig is (rmNth tp) c))]
+                            else --this type signature also defines the type of other ids.
+                                 [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) tp         c)),
+                                  GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) (rmNth tp) c))]
+              return newSig
+
+         rmNth tp=let (before,after)=splitAt nth (unfoldHsTypApp tp)
+                    in  (foldHsTypApp (before ++ tail after))
+
+         --deconstruct a type application into a list of types
+         unfoldHsTypApp :: GHC.LHsType GHC.RdrName -> [GHC.LHsType GHC.RdrName]
+         unfoldHsTypApp typ =
+               case typ of (GHC.L l (GHC.HsFunTy t1 t2)) ->t1:unfoldHsTypApp t2
+                           _ ->[typ]
+
+         --reconstruct a type application by a list of type expression.
+         foldHsTypApp :: [GHC.LHsType GHC.RdrName] -> GHC.LHsType GHC.RdrName
+         foldHsTypApp ts=foldr1 (\t1 t2->(GHC.noLoc (GHC.HsFunTy t1 t2))) ts
 
 {-
 
@@ -1133,6 +1164,20 @@ getParam toks pos
 
 -- ---------------------------------------------------------------------
 
+rmParamInClientMod :: GHC.Name -> Int -> TargetModule -> RefactGhc ApplyRefacResult
+rmParamInClientMod pn nth serverModName = do
+  logm $ "rmParamInClientMod:serverModName" ++ showGhc serverModName
+  (r,_) <- applyRefac (rmNthArgInFunCallMod pn nth True) (RSTarget serverModName)
+  return r
+ -- = do (inscps, exps, mod, ts) <-parseSourceFile fileName
+ --      let qualifier = hsQualifier pnt inscps
+ --          pn = pNTtoPN pnt
+ --      if  qualifier == []
+ --          then return ((fileName,unmodified), (ts,mod))
+ --          else do (mod',((ts',m), _)) <- runStateT (rmNthArgInFunCall pn nth True mod)
+ --                                         ((ts,unmodified),(-1000,0))
+ --                  return ((fileName,m), (ts',mod'))
+
 {-
 rmParamInClientMod pnt nth (m, fileName)
  = do (inscps, exps, mod, ts) <-parseSourceFile fileName
@@ -1145,3 +1190,15 @@ rmParamInClientMod pnt nth (m, fileName)
                   return ((fileName,m), (ts',mod'))
 
 -}
+
+rmNthArgInFunCallMod pn nth f = do
+  parsed <- getRefactParsed
+  newNames <- equivalentNameInNewMod pn
+  logm $ "rmNthArgInFunCallMod:(newNames)=" ++ showGhcQual newNames
+  case newNames of
+    [] -> return ()
+    [pnt] -> do
+      parsed' <- rmNthArgInFunCall pn nth f parsed
+      putRefactParsed parsed' emptyAnns
+      return ()
+    ns    -> error "HaRe: rmParam: more than one name matches"
