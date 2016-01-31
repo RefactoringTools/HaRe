@@ -250,6 +250,7 @@ isInstanceName _n = error "undefined isInstanceName"
 -- ---------------------------------------------------------------------
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 
+-- TODO:AZ pretty sure this is not doing what we want
 hsPNs::(SYB.Data t)=> t -> [PName]
 hsPNs t = (nub.ghead "hsPNs") res
   where

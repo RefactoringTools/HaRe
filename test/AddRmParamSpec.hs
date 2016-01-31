@@ -265,4 +265,6 @@ positive=[
 negative=[(["FunIn4.hs"],["7","6"]),
           (["FunIn7.hs"],["10","4"])]
 }
+
+TODO: Add a test for a PatBind too
 -}

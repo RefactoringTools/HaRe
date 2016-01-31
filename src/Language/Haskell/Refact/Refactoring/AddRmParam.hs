@@ -1,12 +1,8 @@
 {-# LANGUAGE ScopedTypeVariables #-}
--- module Language.Haskell.Refact.Refactoring.AddRmParam(addOneParameter,rmOneParameter) where
-module Language.Haskell.Refact.Refactoring.AddRmParam(addOneParameter,rmOneParameter) where
-
--- import PosSyntax
--- import TypedIds
--- import UniqueNames hiding (srcLoc)
--- import PNT
--- import TiPNT
+module Language.Haskell.Refact.Refactoring.AddRmParam
+       ( addOneParameter, compAdd
+       , rmOneParameter, compRm
+       ) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -14,7 +10,6 @@ import qualified GHC.SYB.Utils as SYB
 import qualified GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
--- import qualified RdrName               as GHC
 
 import qualified Language.Haskell.GhcMod as GM
 import Language.Haskell.GhcMod.Internal  as GM
@@ -22,13 +17,12 @@ import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Transform
+import Language.Haskell.GHC.ExactPrint.Utils
 
 import System.Directory
 import Data.Char
 import Data.Maybe
 import Data.List hiding (delete)
--- import RefacUtils
--- import Data.Char
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
@@ -203,7 +197,6 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                                                         `choiceTP` failure) stmts'
                            return (GHC.L l (GHC.HsDo ctx stmts2 ptt))
                       else mzero
-             inLet _ = mzero
              inLet _ = mzero
 
 {-
@@ -765,6 +758,11 @@ myfst (a,_,_,_) = a
 -}
 -----------------------------------------------------------------------------------------------------
 
+-- |The refactoring removes a user specified formal parameter in a function
+-- binding,and the corresponding actual parameters in all calling places of this
+-- function. The condition acompanying this refactoring is that the parameter to
+-- be removed is not being used.
+-- The @SimpPos@ should be somwewhere inside the parameter to be removed
 rmOneParameter :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 rmOneParameter settings opts fileName (row,col) = do
   absFileName <- canonicalizePath fileName
@@ -773,7 +771,25 @@ rmOneParameter settings opts fileName (row,col) = do
 compRm :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
 compRm fileName (row, col) = do
   parseSourceFileGhc fileName
-  assert False undefined
+  -- pn is the function names.
+  -- nth is the nth paramter of pn is to be removed,index starts form 0.
+  mp <- getParam (row,col)
+  case mp of
+    Nothing -> error "Invalid cursor position!"  -- cursor doesn't stop at a parameter position.
+    Just (pn,pnth) -> do
+      logm $ "compRm:(pn,pnth)=" ++ showGhc (pn,pnth)
+      exported <- isExported pn
+      if exported
+        then do
+          (refactoredMod,_) <- applyRefac (doRmParam pn pnth) (RSFile fileName)
+          targetModule <- getRefactTargetModule
+          clients <- clientModsAndFiles targetModule
+          assert False undefined
+        else do
+          logm $ "compRm:not exported"
+          (refactoredMod,_) <- applyRefac (doRmParam pn pnth) (RSFile fileName)
+          return [refactoredMod]
+
 {-
   --pn is the function names.
   --nth is the nth paramter of pn is to be removed,index starts form 0.
@@ -810,7 +826,107 @@ rmOneParameter args
                         writeRefactoredFiles False $ ((fileName,m),(ts',mod')):refactoredClients
                 else  writeRefactoredFiles  False [((fileName,m), (ts',mod'))]
        else error "Invalid cursor position!"
+-}
 
+-- ---------------------------------------------------------------------
+
+--pn: function name; nth: the index of the parameter to be removed.
+doRmParam :: GHC.Name -> Int -> RefactGhc ()
+doRmParam pn nth = do
+    logm $ "doRmParam entered:(pn,nth)=" ++ showGhc (pn,nth)
+    parsed <- getRefactParsed
+    r <- applyTP ((once_tdTP (failTP `adhocTP` inMod
+                                     -- `adhocTP` inMatch
+                                     -- `adhocTP` inPat
+                                     -- `adhocTP` inLet
+                                     -- `adhocTP` inAlt
+                                     -- `adhocTP` inLetStmt
+                             ))
+                  `choiceTP` failure) parsed
+    putRefactParsed r emptyAnns
+    return ()
+      where
+             --1. pn is declared in top level.
+             inMod :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
+             inMod modu = do
+               nm <- getRefactNameMap
+               decls <- liftT $ hsDecls modu
+               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                  then do doRemoving modu decls
+                  else mzero
+                -- |definingDecls [pn] ds False  False/=[] = doRemoving mod  ds
+             inMod _ =mzero
+
+             -- --2. pn is declared locally in the where clause of a match.
+             -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
+             --     |definingDecls [pn] ds False False /=[] = doRemoving match  ds
+             -- inMatch _ =mzero
+
+             -- --3. pn is declared locally in the where clause of a pattern binding.
+             -- inPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
+             --    | definingDecls [pn] ds False  False/=[]  = doRemoving pat  ds
+             -- inPat _=mzero
+
+             -- --4: pn is declared locally in a  Let expression
+             -- inLet (letExp@(Exp (HsLet ds e))::HsExpP)
+             --   | definingDecls [pn] ds False  False/=[] = doRemoving letExp  ds
+             -- inLet _=mzero
+
+             -- --5. pn is declared locally in a  case alternative.
+             -- inAlt (alt@(HsAlt loc p rhs ds)::HsAltP)
+             --    | definingDecls [pn] ds False  False/=[]  = doRemoving  alt  ds
+             -- inAlt _=mzero
+
+             -- --6.pn is declared locally in a let statement.
+             -- inLetStmt (letStmt@(HsLetStmt ds stmts):: HsStmtP)
+             --    | definingDecls [pn] ds False  False/=[]  = doRemoving letStmt ds
+             -- inLetStmt _=mzero
+
+             failure = idTP `adhocTP` modu
+               where modu (m::GHC.ParsedSource) = error "Refactoring failed"
+
+
+             doRemoving :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
+             doRemoving parent ds  --PROBLEM: How about doRemoving fails?
+                =do rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False ds
+                    ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
+                    ds'' <- liftT $ replaceDecls parent ds'
+                    rmNthArgInFunCall pn nth True ds''
+
+             -- just remove the nth formal parameter.
+             rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
+             rmFormalArg pn nth updateToks checking t = do
+                applyTP (stop_tdTP (failTP `adhocTP` rmInMatch)) t
+
+               where
+                 -- a formal parameter only exists in a match
+                 rmInMatch (match@(GHC.L l (GHC.Match (Just (fun,_)) pats typ (GHC.GRHSs rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+                   | GHC.unLoc fun == pn = do
+                       nm <- getRefactNameMap
+                       let  pat = pats!!nth     --get the nth formal parameter
+                            -- pNames = hsPNs pat  --get all the names in this pat. (the pat may be just be a variable)
+                            pNames = map (rdrName2NamePure nm) $ hsNamesRdr pat  --get all the names in this pat. (the pat may be just be a variable)
+                       in if checking && not ( all (==False) ((map (flip findPN rhs) pNames)) && --not used in rhs
+                                               all (==False) ((map (flip findPN decls) pNames))) --not used in the where clause
+                            then error  "This parameter can not be removed, as it is used!"
+                            else if updateToks
+                                   then  do  pats'<-delete pat pats
+                                             return (HsMatch loc fun pats' rhs decls)
+                                   else return (HsMatch loc fun (pats\\[pat]) rhs decls)
+                 rmInMatch _=mzero
+                 -- rmInMatch (match@(HsMatch loc  fun  pats rhs decls)::HsMatchP) --a formal parameter only exists in a match
+                 --   |pNTtoPN fun==pn
+                 --   =let  pat=pats!!nth   --get the nth formal parameter
+                 --         pNames=hsPNs pat  --get all the names in this pat. (the pat may be just be a variable)
+                 --    in if checking && not ( all (==False) ((map (flip findPN rhs) pNames)) && --not used in rhs
+                 --                            all (==False) ((map (flip findPN decls) pNames))) --not used in the where clause
+                 --         then error  "This parameter can not be removed, as it is used!"
+                 --         else if updateToks
+                 --                then  do  pats'<-delete pat pats
+                 --                          return (HsMatch loc fun pats' rhs decls)
+                 --                else return (HsMatch loc fun (pats\\[pat]) rhs decls)
+                 -- rmInMatch _=mzero
+{-
 --pn: function name; nth: the index of the parameter to be removed.
 doRmParam pn nth mod fileName tokList
        =runStateT (applyTP ((once_tdTP (failTP `adhocTP` inMod
@@ -876,8 +992,41 @@ doRmParam pn nth mod fileName tokList
                                           return (HsMatch loc fun pats' rhs decls)
                                 else return (HsMatch loc fun (pats\\[pat]) rhs decls)
                  rmInMatch _=mzero
+-}
 
+-- ---------------------------------------------------------------------
 
+-- |Remove the nth argument of function pn in all the calling places. The index
+-- for the first argument is zero.
+rmNthArgInFunCall :: (SYB.Data t) => GHC.Name -> Int -> Bool -> t -> RefactGhc t
+rmNthArgInFunCall pn nth updateToks t = do
+  nm <- getRefactNameMap
+  applyTP (stop_tdTP (failTP `adhocTP` (funApp nm))) t
+   where
+         funApp nm (exp@(GHC.L _ (GHC.HsPar (GHC.L l (GHC.HsApp e1 e2))))::GHC.LHsExpr GHC.RdrName)
+              | nth == 0 && Just pn == expToNameRdr nm e1
+             = return e1 -- handle the case like '(fun x) => fun "
+         funApp nm (exp@(GHC.L _ (GHC.HsApp e1 e2))::GHC.LHsExpr GHC.RdrName)
+              | Just pn == (expToNameRdr nm.(ghead "rmNthArgInFunCall").unfoldHsApp) exp  --test if this application is a calling of fun pn.
+               =do let (before,after)=splitAt (nth+1) (unfoldHsApp exp)   --remove the nth argument
+                   return (foldHsApp (before++tail after))  --reconstruct the function application.
+
+         funApp _ _ = mzero
+
+         -- |deconstruct a function application into a list of expressions.
+         -- TODO:AZ include the location, for reconstruction
+         unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> [GHC.LHsExpr GHC.RdrName]
+         unfoldHsApp exp=
+              case exp of
+                  (GHC.L l (GHC.HsApp e1 e2))->(unfoldHsApp e1)++[e2]
+                  _ ->[exp]
+
+         -- |reconstruct  a function application by a list of expressions.
+         -- TODO:AZ include the location, for reconstruction
+         foldHsApp :: [GHC.LHsExpr GHC.RdrName] -> GHC.LHsExpr GHC.RdrName
+         foldHsApp exps=foldl1 (\e1 e2->(GHC.noLoc (GHC.HsApp e1 e2))) exps
+
+{-
 --remove the nth argument of function pn in all the calling places. the index for the first argument is zero.
 rmNthArgInFunCall pn nth updateToks=applyTP (stop_tdTP (failTP `adhocTP` funApp))
    where
@@ -902,7 +1051,13 @@ rmNthArgInFunCall pn nth updateToks=applyTP (stop_tdTP (failTP `adhocTP` funApp)
                   _ ->[exp]
          --reconstruct  a function application by a list of expressions.
          foldHsApp exps=foldl1 (\e1 e2->(Exp (HsApp e1 e2))) exps
+-}
 
+-- ---------------------------------------------------------------------
+
+rmNthArgInSig pn nth decls = assert False undefined
+
+{-
 
 rmNthArgInSig pn nth decls
  = let (before,after)=break (\d ->definesTypeSig pn d) decls
@@ -930,7 +1085,36 @@ rmNthArgInSig pn nth decls
 
          --reconstruct a type application by a list of type expression.
          foldHsTypApp ts=foldr1 (\t1 t2->(Typ (HsTyFun t1 t2))) ts
+-}
 
+-- ---------------------------------------------------------------------
+
+-- |get the function name and the index of the parameter to be removed from the cursor position.
+getParam :: SimpPos -> RefactGhc (Maybe (GHC.Name,Int))
+getParam pos = do
+  nm <- getRefactNameMap
+  parsed <- getRefactParsed
+  -- let mparam = locToRdrName pos parsed
+  let r = applyTU (once_tdTU (failTU `adhocTU` inMatch)) parsed
+  case r of
+    Nothing     -> return Nothing
+    Just (ln,i) -> return $ Just (rdrName2NamePure nm ln,i)
+    where
+       inMatch (match@(GHC.Match (Just (fun,_)) pats mtyp grhs)::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+         = case locToRdrName pos pats of
+             Nothing -> Nothing
+             Just ln -> if isNothing elem
+                    then error  "Invalid cursor position!"  -- cursor doesn't stop at a parameter position.
+                    else Just (fun, fromJust (elemIndex (fromJust elem) paramPosRanges))
+               where
+                 paramPosRanges = map GHC.getLoc pats
+                 elem = find (inRange pos) paramPosRanges
+           -- * |inRange pos (getStartEndLoc toks pats)
+
+       inRange pos ss = pos >= startPos && pos<=endPos
+         where (startPos,endPos) = (ss2pos ss,ss2posEnd ss)
+
+{-
 --get the function name and the index of the parameter to be removed from the cursor position.
 getParam toks pos
      =(fromMaybe (defaultPNT, 0)).(applyTU (once_tdTU (failTU `adhocTU` inMatch)))
@@ -945,7 +1129,11 @@ getParam toks pos
        inMatch _=Nothing
 
        inRange pos (startPos,endPos)=pos>=startPos && pos<=endPos
+-}
 
+-- ---------------------------------------------------------------------
+
+{-
 rmParamInClientMod pnt nth (m, fileName)
  = do (inscps, exps, mod, ts) <-parseSourceFile fileName
       let qualifier = hsQualifier pnt inscps
