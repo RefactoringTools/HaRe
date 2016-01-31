@@ -1729,6 +1729,7 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` lhstype
           `SYB.extQ` lsigs
           `SYB.extQ` lsig
+          `SYB.extQ` lstmts
           `SYB.extQ` lstmt
           ) t
 
@@ -1973,6 +1974,15 @@ hsVisibleDsRdr nm e t = do
     lsig (GHC.L _ (GHC.SpecInstSig _ _)) = return (DN [])
 
     lsig _ = return (DN [])
+
+    -- -----------------------
+
+    lstmts :: [GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> RefactGhc DeclaredNames
+    lstmts ds
+      | findEntity e ds = do
+        fds <- mapM (hsVisibleDsRdr nm e) ds
+        return $ mconcat fds
+    lstmts _ = return (DN [])
 
     -- -----------------------
 

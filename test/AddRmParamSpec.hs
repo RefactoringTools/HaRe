@@ -165,6 +165,37 @@ spec = do
                                  "./AddOneParameter/FunIn4.refactored.hs"
       diffD `shouldBe` []
 
+    -- -------------------
+
+    it "addOneParameter in FunIn6" $ do
+          -- (["FunIn6.hs"],["y","8","22"])],
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/FunIn6.hs" "y" (9,7)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/FunIn6.hs" "y" (9,7)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/FunIn6.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/FunIn6.expected.hs"
+                                 "./AddOneParameter/FunIn6.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
+    it "addOneParameter in Nested" $ do
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/Nested.hs" "y" (8,1)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/Nested.hs" "y" (8,1)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/Nested.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/Nested.expected.hs"
+                                 "./AddOneParameter/Nested.refactored.hs"
+      diffD `shouldBe` []
+
     -- ---------------------------------
     -- Negative tests
     -- ---------------------------------

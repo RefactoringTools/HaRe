@@ -21,6 +21,7 @@ module Language.Haskell.Refact.API
        , logm
        , logDataWithAnns
        , logExactprint
+       , logParsedSource
 
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
