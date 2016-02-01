@@ -4,9 +4,9 @@ module FunIn5 where
 
 --In this example: remove (x,y) (stop the cursor at 'x' or 'y')
 
-foo   = h + t where (h,t) = head $ zip [1..a] [3..b]
-                    a=10
-                    b=17
+foo  = h + t where (h,t) = head $ zip [1..a] [3..b]
+                   a=10
+                   b=17
 
 main :: Int
 main = foo

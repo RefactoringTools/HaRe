@@ -4,8 +4,8 @@ module FunIn3 where
 
 --In this example: remove the parameter 'x' (or 'z') to 'foo'
 
-foo  y  = h + t where (h,t) = head $ zip [1..7] [3..y]
+foo y  = h + t where (h,t) = head $ zip [1..7] [3..y]
 
 main :: Int
-main = foo  20
+main = foo 20
 

@@ -374,13 +374,13 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
     it "fails FunIn4" $ do
      -- (["FunIn4.hs"],["7","6"]),
      res <- catchException (ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn4.hs" (7,6))
-     (show res) `shouldBe` "Just \"\""
+     (show res) `shouldBe` "Just \"This parameter can not be removed, as it is used!\""
 
     -- -------------------
     it "fails FunIn7" $ do
           -- (["FunIn7.hs"],["10","4"])]
      res <- catchException (ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn7.hs" (10,4))
-     (show res) `shouldBe` "Just \"\""
+     (show res) `shouldBe` "Just \"Invalid cursor position!\""
 
     -- -------------------
 {-

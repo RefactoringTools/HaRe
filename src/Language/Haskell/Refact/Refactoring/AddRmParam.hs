@@ -1009,25 +1009,30 @@ rmNthArgInFunCall pn nth updateToks t = do
          funApp nm (exp@(GHC.L _ (GHC.HsPar (GHC.L l (GHC.HsApp e1 e2))))::GHC.LHsExpr GHC.RdrName)
               | nth == 0 && Just pn == expToNameRdr nm e1
              = return e1 -- handle the case like '(fun x) => fun "
-         funApp nm (exp@(GHC.L _ (GHC.HsApp e1 e2))::GHC.LHsExpr GHC.RdrName)
+         funApp nm (exp@(GHC.L _ (GHC.HsApp e1 e2))::GHC.LHsExpr GHC.RdrName) = do
                 --test if this application is a calling of fun pn.
-              | Just pn == (expToNameRdr nm.snd.(ghead "rmNthArgInFunCall").unfoldHsApp) exp
-               =do
+              expu <- liftT $ unfoldHsApp exp
+              if Just pn == (expToNameRdr nm.snd.(ghead "rmNthArgInFunCall")) expu
+               then do
                   logDataWithAnns "rmNthArgInFunCall:(exp)=" exp
-                  logDataWithAnns "rmNthArgInFunCall:(unfoldHsApp exp)=" (unfoldHsApp exp)
-                  let (before,after)=splitAt (nth+1) (unfoldHsApp exp)   --remove the nth argument
+                  logDataWithAnns "rmNthArgInFunCall:(unfoldHsApp exp)=" expu
+                  let (before,after)=splitAt (nth+1) expu   --remove the nth argument
                   logDataWithAnns "rmNthArgInFunCall:(foldHsApp (before++tail after))=" (foldHsApp (before++tail after))
                   return (foldHsApp (before++tail after))  --reconstruct the function application.
+               else mzero
 
          funApp _ _ = mzero
 
          -- |deconstruct a function application into a list of expressions.
-         -- TODO:AZ include the location, for reconstruction
-         unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)]
-         unfoldHsApp exp=
+         unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> Transform [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)]
+         unfoldHsApp exp =
               case exp of
-                  (GHC.L l (GHC.HsApp e1 e2))->(unfoldHsApp e1)++[(l,e2)]
-                  _ ->[(GHC.noSrcSpan,exp)]
+                  (GHC.L l (GHC.HsApp e1 e2))-> do
+                    transferEntryDPT exp e1
+                    setEntryDPT exp (DP (0,0))
+                    e1u <- unfoldHsApp e1
+                    return $ e1u ++ [(l,e2)]
+                  _ -> return [(GHC.noSrcSpan,exp)]
 
          -- |reconstruct  a function application by a list of expressions.
          -- TODO:AZ include the location, for reconstruction
