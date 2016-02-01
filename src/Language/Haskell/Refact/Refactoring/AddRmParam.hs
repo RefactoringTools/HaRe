@@ -771,6 +771,7 @@ rmOneParameter settings opts fileName (row,col) = do
 compRm :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
 compRm fileName (row, col) = do
   parseSourceFileGhc fileName
+  logParsedSource "compRm entry"
   -- pn is the function names.
   -- nth is the nth paramter of pn is to be removed,index starts form 0.
   mp <- getParam (row,col)
@@ -1009,24 +1010,31 @@ rmNthArgInFunCall pn nth updateToks t = do
               | nth == 0 && Just pn == expToNameRdr nm e1
              = return e1 -- handle the case like '(fun x) => fun "
          funApp nm (exp@(GHC.L _ (GHC.HsApp e1 e2))::GHC.LHsExpr GHC.RdrName)
-              | Just pn == (expToNameRdr nm.(ghead "rmNthArgInFunCall").unfoldHsApp) exp  --test if this application is a calling of fun pn.
-               =do let (before,after)=splitAt (nth+1) (unfoldHsApp exp)   --remove the nth argument
-                   return (foldHsApp (before++tail after))  --reconstruct the function application.
+                --test if this application is a calling of fun pn.
+              | Just pn == (expToNameRdr nm.snd.(ghead "rmNthArgInFunCall").unfoldHsApp) exp
+               =do
+                  logDataWithAnns "rmNthArgInFunCall:(exp)=" exp
+                  logDataWithAnns "rmNthArgInFunCall:(unfoldHsApp exp)=" (unfoldHsApp exp)
+                  let (before,after)=splitAt (nth+1) (unfoldHsApp exp)   --remove the nth argument
+                  logDataWithAnns "rmNthArgInFunCall:(foldHsApp (before++tail after))=" (foldHsApp (before++tail after))
+                  return (foldHsApp (before++tail after))  --reconstruct the function application.
 
          funApp _ _ = mzero
 
          -- |deconstruct a function application into a list of expressions.
          -- TODO:AZ include the location, for reconstruction
-         unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> [GHC.LHsExpr GHC.RdrName]
+         unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)]
          unfoldHsApp exp=
               case exp of
-                  (GHC.L l (GHC.HsApp e1 e2))->(unfoldHsApp e1)++[e2]
-                  _ ->[exp]
+                  (GHC.L l (GHC.HsApp e1 e2))->(unfoldHsApp e1)++[(l,e2)]
+                  _ ->[(GHC.noSrcSpan,exp)]
 
          -- |reconstruct  a function application by a list of expressions.
          -- TODO:AZ include the location, for reconstruction
-         foldHsApp :: [GHC.LHsExpr GHC.RdrName] -> GHC.LHsExpr GHC.RdrName
-         foldHsApp exps=foldl1 (\e1 e2->(GHC.noLoc (GHC.HsApp e1 e2))) exps
+         foldHsApp :: [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)] -> GHC.LHsExpr GHC.RdrName
+         -- foldHsApp exps = foldl1 (\e1 e2->(GHC.noLoc (GHC.HsApp e1 e2))) exps
+         foldHsApp [] = error "foldHsApp:empty list"
+         foldHsApp exps = snd $ foldl1 (\(l1,e1) (l2,e2) -> (l2,GHC.L l2 (GHC.HsApp e1 e2))) exps
 
 {-
 --remove the nth argument of function pn in all the calling places. the index for the first argument is zero.
@@ -1067,7 +1075,10 @@ rmNthArgInSig pn nth decls = do
                 return (before++newSig++(tail after))
 
    where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is tp c))]
-          =do let newSig=if length is ==1
+          =do
+              logDataWithAnns "rmNthArgInSig:(tp)" tp
+              logDataWithAnns "rmNthArgInSig:(unfoldHsTypApp tp)" (unfoldHsTypApp tp)
+              let newSig=if length is ==1
                             then --this type signature only defines the type of pn
                                  [GHC.L l (GHC.SigD (GHC.TypeSig is (rmNth tp) c))]
                             else --this type signature also defines the type of other ids.
@@ -1075,7 +1086,7 @@ rmNthArgInSig pn nth decls = do
                                   GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) (rmNth tp) c))]
               return newSig
 
-         rmNth tp=let (before,after)=splitAt nth (unfoldHsTypApp tp)
+         rmNth tp = let (before,after)=splitAt nth (unfoldHsTypApp tp)
                     in  (foldHsTypApp (before ++ tail after))
 
          --deconstruct a type application into a list of types
@@ -1086,6 +1097,7 @@ rmNthArgInSig pn nth decls = do
 
          --reconstruct a type application by a list of type expression.
          foldHsTypApp :: [GHC.LHsType GHC.RdrName] -> GHC.LHsType GHC.RdrName
+         foldHsTypApp [] = error "foldHsTypApp:empty list"
          foldHsTypApp ts=foldr1 (\t1 t2->(GHC.noLoc (GHC.HsFunTy t1 t2))) ts
 
 {-

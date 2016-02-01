@@ -186,3 +186,11 @@ Executable rmoneparama1
   default-language:    Haskell2010
 
 -- ---------------------------------------------------------------------
+
+Executable rmoneparama2
+  Main-Is: RmOneParameter/A2.hs
+  Other-Modules : RmOneParameter.D2
+  Build-Depends:          base >= 4.0  && < 4.9
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------

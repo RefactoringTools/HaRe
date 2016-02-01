@@ -251,6 +251,138 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
       diffA `shouldBe` []
 
     -- -------------------
+
+    it "rmOneParameter in D2 A2" $ do
+          -- (["D2.hs","A2.hs"],["7","19"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/D2.hs" (7,19)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/D2.hs" (7,19)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/D2.hs"
+                    , "RmOneParameter/A2.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/D2.expected.hs"
+                                 "./RmOneParameter/D2.refactored.hs"
+      diffD `shouldBe` []
+
+      diffA <- ct $ compareFiles "./RmOneParameter/A2.expected.hs"
+                                 "./RmOneParameter/A2.refactored.hs"
+      diffA `shouldBe` []
+
+    -- -------------------
+
+    it "rmOneParameter in FunIn1" $ do
+          -- (["FunIn1.hs"],["8","5"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn1.hs" (8,5)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn1.hs" (8,5)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/FunIn1.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/FunIn1.expected.hs"
+                                 "./RmOneParameter/FunIn1.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
+    it "rmOneParameter in FunIn2" $ do
+          -- (["FunIn2.hs"],["8","5"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn2.hs" (8,5)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn2.hs" (8,5)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/FunIn2.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/FunIn2.expected.hs"
+                                 "./RmOneParameter/FunIn2.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
+    it "rmOneParameter in FunIn3" $ do
+          -- (["FunIn3.hs"],["7","5"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn3.hs" (7,5)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn3.hs" (7,5)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/FunIn3.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/FunIn3.expected.hs"
+                                 "./RmOneParameter/FunIn3.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
+    it "rmOneParameter in FunIn5" $ do
+          -- (["FunIn5.hs"],["7","6"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn5.hs" (7,6)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn5.hs" (7,6)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/FunIn5.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/FunIn5.expected.hs"
+                                 "./RmOneParameter/FunIn5.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
+    it "rmOneParameter in FunIn6" $ do
+          -- (["FunIn6.hs"],["7","5"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn6.hs" (7,5)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn6.hs" (7,5)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/FunIn6.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/FunIn6.expected.hs"
+                                 "./RmOneParameter/FunIn6.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
+    it "rmOneParameter in FunIn0" $ do
+          -- (["FunIn0.hs"],["10","7"])],
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn0.hs" (10,7)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn0.hs" (10,7)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/FunIn0.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/FunIn0.expected.hs"
+                                 "./RmOneParameter/FunIn0.refactored.hs"
+      diffD `shouldBe` []
+
+    -- ---------------------------------
+    -- Negative tests
+    -- ---------------------------------
+
+    it "fails FunIn4" $ do
+     -- (["FunIn4.hs"],["7","6"]),
+     res <- catchException (ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn4.hs" (7,6))
+     (show res) `shouldBe` "Just \"\""
+
+    -- -------------------
+    it "fails FunIn7" $ do
+          -- (["FunIn7.hs"],["10","4"])]
+     res <- catchException (ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn7.hs" (10,4))
+     (show res) `shouldBe` "Just \"\""
+
+    -- -------------------
 {-
 TestCases{refactorCmd="rmOneParameter",
 positive=[
