@@ -65,12 +65,12 @@ containsNothingToNothing funNm a = do
   let nToNStr = funNm ++ " Nothing = Nothing"
   (_, pRes) <- handleParseResult "containsNothingToNothing" $ parseDecl dFlags "MaybeToMonad.hs" nToNStr
   let match = gfromJust "containsNothingToNothing" $ extractMatch pRes
-      --c1 :: ([Compare GHC.RdrName]) = constructCompare match
+      c1 = constructCompare match
       match2 = extractMatch a
-      --c2 :: ([Compare GHC.RdrName]) = constructCompare match2
-  --logm $ (show c1)
-  return False
-  --return $ c1 == c2
+      c2 = constructCompare match2
+  logm $ (show c1)
+  --return False
+  return $ c1 == c2
     where
       extractMatch :: (Data (a b)) => a b -> Maybe (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
       extractMatch = SYB.something (Nothing `SYB.mkQ` isMatch)
