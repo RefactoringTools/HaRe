@@ -21,6 +21,7 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 import System.Directory
 import Data.Char
+import Data.Foldable
 import Data.Maybe
 import Data.List hiding (delete)
 
@@ -893,11 +894,20 @@ doRmParam pn nth = do
 
              doRemoving :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
              doRemoving parent ds  --PROBLEM: How about doRemoving fails?
+                =do
+                    -- ds1 <- rmNthArgInFunCall pn nth False ds
+                    -- rmFormalArg pn nth False True ds1
+                    ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
+                    ds'' <- liftT $ replaceDecls parent ds'
+                    rmNthArgInFunCall pn nth True ds''
+ {-
+             doRemoving :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
+             doRemoving parent ds  --PROBLEM: How about doRemoving fails?
                 =do rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False ds
                     ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
                     ds'' <- liftT $ replaceDecls parent ds'
                     rmNthArgInFunCall pn nth True ds''
-
+-}
              -- just remove the nth formal parameter.
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
              rmFormalArg pn nth updateToks checking t = do
@@ -1008,34 +1018,53 @@ rmNthArgInFunCall pn nth updateToks t = do
    where
          funApp nm (exp@(GHC.L _ (GHC.HsPar (GHC.L l (GHC.HsApp e1 e2))))::GHC.LHsExpr GHC.RdrName)
               | nth == 0 && Just pn == expToNameRdr nm e1
-             = return e1 -- handle the case like '(fun x) => fun "
+             = do
+                 liftT $ transferEntryDPT exp e1
+                 return e1 -- handle the case like '(fun x) => fun "
          funApp nm (exp@(GHC.L _ (GHC.HsApp e1 e2))::GHC.LHsExpr GHC.RdrName) = do
                 --test if this application is a calling of fun pn.
-              expu <- liftT $ unfoldHsApp exp
+              let expu = unfoldHsApp exp
+              ed <- liftT $ getEntryDPT exp
+              logm $ "rmNthArgInFunCall:expu=" ++ showGhc expu
               if Just pn == (expToNameRdr nm.snd.(ghead "rmNthArgInFunCall")) expu
                then do
                   logDataWithAnns "rmNthArgInFunCall:(exp)=" exp
                   logDataWithAnns "rmNthArgInFunCall:(unfoldHsApp exp)=" expu
                   let (before,after)=splitAt (nth+1) expu   --remove the nth argument
-                  logDataWithAnns "rmNthArgInFunCall:(foldHsApp (before++tail after))=" (foldHsApp (before++tail after))
-                  return (foldHsApp (before++tail after))  --reconstruct the function application.
+                  let exp' = (foldHsApp (before++tail after))  --reconstruct the function application.
+                  liftT $ setEntryDPT exp' ed
+                  logDataWithAnns "rmNthArgInFunCall:(foldHsApp (before++tail after))=" exp'
+                  return exp'
                else mzero
 
          funApp _ _ = mzero
 
+{-
+unfold / fold preserving annotations.
+   zip [1..7] [3..y]
+
+L l1 HsApp                EDP 1
+  L l2 HsApp              EDP 0
+    L l3 zip       idx 0  EDP 0
+    L l4 [1..7]    idx 1  EDP 1
+  L l5 [3..y]      idx 2  EDP 1
+
+Flatten into
+
+[ (_ , (L l3 zip))
+, (l2, (L l4 [1..7]))
+, (l1, (L l5 [3..y]))
+]
+-}
+
          -- |deconstruct a function application into a list of expressions.
-         unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> Transform [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)]
+         unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)]
          unfoldHsApp exp =
               case exp of
-                  (GHC.L l (GHC.HsApp e1 e2))-> do
-                    transferEntryDPT exp e1
-                    setEntryDPT exp (DP (0,0))
-                    e1u <- unfoldHsApp e1
-                    return $ e1u ++ [(l,e2)]
-                  _ -> return [(GHC.noSrcSpan,exp)]
+                  (GHC.L l (GHC.HsApp e1 e2)) -> unfoldHsApp e1 ++ [(l,e2)]
+                  _                           -> [(GHC.noSrcSpan,exp)]
 
          -- |reconstruct  a function application by a list of expressions.
-         -- TODO:AZ include the location, for reconstruction
          foldHsApp :: [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)] -> GHC.LHsExpr GHC.RdrName
          -- foldHsApp exps = foldl1 (\e1 e2->(GHC.noLoc (GHC.HsApp e1 e2))) exps
          foldHsApp [] = error "foldHsApp:empty list"

@@ -10,3 +10,4 @@ foo  = h + t where (h,t) = head $ zip [1..a] [3..b]
 
 main :: Int
 main = foo
+

@@ -4,7 +4,7 @@ module RmOneParameter.D2 where
   affects module 'D1', and 'A1'. This aims to test removing a
   parameter from a recursion function-}
 
-sumSquares (x:xs)  = sq x + sumSquares xs
+sumSquares (x:xs) = sq x + sumSquares xs
 
 sumSquares [] = 0
 

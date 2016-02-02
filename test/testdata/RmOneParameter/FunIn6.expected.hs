@@ -4,7 +4,7 @@ module FunIn6 where
 
 --In this example: remove x. The brackets enclosing 'foo' will also be removed.
 
-foo  = h + t where (h,t) = head $ zip [1..10] [3..10]
+foo = h + t where (h,t) = head $ zip [1..10] [3..10]
 
 main :: Int
 main = foo + foo
