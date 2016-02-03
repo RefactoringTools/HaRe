@@ -235,8 +235,9 @@ module Language.Haskell.Refact.API
   , NameMap
 
  -- * from `Language.Haskell.Refact.Utils.ExactPrint'`
- , replace
- , setRefactAnns
+  , replace
+  , setRefactAnns
+  , setAnnKeywordDP
 
  ) where
 

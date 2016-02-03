@@ -374,6 +374,7 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
     it "fails FunIn4" $ do
      -- (["FunIn4.hs"],["7","6"]),
      res <- catchException (ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn4.hs" (7,6))
+     -- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn4.hs" (7,6)
      (show res) `shouldBe` "Just \"This parameter can not be removed, as it is used!\""
 
     -- -------------------

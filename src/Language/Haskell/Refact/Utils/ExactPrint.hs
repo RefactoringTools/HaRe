@@ -8,12 +8,15 @@ module Language.Haskell.Refact.Utils.ExactPrint
     replace
   , replaceAnnKey
   , copyAnn
+
+  , setAnnKeywordDP
   ) where
 
 import qualified GHC           as GHC
 
 import qualified Data.Generics as SYB
 
+import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
 
 import qualified Data.Map as Map
@@ -74,5 +77,19 @@ moveAnns :: [(KeywordId, DeltaPos)] -> [(KeywordId, DeltaPos)] -> [(KeywordId, D
 moveAnns [] xs        = xs
 moveAnns ((_, dp): _) ((kw, _):xs) = (kw,dp) : xs
 moveAnns _ []         = []
+
+-- ---------------------------------------------------------------------
+
+-- |Change the @DeltaPos@ for a given @KeywordId@ if it appears in the
+-- annotation for the given item.
+setAnnKeywordDP :: (SYB.Data a) => GHC.Located a -> KeywordId -> DeltaPos -> Transform ()
+setAnnKeywordDP la kw dp = modifyAnnsT changer
+  where
+    changer ans = case Map.lookup (mkAnnKey la) ans of
+      Nothing -> ans
+      Just an -> Map.insert (mkAnnKey la) (an {annsDP = map update (annsDP an)}) ans
+    update (kw',dp')
+      | kw == kw' = (kw',dp)
+      | otherwise = (kw',dp')
 
 -- ---------------------------------------------------------------------

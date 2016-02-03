@@ -895,8 +895,10 @@ doRmParam pn nth = do
              doRemoving :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
              doRemoving parent ds  --PROBLEM: How about doRemoving fails?
                 =do
-                    -- ds1 <- rmNthArgInFunCall pn nth False ds
-                    -- rmFormalArg pn nth False True ds1
+                    -- Check the preconditions, will error on failure
+                    rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False ds
+
+                    -- preconditions passed, do the transformation
                     ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
                     ds'' <- liftT $ replaceDecls parent ds'
                     rmNthArgInFunCall pn nth True ds''
@@ -908,7 +910,7 @@ doRmParam pn nth = do
                     ds'' <- liftT $ replaceDecls parent ds'
                     rmNthArgInFunCall pn nth True ds''
 -}
-             -- just remove the nth formal parameter.
+             -- |Just remove the nth formal parameter.
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
              rmFormalArg pn nth updateToks checking t = do
                nm <- getRefactNameMap
@@ -925,7 +927,15 @@ doRmParam pn nth = do
                        in if checking && not ( all (==False) ((map (flip (findNameInRdr nm) rhs) pNames)) && --not used in rhs
                                                all (==False) ((map (flip (findNameInRdr nm) decls) pNames))) --not used in the where clause
                             then error  "This parameter can not be removed, as it is used!"
-                            else return (GHC.L l (GHC.Match (Just (fun,b)) pats' typ (GHC.GRHSs rhs decls)))
+                            else do
+                              -- If we have removed the last parametwer, make
+                              -- sure the AnnEqual annotation takes its spacing
+                              -- from the original parameter spacing
+                              when (null pats') $ do
+                                dp <- liftT $ getEntryDPT (ghead "rmFormalArg" pats)
+                                logm $ "rmFormalArg.rmInMatch:dp=" ++ show dp
+                                liftT $ setAnnKeywordDP match (G GHC.AnnEqual) dp
+                              return (GHC.L l (GHC.Match (Just (fun,b)) pats' typ (GHC.GRHSs rhs decls)))
                  rmInMatch _ _ = mzero
                  -- rmInMatch (match@(HsMatch loc  fun  pats rhs decls)::HsMatchP) --a formal parameter only exists in a match
                  --   |pNTtoPN fun==pn
@@ -1108,31 +1118,36 @@ rmNthArgInSig pn nth decls = do
        else  do newSig<-rmNthArgInSig' nm nth  [(head after)]  --no problem with 'head'
                 return (before++newSig++(tail after))
 
-   where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is tp c))]
+   -- where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is tp c))]
+   where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.L lt (GHC.HsForAllTy exp wc bnd ctx tp)) c))]
           =do
               logDataWithAnns "rmNthArgInSig:(tp)" tp
               logDataWithAnns "rmNthArgInSig:(unfoldHsTypApp tp)" (unfoldHsTypApp tp)
-              let newSig=if length is ==1
-                            then --this type signature only defines the type of pn
-                                 [GHC.L l (GHC.SigD (GHC.TypeSig is (rmNth tp) c))]
-                            else --this type signature also defines the type of other ids.
-                                 [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) tp         c)),
-                                  GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) (rmNth tp) c))]
+              ed <- liftT $ getEntryDPT tp
+              let tp' = rmNth tp
+              liftT $ setEntryDPT tp' ed
+              let typ' = GHC.L lt (GHC.HsForAllTy exp wc bnd ctx tp')
+              newSig <- liftT $ if length is ==1
+                then --this type signature only defines the type of pn
+                     return [GHC.L l (GHC.SigD (GHC.TypeSig is typ' c))]
+                else --this type signature also defines the type of other ids.
+                     return [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) typ  c)),
+                             GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) typ' c))]
               return newSig
 
          rmNth tp = let (before,after)=splitAt nth (unfoldHsTypApp tp)
                     in  (foldHsTypApp (before ++ tail after))
 
          --deconstruct a type application into a list of types
-         unfoldHsTypApp :: GHC.LHsType GHC.RdrName -> [GHC.LHsType GHC.RdrName]
+         unfoldHsTypApp :: GHC.LHsType GHC.RdrName -> [(GHC.SrcSpan,GHC.LHsType GHC.RdrName)]
          unfoldHsTypApp typ =
-               case typ of (GHC.L l (GHC.HsFunTy t1 t2)) ->t1:unfoldHsTypApp t2
-                           _ ->[typ]
+               case typ of (GHC.L l (GHC.HsFunTy t1 t2)) ->(l,t1):unfoldHsTypApp t2
+                           _ ->[(GHC.noSrcSpan,typ)]
 
          --reconstruct a type application by a list of type expression.
-         foldHsTypApp :: [GHC.LHsType GHC.RdrName] -> GHC.LHsType GHC.RdrName
+         foldHsTypApp :: [(GHC.SrcSpan,GHC.LHsType GHC.RdrName)] -> GHC.LHsType GHC.RdrName
          foldHsTypApp [] = error "foldHsTypApp:empty list"
-         foldHsTypApp ts=foldr1 (\t1 t2->(GHC.noLoc (GHC.HsFunTy t1 t2))) ts
+         foldHsTypApp ts=snd $ foldr1 (\(l1,t1) (l2,t2)->(l1,GHC.L l1 (GHC.HsFunTy t1 t2))) ts
 
 {-
 
