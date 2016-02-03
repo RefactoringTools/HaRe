@@ -842,13 +842,14 @@ doRmParam pn nth = do
     logm $ "doRmParam entered:(pn,nth)=" ++ showGhc (pn,nth)
     parsed <- getRefactParsed
     r <- applyTP ((once_tdTP (failTP `adhocTP` inMod
-                                     -- `adhocTP` inMatch
+                                     `adhocTP` inMatch
                                      -- `adhocTP` inPat
                                      -- `adhocTP` inLet
                                      -- `adhocTP` inAlt
                                      -- `adhocTP` inLetStmt
                              ))
                   `choiceTP` failure) parsed
+    logm $ "doRmParam after applyTP"
     putRefactParsed r emptyAnns
     return ()
       where
@@ -858,12 +859,21 @@ doRmParam pn nth = do
                nm <- getRefactNameMap
                decls <- liftT $ hsDecls modu
                if not ( null (definingDeclsRdrNames nm [pn] decls False False))
-                  then do doRemoving modu decls
+                  then doRemoving modu decls
                   else mzero
                 -- |definingDecls [pn] ds False  False/=[] = doRemoving mod  ds
              inMod _ =mzero
 
              -- --2. pn is declared locally in the where clause of a match.
+             inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+             inMatch match@(GHC.L l (GHC.Match (Just (fun,_)) pats mtyp (GHC.GRHSs rhs ds))) = do
+               nm <- getRefactNameMap
+               decls <- liftT $ hsDecls match
+               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                  then do
+                    doRemoving match decls
+                  else mzero
+             inMatch _ = mzero
              -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
              --     |definingDecls [pn] ds False False /=[] = doRemoving match  ds
              -- inMatch _ =mzero

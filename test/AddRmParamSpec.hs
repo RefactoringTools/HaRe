@@ -383,6 +383,21 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
                                  "./RmOneParameter/FunIn0.refactored.hs"
       diffD `shouldBe` []
 
+    -- -------------------
+
+    it "rmOneParameter in SubFun1" $ do
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/SubFun1.hs" (10,9)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/SubFun1.hs" (10,9)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/SubFun1.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/SubFun1.expected.hs"
+                                 "./RmOneParameter/SubFun1.refactored.hs"
+      diffD `shouldBe` []
+
     -- ---------------------------------
     -- Negative tests
     -- ---------------------------------
@@ -394,6 +409,7 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
      (show res) `shouldBe` "Just \"This parameter can not be removed, as it is used!\""
 
     -- -------------------
+
     it "fails FunIn7" $ do
           -- (["FunIn7.hs"],["10","4"])]
      res <- catchException (ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn7.hs" (10,4))
