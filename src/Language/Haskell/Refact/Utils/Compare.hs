@@ -1,14 +1,12 @@
-{-# LANGUAGE RankNTypes, ImpredicativeTypes #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Utils.Compare where
-import qualified Data.Generics as SYB hiding (Proxy)
+import Data.Generics as SYB hiding (Proxy)
 import qualified GHC as GHC
 import qualified GHC.SYB.Utils as SYB
 
 
-
 data Comp = Rep SYB.TypeRep [Comp]
           | Comp GHC.RdrName
-          | Empty
 
 instance Eq Comp where
  Comp a == Comp b = a == b
@@ -16,33 +14,12 @@ instance Eq Comp where
  _ == _ = False
 
 instance Show Comp where
-  show (Rep t1 lst) = (show t1) ++ " children: " ++ (show lst)
-  show (Comp nm) = SYB.showData SYB.Parser 3 nm
-  show Empty = ""
-
-addComp :: Comp -> Comp -> Comp
-addComp Empty c2 = c2
-addComp c1 Empty = c1
-addComp (Rep rep lst) c2 = Rep rep (c2:lst)
-addComp c@(Comp _) _ = c
+  show (Rep t1 lst) = "{Rep: " ++ (show t1) ++ "\n\tchildren: " ++ (show lst) ++ "}"
+  show (Comp nm) = "[Comp: " ++ (SYB.showData SYB.Parser 3 nm) ++"]"
 
 
-{-
-class Comparable a where
-  constructComp :: a -> Comp
-
-instance {-# OVERLAPPING #-} Comparable GHC.RdrName where
-  constructComp = Comp
-
-instance {-# OVERLAPPABLE #-} (Data a) => Comparable a where
-  constructComp a = Rep (typeOf a) (getChildren a)
-
-getChildren :: (Data a) => a -> [Comp]
-getChildren = gmapQ constructComp
--}
-
-mkComp :: (SYB.Data a) => a -> Comp
-mkComp = SYB.everything addComp (Empty `SYB.mkQ` isRdrName `SYB.extQ` isLoc)
-  where isRdrName :: GHC.RdrName -> Comp
-        isRdrName nm = Comp nm
-        isLoc (GHC.L _ _) = Empty
+constructComp :: (SYB.Data a) => a -> Comp
+constructComp a = case mNm of
+  (Just n) -> Comp n
+  Nothing  -> (Rep (typeOf a) (gmapQ constructComp a))
+  where mNm :: Maybe GHC.RdrName = (cast a)

@@ -235,7 +235,7 @@ module Language.Haskell.Refact.API
  , setRefactAnns
 
  -- * from `Language.Haskell.Refact.Utils.Compare`
- , mkComp
+ , constructComp
 -- , Compare
    
  ) where

@@ -64,11 +64,14 @@ containsNothingToNothing funNm a = do
   dFlags <- GHC.getSessionDynFlags
   let nToNStr = funNm ++ " Nothing = Nothing"
   (_, pRes) <- handleParseResult "containsNothingToNothing" $ parseDecl dFlags "MaybeToMonad.hs" nToNStr
-  let match = gfromJust "containsNothingToNothing" $ extractMatch pRes
+  let match = extractMatch pRes
       c1 = constructComp match
       match2 = extractMatch a
       c2 = constructComp match2
-  logm $ (show c1)
+  logm $ "Type of c1: " ++ (show (typeOf match)) ++ " type of c2: " ++ (show (typeOf match2))
+  --logm $ (show c1)
+  --logm $ "=============================="
+  --logm $ show c2
   --return False
   return $ c1 == c2
     where
