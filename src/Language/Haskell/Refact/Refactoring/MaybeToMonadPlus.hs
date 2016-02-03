@@ -65,9 +65,9 @@ containsNothingToNothing funNm a = do
   let nToNStr = funNm ++ " Nothing = Nothing"
   (_, pRes) <- handleParseResult "containsNothingToNothing" $ parseDecl dFlags "MaybeToMonad.hs" nToNStr
   let match = gfromJust "containsNothingToNothing" $ extractMatch pRes
-      c1 = constructCompare match
+      c1 = constructComp match
       match2 = extractMatch a
-      c2 = constructCompare match2
+      c2 = constructComp match2
   logm $ (show c1)
   --return False
   return $ c1 == c2
