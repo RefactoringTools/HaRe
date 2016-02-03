@@ -172,7 +172,6 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
 
              --4: pn is declared locally in a  Let expression
              inLet (letExp@(GHC.L l (GHC.HsLet ds e)) :: GHC.LHsExpr GHC.RdrName)
-               -- | definingDecls [pn] ds False False /=[] = doAdding letExp  ds
                = do
                    nm <- getRefactNameMap
                    decls <- liftT $ hsDecls letExp
@@ -214,22 +213,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                    decls <- liftT $ hsDecls letStmt
                    logm $ "doAddingParam.inLetStmt.let:decls=" ++ showGhc decls
                    if not ( null (definingDeclsRdrNames nm [pn] decls False False))
-                      then do
-                        -- logm $ "doAddingParam.inLetStmt:True leg"
-                        letStmt' <- doAdding letStmt decls
-                        return letStmt'
-                      else mzero
-             inLetStmt bindStmt@(GHC.L l (GHC.BindStmt pats (GHC.L lv (GHC.HsVar v)) _s1 _s2))
-               = do
-                   nm <- getRefactNameMap
-                   logm $ "doAddingParam.inLetStmt.bind:"
-                   -- if not ( null (definingDeclsRdrNames nm [pn] decls False False))
-                   if True
-                      then do
-                        -- logm $ "doAddingParam.inLetStmt:True leg"
-                        -- bindStmt' <- doAdding bindStmt decls
-                        let bindStmt' = bindStmt
-                        return bindStmt'
+                      then doAdding letStmt decls
                       else mzero
              inLetStmt _ = mzero
 
@@ -583,6 +567,10 @@ addArgToSig pn decls = do
                                [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) tp pr)),
                                 GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) typeVar pr))]
               return newSig
+       addArgToSig' sig = do
+         logm $ "addArgToSig':not processing " ++ showGhc sig
+         return sig
+
 
        -- compose a type application using type expressions tv and tp
        newTypeVar :: String -> GHC.LHsType GHC.RdrName -> RefactGhc (GHC.LHsType GHC.RdrName)
@@ -855,25 +843,12 @@ doRmParam pn nth = do
       where
              --1. pn is declared in top level.
              inMod :: GHC.ParsedSource -> RefactGhc GHC.ParsedSource
-             inMod modu = do
-               nm <- getRefactNameMap
-               decls <- liftT $ hsDecls modu
-               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
-                  then doRemoving modu decls
-                  else mzero
-                -- |definingDecls [pn] ds False  False/=[] = doRemoving mod  ds
-             inMod _ =mzero
+             inMod modu = doRemoving' modu
 
              -- --2. pn is declared locally in the where clause of a match.
              inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-             inMatch match@(GHC.L l (GHC.Match (Just (fun,_)) pats mtyp (GHC.GRHSs rhs ds))) = do
-               -- TODO: harvest this commonality
-               nm <- getRefactNameMap
-               decls <- liftT $ hsDecls match
-               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
-                  then do
-                    doRemoving match decls
-                  else mzero
+             inMatch match@(GHC.L l (GHC.Match (Just (fun,_)) pats mtyp (GHC.GRHSs rhs ds)))
+               = doRemoving' match
              inMatch _ = mzero
 
              -- --3. pn is declared locally in the where clause of a pattern binding.
@@ -883,13 +858,8 @@ doRmParam pn nth = do
 
              -- --4: pn is declared locally in a  Let expression
              inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-             inLet letExp@(GHC.L l (GHC.HsLet bs e)) = do
-               nm <- getRefactNameMap
-               decls <- liftT $ hsDecls letExp
-               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
-                  then do
-                    doRemoving letExp decls
-                  else mzero
+             inLet letExp@(GHC.L l (GHC.HsLet bs e))
+               = doRemoving' letExp
              inLet doStmt@(GHC.L l (GHC.HsDo ctx stmts ptt))
                = do
                    nm <- getRefactNameMap
@@ -907,27 +877,27 @@ doRmParam pn nth = do
 
              -- --6.pn is declared locally in a let statement.
              inLetStmt :: GHC.ExprLStmt GHC.RdrName -> RefactGhc (GHC.ExprLStmt GHC.RdrName)
-             inLetStmt letStmt@(GHC.L l (GHC.LetStmt _)) = do
-               nm <- getRefactNameMap
-               decls <- liftT $ hsDecls letStmt
-               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
-                  then do
-                    doRemoving letStmt decls
-                  else mzero
+             inLetStmt letStmt@(GHC.L l (GHC.LetStmt _))
+               = doRemoving' letStmt
              inLetStmt _ = mzero
-             -- inLetStmt (letStmt@(HsLetStmt ds stmts):: HsStmtP)
-             --    | definingDecls [pn] ds False  False/=[]  = doRemoving letStmt ds
-             -- inLetStmt _=mzero
 
              failure = idTP `adhocTP` modu
                where modu (m::GHC.ParsedSource) = error "Refactoring failed"
 
+             -- ------------------------
+
+             doRemoving' parent = do
+               nm <- getRefactNameMap
+               decls <- liftT $ hsDecls parent
+               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                  then doRemoving parent decls
+                  else mzero
 
              doRemoving :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
              doRemoving parent ds  --PROBLEM: How about doRemoving fails?
                 =do
                     -- Check the preconditions, will error on failure
-                    rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False ds
+                    void $ rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False ds
 
                     -- preconditions passed, do the transformation
                     ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
@@ -938,19 +908,12 @@ doRmParam pn nth = do
              doRemovingStmts stmts
                 =do
                     -- Check the preconditions, will error on failure
-                    rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False stmts
+                    void $ rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False stmts
 
                     -- preconditions passed, do the transformation
                     stmts' <- rmFormalArg pn nth True False stmts
                     rmNthArgInFunCall pn nth True stmts'
- {-
-             doRemoving :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
-             doRemoving parent ds  --PROBLEM: How about doRemoving fails?
-                =do rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False ds
-                    ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
-                    ds'' <- liftT $ replaceDecls parent ds'
-                    rmNthArgInFunCall pn nth True ds''
--}
+
              -- |Just remove the nth formal parameter.
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
              rmFormalArg pn nth updateToks checking t = do
@@ -1162,7 +1125,8 @@ rmNthArgInSig pn nth decls = do
                 return (before++newSig++(tail after))
 
    -- where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is tp c))]
-   where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.L lt (GHC.HsForAllTy exp wc bnd ctx tp)) c))]
+   where
+         rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.L lt (GHC.HsForAllTy exp wc bnd ctx tp)) c))]
           =do
               logDataWithAnns "rmNthArgInSig:(tp)" tp
               logDataWithAnns "rmNthArgInSig:(unfoldHsTypApp tp)" (unfoldHsTypApp tp)
@@ -1188,6 +1152,9 @@ rmNthArgInSig pn nth decls = do
                      setEntryDPT thisSig (DP (2,0))
                      return [otherSig,thisSig]
               return newSig
+         rmNthArgInSig' nm nth sig = do
+           logm $ "rmNthArgInSig:not processing:" ++ showGhc sig
+           return sig
 
          rmNth tp = let (before,after)=splitAt nth (unfoldHsTypApp tp)
                     in  (foldHsTypApp (before ++ tail after))
@@ -1235,7 +1202,8 @@ rmNthArgInSig pn nth decls
 
 -- ---------------------------------------------------------------------
 
--- |get the function name and the index of the parameter to be removed from the cursor position.
+-- |Get the function name and the index of the parameter to be removed from the
+-- cursor position.
 getParam :: SimpPos -> RefactGhc (Maybe (GHC.Name,Int))
 getParam pos = do
   nm <- getRefactNameMap
@@ -1255,7 +1223,7 @@ getParam pos = do
                where
                  paramPosRanges = map GHC.getLoc pats
                  elem = find (inRange pos) paramPosRanges
-           -- * |inRange pos (getStartEndLoc toks pats)
+       inMatch _ = Nothing
 
        inRange pos ss = pos >= startPos && pos<=endPos
          where (startPos,endPos) = (ss2pos ss,ss2posEnd ss)
@@ -1312,8 +1280,8 @@ rmNthArgInFunCallMod pn nth f = do
   logm $ "rmNthArgInFunCallMod:(newNames)=" ++ showGhcQual newNames
   case newNames of
     [] -> return ()
-    [pnt] -> do
+    [_pnt] -> do
       parsed' <- rmNthArgInFunCall pn nth f parsed
       putRefactParsed parsed' emptyAnns
       return ()
-    ns    -> error "HaRe: rmParam: more than one name matches"
+    _ns   -> error "HaRe: rmParam: more than one name matches"
