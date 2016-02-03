@@ -846,7 +846,7 @@ doRmParam pn nth = do
                                      -- `adhocTP` inPat
                                      `adhocTP` inLet
                                      -- `adhocTP` inAlt
-                                     -- `adhocTP` inLetStmt
+                                     `adhocTP` inLetStmt
                              ))
                   `choiceTP` failure) parsed
     logm $ "doRmParam after applyTP"
@@ -867,6 +867,7 @@ doRmParam pn nth = do
              -- --2. pn is declared locally in the where clause of a match.
              inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
              inMatch match@(GHC.L l (GHC.Match (Just (fun,_)) pats mtyp (GHC.GRHSs rhs ds))) = do
+               -- TODO: harvest this commonality
                nm <- getRefactNameMap
                decls <- liftT $ hsDecls match
                if not ( null (definingDeclsRdrNames nm [pn] decls False False))
@@ -889,10 +890,15 @@ doRmParam pn nth = do
                   then do
                     doRemoving letExp decls
                   else mzero
+             inLet doStmt@(GHC.L l (GHC.HsDo ctx stmts ptt))
+               = do
+                   nm <- getRefactNameMap
+                   if not ( null (definingDeclsRdrNames' nm [pn] stmts))
+                      then do
+                           stmts' <- doRemovingStmts stmts
+                           return (GHC.L l (GHC.HsDo ctx stmts' ptt))
+                      else mzero
              inLet _ = mzero
-             -- inLet (letExp@(Exp (HsLet ds e))::HsExpP)
-             --   | definingDecls [pn] ds False  False/=[] = doRemoving letExp  ds
-             -- inLet _=mzero
 
              -- --5. pn is declared locally in a  case alternative.
              -- inAlt (alt@(HsAlt loc p rhs ds)::HsAltP)
@@ -900,6 +906,15 @@ doRmParam pn nth = do
              -- inAlt _=mzero
 
              -- --6.pn is declared locally in a let statement.
+             inLetStmt :: GHC.ExprLStmt GHC.RdrName -> RefactGhc (GHC.ExprLStmt GHC.RdrName)
+             inLetStmt letStmt@(GHC.L l (GHC.LetStmt _)) = do
+               nm <- getRefactNameMap
+               decls <- liftT $ hsDecls letStmt
+               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                  then do
+                    doRemoving letStmt decls
+                  else mzero
+             inLetStmt _ = mzero
              -- inLetStmt (letStmt@(HsLetStmt ds stmts):: HsStmtP)
              --    | definingDecls [pn] ds False  False/=[]  = doRemoving letStmt ds
              -- inLetStmt _=mzero
@@ -918,6 +933,16 @@ doRmParam pn nth = do
                     ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
                     ds'' <- liftT $ replaceDecls parent ds'
                     rmNthArgInFunCall pn nth True ds''
+
+             doRemovingStmts :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc [GHC.ExprLStmt GHC.RdrName]
+             doRemovingStmts stmts
+                =do
+                    -- Check the preconditions, will error on failure
+                    rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False stmts
+
+                    -- preconditions passed, do the transformation
+                    stmts' <- rmFormalArg pn nth True False stmts
+                    rmNthArgInFunCall pn nth True stmts'
  {-
              doRemoving :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
              doRemoving parent ds  --PROBLEM: How about doRemoving fails?
@@ -929,6 +954,8 @@ doRmParam pn nth = do
              -- |Just remove the nth formal parameter.
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
              rmFormalArg pn nth updateToks checking t = do
+               logm $ "rmFormalArg:(pn,nth,updateToks,checking)=" ++ showGhc (pn,nth,updateToks,checking)
+               logDataWithAnns "rmFormalArg:t=" t
                nm <- getRefactNameMap
                applyTP (stop_tdTP (failTP `adhocTP` (rmInMatch nm))) t
 
