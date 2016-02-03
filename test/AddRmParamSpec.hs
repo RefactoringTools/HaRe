@@ -305,6 +305,22 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
 
     -- -------------------
 
+    it "rmOneParameter in FunIn2a" $ do
+          -- (["FunIn2.hs"],["8","5"]),
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn2a.hs" (8,5)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/FunIn2a.hs" (8,5)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/FunIn2a.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/FunIn2a.expected.hs"
+                                 "./RmOneParameter/FunIn2a.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
     it "rmOneParameter in FunIn3" $ do
           -- (["FunIn3.hs"],["7","5"]),
       r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/FunIn3.hs" (7,5)

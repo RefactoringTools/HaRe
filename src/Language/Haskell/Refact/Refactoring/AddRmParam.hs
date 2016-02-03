@@ -1124,15 +1124,26 @@ rmNthArgInSig pn nth decls = do
               logDataWithAnns "rmNthArgInSig:(tp)" tp
               logDataWithAnns "rmNthArgInSig:(unfoldHsTypApp tp)" (unfoldHsTypApp tp)
               ed <- liftT $ getEntryDPT tp
-              let tp' = rmNth tp
-              liftT $ setEntryDPT tp' ed
-              let typ' = GHC.L lt (GHC.HsForAllTy exp wc bnd ctx tp')
+              let (GHC.L lp tp') = rmNth tp
+              lp' <- liftT uniqueSrcSpanT
+              liftT $ modifyAnnsT $ copyAnn (GHC.L lp tp') (GHC.L lp' tp')
+              liftT $ setEntryDPT (GHC.L lp' tp') ed
+              let typ' = GHC.L lt (GHC.HsForAllTy exp wc bnd ctx (GHC.L lp' tp'))
               newSig <- liftT $ if length is ==1
                 then --this type signature only defines the type of pn
                      return [GHC.L l (GHC.SigD (GHC.TypeSig is typ' c))]
-                else --this type signature also defines the type of other ids.
-                     return [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) typ  c)),
-                             GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) typ' c))]
+                else do --this type signature also defines the type of other ids.
+                     let otherNames = filter (\x->rdrName2NamePure nm x/=pn) is
+                         [thisName] = filter (\x->rdrName2NamePure nm x==pn) is
+                     removeTrailingCommaT thisName
+                     removeTrailingCommaT (last otherNames)
+                     ls <- uniqueSrcSpanT
+                     let otherSig = GHC.L l (GHC.SigD (GHC.TypeSig otherNames typ  c))
+                         thisSig  = GHC.L ls (GHC.SigD (GHC.TypeSig [thisName] typ' c))
+                     modifyAnnsT $ copyAnn otherSig thisSig
+                     clearPriorComments thisSig
+                     setEntryDPT thisSig (DP (2,0))
+                     return [otherSig,thisSig]
               return newSig
 
          rmNth tp = let (before,after)=splitAt nth (unfoldHsTypApp tp)

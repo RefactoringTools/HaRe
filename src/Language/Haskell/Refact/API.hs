@@ -238,6 +238,8 @@ module Language.Haskell.Refact.API
   , replace
   , setRefactAnns
   , setAnnKeywordDP
+  , copyAnn
+  , clearPriorComments
 
  ) where
 

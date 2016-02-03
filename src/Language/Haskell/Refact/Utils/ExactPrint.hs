@@ -10,6 +10,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , copyAnn
 
   , setAnnKeywordDP
+  , clearPriorComments
   ) where
 
 import qualified GHC           as GHC
@@ -46,9 +47,7 @@ copyAnn :: (SYB.Data old,SYB.Data new)
 copyAnn old new ans =
   case Map.lookup (mkAnnKey old) ans of
     Nothing -> ans
-    Just v ->  anns'
-      where
-        anns' = Map.insert (mkAnnKey new) v ans
+    Just v  -> Map.insert (mkAnnKey new) v ans
 
 -- ---------------------------------------------------------------------
 
@@ -91,5 +90,17 @@ setAnnKeywordDP la kw dp = modifyAnnsT changer
     update (kw',dp')
       | kw == kw' = (kw',dp)
       | otherwise = (kw',dp')
+
+-- ---------------------------------------------------------------------
+
+-- |Remove any preceding comments from the given item
+clearPriorComments :: (SYB.Data a) => GHC.Located a -> Transform ()
+clearPriorComments la = do
+  edp <- getEntryDPT la
+  modifyAnnsT $ \ans ->
+    case Map.lookup (mkAnnKey la) ans of
+      Nothing -> ans
+      Just an -> Map.insert (mkAnnKey la) (an {annPriorComments = [] }) ans
+  setEntryDPT la edp
 
 -- ---------------------------------------------------------------------
