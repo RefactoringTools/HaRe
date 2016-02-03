@@ -844,7 +844,7 @@ doRmParam pn nth = do
     r <- applyTP ((once_tdTP (failTP `adhocTP` inMod
                                      `adhocTP` inMatch
                                      -- `adhocTP` inPat
-                                     -- `adhocTP` inLet
+                                     `adhocTP` inLet
                                      -- `adhocTP` inAlt
                                      -- `adhocTP` inLetStmt
                              ))
@@ -874,9 +874,6 @@ doRmParam pn nth = do
                     doRemoving match decls
                   else mzero
              inMatch _ = mzero
-             -- inMatch (match@(HsMatch loc1 name pats rhs ds)::HsMatchP)
-             --     |definingDecls [pn] ds False False /=[] = doRemoving match  ds
-             -- inMatch _ =mzero
 
              -- --3. pn is declared locally in the where clause of a pattern binding.
              -- inPat (pat@(Dec (HsPatBind loc p rhs ds))::HsDeclP)
@@ -884,6 +881,15 @@ doRmParam pn nth = do
              -- inPat _=mzero
 
              -- --4: pn is declared locally in a  Let expression
+             inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+             inLet letExp@(GHC.L l (GHC.HsLet bs e)) = do
+               nm <- getRefactNameMap
+               decls <- liftT $ hsDecls letExp
+               if not ( null (definingDeclsRdrNames nm [pn] decls False False))
+                  then do
+                    doRemoving letExp decls
+                  else mzero
+             inLet _ = mzero
              -- inLet (letExp@(Exp (HsLet ds e))::HsExpP)
              --   | definingDecls [pn] ds False  False/=[] = doRemoving letExp  ds
              -- inLet _=mzero

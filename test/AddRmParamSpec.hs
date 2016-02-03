@@ -398,6 +398,21 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
                                  "./RmOneParameter/SubFun1.refactored.hs"
       diffD `shouldBe` []
 
+    -- -------------------
+
+    it "rmOneParameter in SubFun2" $ do
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/SubFun2.hs" (10,9)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/SubFun2.hs" (10,9)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/SubFun2.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/SubFun2.expected.hs"
+                                 "./RmOneParameter/SubFun2.refactored.hs"
+      diffD `shouldBe` []
+
     -- ---------------------------------
     -- Negative tests
     -- ---------------------------------
