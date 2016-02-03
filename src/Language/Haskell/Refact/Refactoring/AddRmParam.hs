@@ -1037,7 +1037,7 @@ rmNthArgInFunCall pn nth updateToks t = do
              = do
                  liftT $ transferEntryDPT exp e1
                  return e1 -- handle the case like '(fun x) => fun "
-         funApp nm (exp@(GHC.L _ (GHC.HsApp e1 e2))::GHC.LHsExpr GHC.RdrName) = do
+         funApp nm (exp@(GHC.L _ (GHC.HsApp _e1 _e2))) = do
                 --test if this application is a calling of fun pn.
               let expu = unfoldHsApp exp
               ed <- liftT $ getEntryDPT exp
@@ -1075,16 +1075,16 @@ Flatten into
 
          -- |deconstruct a function application into a list of expressions.
          unfoldHsApp :: GHC.LHsExpr GHC.RdrName -> [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)]
-         unfoldHsApp exp =
-              case exp of
+         unfoldHsApp expr =
+              case expr of
                   (GHC.L l (GHC.HsApp e1 e2)) -> unfoldHsApp e1 ++ [(l,e2)]
-                  _                           -> [(GHC.noSrcSpan,exp)]
+                  _                           -> [(GHC.noSrcSpan,expr)]
 
          -- |reconstruct  a function application by a list of expressions.
          foldHsApp :: [(GHC.SrcSpan, GHC.LHsExpr GHC.RdrName)] -> GHC.LHsExpr GHC.RdrName
          -- foldHsApp exps = foldl1 (\e1 e2->(GHC.noLoc (GHC.HsApp e1 e2))) exps
          foldHsApp [] = error "foldHsApp:empty list"
-         foldHsApp exps = snd $ foldl1 (\(l1,e1) (l2,e2) -> (l2,GHC.L l2 (GHC.HsApp e1 e2))) exps
+         foldHsApp exps = snd $ foldl1 (\(_l1,e1) (l2,e2) -> (l2,GHC.L l2 (GHC.HsApp e1 e2))) exps
 
 {-
 --remove the nth argument of function pn in all the calling places. the index for the first argument is zero.
@@ -1116,17 +1116,17 @@ rmNthArgInFunCall pn nth updateToks=applyTP (stop_tdTP (failTP `adhocTP` funApp)
 -- ---------------------------------------------------------------------
 
 rmNthArgInSig :: GHC.Name -> Int -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
-rmNthArgInSig pn nth decls = do
+rmNthArgInSig pn nTh decls = do
   nm <- getRefactNameMap
   let (before,after)=break (\d ->definesSigDRdr nm pn d) decls
   if null after
        then  return decls
-       else  do newSig<-rmNthArgInSig' nm nth  [(head after)]  --no problem with 'head'
+       else  do newSig<-rmNthArgInSig' nm [(head after)]  --no problem with 'head'
                 return (before++newSig++(tail after))
 
    -- where rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is tp c))]
    where
-         rmNthArgInSig' nm nth sig@[GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.L lt (GHC.HsForAllTy exp wc bnd ctx tp)) c))]
+         rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.L lt (GHC.HsForAllTy ex wc bnd ctx tp)) c))]
           =do
               logDataWithAnns "rmNthArgInSig:(tp)" tp
               logDataWithAnns "rmNthArgInSig:(unfoldHsTypApp tp)" (unfoldHsTypApp tp)
@@ -1135,7 +1135,7 @@ rmNthArgInSig pn nth decls = do
               lp' <- liftT uniqueSrcSpanT
               liftT $ modifyAnnsT $ copyAnn (GHC.L lp tp') (GHC.L lp' tp')
               liftT $ setEntryDPT (GHC.L lp' tp') ed
-              let typ' = GHC.L lt (GHC.HsForAllTy exp wc bnd ctx (GHC.L lp' tp'))
+              let typ' = GHC.L lt (GHC.HsForAllTy ex wc bnd ctx (GHC.L lp' tp'))
               newSig <- liftT $ if length is ==1
                 then --this type signature only defines the type of pn
                      return [GHC.L l (GHC.SigD (GHC.TypeSig is typ' c))]
@@ -1152,11 +1152,11 @@ rmNthArgInSig pn nth decls = do
                      setEntryDPT thisSig (DP (2,0))
                      return [otherSig,thisSig]
               return newSig
-         rmNthArgInSig' nm nth sig = do
+         rmNthArgInSig' _nm sig = do
            logm $ "rmNthArgInSig:not processing:" ++ showGhc sig
            return sig
 
-         rmNth tp = let (before,after)=splitAt nth (unfoldHsTypApp tp)
+         rmNth tp = let (before,after)=splitAt nTh (unfoldHsTypApp tp)
                     in  (foldHsTypApp (before ++ tail after))
 
          --deconstruct a type application into a list of types
@@ -1168,7 +1168,7 @@ rmNthArgInSig pn nth decls = do
          --reconstruct a type application by a list of type expression.
          foldHsTypApp :: [(GHC.SrcSpan,GHC.LHsType GHC.RdrName)] -> GHC.LHsType GHC.RdrName
          foldHsTypApp [] = error "foldHsTypApp:empty list"
-         foldHsTypApp ts=snd $ foldr1 (\(l1,t1) (l2,t2)->(l1,GHC.L l1 (GHC.HsFunTy t1 t2))) ts
+         foldHsTypApp ts=snd $ foldr1 (\(l1,t1) (_l2,t2)->(l1,GHC.L l1 (GHC.HsFunTy t1 t2))) ts
 
 {-
 
@@ -1214,18 +1214,18 @@ getParam pos = do
     Nothing     -> return Nothing
     Just (ln,i) -> return $ Just (rdrName2NamePure nm ln,i)
     where
-       inMatch (match@(GHC.Match (Just (fun,_)) pats mtyp grhs)::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+       inMatch ((GHC.Match (Just (fun,_)) pats _mtyp _grhs)::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
          = case locToRdrName pos pats of
-             Nothing -> Nothing
-             Just ln -> if isNothing elem
+             Nothing  -> Nothing
+             Just _ln -> if isNothing element
                     then error  "Invalid cursor position!"  -- cursor doesn't stop at a parameter position.
-                    else Just (fun, fromJust (elemIndex (fromJust elem) paramPosRanges))
+                    else Just (fun, fromJust (elemIndex (fromJust element) paramPosRanges))
                where
                  paramPosRanges = map GHC.getLoc pats
-                 elem = find (inRange pos) paramPosRanges
+                 element = find (inRange pos) paramPosRanges
        inMatch _ = Nothing
 
-       inRange pos ss = pos >= startPos && pos<=endPos
+       inRange pos' ss = pos' >= startPos && pos'<=endPos
          where (startPos,endPos) = (ss2pos ss,ss2posEnd ss)
 
 {-
@@ -1248,9 +1248,9 @@ getParam toks pos
 -- ---------------------------------------------------------------------
 
 rmParamInClientMod :: GHC.Name -> Int -> TargetModule -> RefactGhc ApplyRefacResult
-rmParamInClientMod pn nth serverModName = do
+rmParamInClientMod pn nTh serverModName = do
   logm $ "rmParamInClientMod:serverModName" ++ showGhc serverModName
-  (r,_) <- applyRefac (rmNthArgInFunCallMod pn nth True) (RSTarget serverModName)
+  (r,_) <- applyRefac (rmNthArgInFunCallMod pn nTh True) (RSTarget serverModName)
   return r
  -- = do (inscps, exps, mod, ts) <-parseSourceFile fileName
  --      let qualifier = hsQualifier pnt inscps
@@ -1274,14 +1274,15 @@ rmParamInClientMod pnt nth (m, fileName)
 
 -}
 
-rmNthArgInFunCallMod pn nth f = do
+rmNthArgInFunCallMod :: GHC.Name -> Int -> Bool -> RefactGhc ()
+rmNthArgInFunCallMod pn nTh f = do
   parsed <- getRefactParsed
   newNames <- equivalentNameInNewMod pn
   logm $ "rmNthArgInFunCallMod:(newNames)=" ++ showGhcQual newNames
   case newNames of
     [] -> return ()
     [_pnt] -> do
-      parsed' <- rmNthArgInFunCall pn nth f parsed
+      parsed' <- rmNthArgInFunCall pn nTh f parsed
       putRefactParsed parsed' emptyAnns
       return ()
     _ns   -> error "HaRe: rmParam: more than one name matches"
