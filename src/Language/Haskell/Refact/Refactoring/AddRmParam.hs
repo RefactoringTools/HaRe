@@ -826,8 +826,8 @@ rmOneParameter args
 
 --pn: function name; nth: the index of the parameter to be removed.
 doRmParam :: GHC.Name -> Int -> RefactGhc ()
-doRmParam pn nth = do
-    logm $ "doRmParam entered:(pn,nth)=" ++ showGhc (pn,nth)
+doRmParam pn nTh = do
+    logm $ "doRmParam entered:(pn,nth)=" ++ showGhc (pn,nTh)
     parsed <- getRefactParsed
     r <- applyTP ((once_tdTP (failTP `adhocTP` inMod
                                      `adhocTP` inMatch
