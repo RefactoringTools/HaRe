@@ -1925,7 +1925,7 @@ rmDecl pn incSig t = do
              nameMap <- getRefactNameMap
              decls <- liftT $ hsDecls parent
              let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
-             if not $ emptyList decls2
+             if not (null decls2)
                then do
                  -- logDataWithAnns "doRmDeclList:(parent)" (parent)
                  let decl = ghead "doRmDeclList" decls2

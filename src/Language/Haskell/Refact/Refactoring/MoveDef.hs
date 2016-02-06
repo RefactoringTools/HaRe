@@ -21,13 +21,9 @@ import qualified Data.Generics.Zipper as Z
 
 
 import qualified Exception             as GHC
-import qualified FastString            as GHC
 import qualified GHC                   as GHC
 import qualified Name                  as GHC
 import qualified RdrName               as GHC
-import qualified TyCon                 as GHC
-import qualified TypeRep               as GHC
-import qualified Var                   as Var
 
 import Control.Exception
 import Control.Monad.State
@@ -157,19 +153,22 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
       else error "\nThe identifier is not a local function/pattern name!"
 
     where
-       {-step1: divide the module's top level declaration list into three parts:
-         'parent' is the top level declaration containing the lifted declaration,
-         'before' and `after` are those declarations before and after 'parent'.
+       {-step1: divide the module's top level declaration list into three parts: 'parent'
+                is the top level declaration containing the lifted declaration, 'before'
+                and `after` are those declarations before and after 'parent'.
          step2: get the declarations to be lifted from parent, bind it to liftedDecls
-         step3: remove the lifted declarations from parent and extra arguments may be introduce.
+         step3: remove the lifted declarations from parent and extra arguments
+                may be introduced.
          step4. test whether there are any names need to be renamed.
        -}
        liftToMod = do
          renamed <- getRefactRenamed
-         parsed <- getRefactParsed
+         parsed' <- getRefactParsed
+         parsed  <- liftT $ balanceAllComments parsed'
+         logDataWithAnns "parsed after balanceAllComments" parsed
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
-         {- ++AZ++ : hsBinds does not return class or instance definitions
+         {- ++AZ++TODO: reinstate this, hsDecls does : hsBinds does not return class or instance definitions
          when (isClassDecl $ ghead "liftToMod" parent)
                $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
          when (isInstDecl $ ghead "liftToMod" parent)

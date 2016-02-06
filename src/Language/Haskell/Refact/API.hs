@@ -240,6 +240,7 @@ module Language.Haskell.Refact.API
   , setAnnKeywordDP
   , copyAnn
   , clearPriorComments
+  , balanceAllComments
 
  ) where
 
