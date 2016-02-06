@@ -27,8 +27,6 @@ import Data.List hiding (delete)
 
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 
-import Control.Exception
-
 -----------------------------------------------------------------------------------------------------
 {- An argument can be added to the definition of a function or constant. Adding an argument to a constant
    definition will change the constant definition to a function definition.  The new parameter is always
@@ -119,7 +117,7 @@ addOneParameter args
 
 doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe (GHC.Located GHC.RdrName) -> Bool
               -> RefactGhc ()
-doAddingParam fileName modName pn newParam defaultArg isExported = do
+doAddingParam fileName modName pn newParam defaultArg isExported' = do
     logm $ "doAddingParam entered:defaultArg=" ++ showGhc defaultArg
     parsed <- getRefactParsed
     -- logDataWithAnns "parsed" parsed
@@ -146,7 +144,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                     ds <- liftT $ hsDecls modu
                     modu' <- doAdding modu ds
                     renamed <- getRefactRenamed
-                    if isExported && isExplicitlyExported pn renamed
+                    if isExported' && isExplicitlyExported pn renamed
                       then do
                            -- logm $ "doAddingParam.inMod calling addItemsToExport for:" ++ showGhc [(fromJust defaultArg)]
                            addItemsToExport modu' (Just pn) False (Left [GHC.unLoc (fromJust defaultArg)])
@@ -154,7 +152,9 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                 else mzero
 
              --2. pn is declared locally in the where clause of a match.
-             inMatch (match@(GHC.L l (GHC.Match mf pats typ (GHC.GRHSs rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+             inMatch ::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+                     -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+             inMatch match
                = do
                    nm <- getRefactNameMap
                    decls <- liftT $ hsDecls match
@@ -171,7 +171,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
 -}
 
              --4: pn is declared locally in a  Let expression
-             inLet (letExp@(GHC.L l (GHC.HsLet ds e)) :: GHC.LHsExpr GHC.RdrName)
+             inLet (letExp@(GHC.L _ (GHC.HsLet _ds _e)) :: GHC.LHsExpr GHC.RdrName)
                = do
                    nm <- getRefactNameMap
                    decls <- liftT $ hsDecls letExp
@@ -179,7 +179,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                    if not ( null (definingDeclsRdrNames nm [pn] decls False False))
                       then doAdding letExp decls
                       else mzero
-             inLet (doStmt@(GHC.L l (GHC.HsDo ctx stmts ptt)) :: GHC.LHsExpr GHC.RdrName)
+             inLet ((GHC.L l (GHC.HsDo ctx stmts ptt)) :: GHC.LHsExpr GHC.RdrName)
                = do
                    nm <- getRefactNameMap
                    logm $ "doAddingParam.inHsDo:stmts=" ++ showGhc stmts
@@ -207,7 +207,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
 -}
 
              --6.pn is declared locally in a let statement.
-             inLetStmt (letStmt@(GHC.L l (GHC.LetStmt stmts)):: GHC.ExprLStmt GHC.RdrName)
+             inLetStmt (letStmt@(GHC.L _ (GHC.LetStmt _stmts)):: GHC.ExprLStmt GHC.RdrName)
                = do
                    nm <- getRefactNameMap
                    decls <- liftT $ hsDecls letStmt
@@ -218,7 +218,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
              inLetStmt _ = mzero
 
              failure = idTP `adhocTP` modu
-               where modu (m::GHC.ParsedSource) = error "Refactoring failed"
+               where modu (_::GHC.ParsedSource) = error "Refactoring failed"
 
 
              doAdding :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc t
@@ -237,7 +237,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported = do
                        parent1 <- liftT $ replaceDecls parent ds'
                        parent' <- addDefaultActualArg False pn defaultParamPName parent1
                        -- parent' <- addDefaultActualArg True pn defaultParamPName parent1
-                       parent''<- addDefaultActualArgDecl defaultParamPName parent' pn isExported
+                       parent''<- addDefaultActualArgDecl defaultParamPName parent' pn isExported'
                        ds2 <- liftT $ hsDecls parent''
                        ds'' <- addArgToSig pn ds2
                        parent3 <- liftT $ replaceDecls parent'' ds''
@@ -337,7 +337,7 @@ paramNameOk nm pn newParam t
 
    -- bind ((Dec (HsFunBind _ matches@((HsMatch _ fun pats rhs ds):ms)))::HsDeclP)
    bind :: GHC.LHsBind GHC.RdrName -> Maybe Bool
-   bind (GHC.L l (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t))
+   bind (GHC.L _ (GHC.FunBind n _i (GHC.MG matches _a _ptt _o) _co _fvs _))
     | rdrName2NamePure nm n == pn
     = do results' <- mapM checkInMatch matches
          Just (all (==True) results')
@@ -383,11 +383,11 @@ paramNameOk pn newParam t = (fromMaybe True) (applyTU (once_tdTU (failTU `adhocT
 
 -- |add the default argument declaration right after the declaration defining pn
 addDefaultActualArgDecl :: (SYB.Data t) => GHC.Located GHC.RdrName -> t -> GHC.Name -> Bool -> RefactGhc t
-addDefaultActualArgDecl defaultParamPName parent pn isExported = do
+addDefaultActualArgDecl defaultParamPName parent pn isExported' = do
   defaultArgDecl <- parseDeclWithAnns ((showGhc defaultParamPName) ++ " = undefined")
   nm <- getRefactNameMap
   let inParent = findLRdrName nm pn parent
-  if not inParent && not isExported
+  if not inParent && not isExported'
     then return parent
     else addDecl parent (Just pn) ([defaultArgDecl],Nothing)
 {-
@@ -434,7 +434,6 @@ mkTopLevelDefaultArgName :: (SYB.Data t,GHC.Outputable a)
                          -> RefactGhc (GHC.Located GHC.RdrName)
 mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t = do
   logm $ "mkTopLevelDefaultArgName entered"
-  nm <- getRefactNameMap
   (f,d) <- hsFDNamesFromInsideRdr t
   let name = mkNewName ((showGhc fun)++"_"++paramName) (nub (f `union` d `union` inscopeNames)) 0
   loc <- liftT $ uniqueSrcSpanT
@@ -478,7 +477,7 @@ addDefaultActualArg recursion pn argPName t = do
                                                 `adhocTP` (funApp nm)))) t
        where
          inDecl :: NameMap -> GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
-         inDecl nm fun@(GHC.L l (GHC.ValD (GHC.FunBind n i (GHC.MG matches a ptt o) co fvs t)))
+         inDecl nm fun@(GHC.L _ (GHC.ValD (GHC.FunBind n _i _ _co _fvs _)))
            | rdrName2NamePure nm n == pn
            = return fun -- Stop the recursion by not returning mzero
 
@@ -524,8 +523,7 @@ addDefaultActualArg recursion pn argPName
 -- | Add a parameter to a 'GHC.HsVar' expression
 addParamToExp :: GHC.LHsExpr GHC.RdrName -> GHC.RdrName
               -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-addParamToExp (expr@(GHC.L l (GHC.HsVar n))) argPName = do
-  nm <- getRefactNameMap
+addParamToExp (expr@(GHC.L _ (GHC.HsVar _))) argPName = do
   lp <- liftT uniqueSrcSpanT
   la <- liftT uniqueSrcSpanT
   lv <- liftT uniqueSrcSpanT
@@ -590,10 +588,10 @@ addArgToSig pn decls = do
         --   used in the type signature.
        mkNewTypeVarName :: [GHC.LHsDecl GHC.RdrName] -> String
        mkNewTypeVarName sig
-          =mkNewName "a" $ map showGhc $ (snd.hsTypeVbls) sig
-             where mkNewName initName v
+          =mkANewName "a" $ map showGhc $ (snd.hsTypeVbls) sig
+             where mkANewName initName v
                      =if elem initName v
-                         then mkNewName ((intToDigit (digitToInt(head initName)+1)):tail initName) v
+                         then mkANewName ((intToDigit (digitToInt(head initName)+1)):tail initName) v
                          else initName
 
 {-
@@ -650,12 +648,12 @@ addArgInClientMod' pnt defaultArg serverModName = do
           then return ()
           else do
             mod'  <- addItemsToImport serverModName  (Just pn) (Left [GHC.unLoc defaultArg]) parsed
-            mod'' <- addItemsToExport parsed (Just pn) False (Left [GHC.unLoc defaultArg])
+            mod'' <- addItemsToExport mod' (Just pn) False (Left [GHC.unLoc defaultArg])
             isInScopeAndUnqual <- isInScopeAndUnqualifiedGhc (showGhc pnt) Nothing
             logm $ "addArgInClientMod':isInScopeAndUnqual=" ++ show isInScopeAndUnqual
             mod3 <- if isInScopeAndUnqual
-               then addDefaultActualArgInClientMod  pn  (head qual) defaultArg False mod''
-               else addDefaultActualArgInClientMod  pn  (head qual) defaultArg True  mod''
+               then addDefaultActualArgInClientMod pn defaultArg mod''
+               else addDefaultActualArgInClientMod pn defaultArg mod''
             putRefactParsed mod3 emptyAnns
             return ()
 
@@ -679,8 +677,10 @@ addArgInClientMod pnt defaultArg  serverModName ((inscps, exps, mod,ts), fileNam
 -- ---------------------------------------------------------------------
 
 --add default actual argument to pn in all the calling places.
-addDefaultActualArgInClientMod :: (SYB.Data t) => GHC.Name -> GHC.ModuleName -> GHC.Located GHC.RdrName -> Bool -> t -> RefactGhc t
-addDefaultActualArgInClientMod pn qual argPName toBeQualified t = do
+addDefaultActualArgInClientMod :: (SYB.Data t)
+  => GHC.Name -> GHC.Located GHC.RdrName -> t
+  -> RefactGhc t
+addDefaultActualArgInClientMod pn argPName t = do
   logm $ "addDefaultActualArgInClientMod entered:argPName=" ++ showGhc argPName
   nm <- getRefactNameMap
   r <- applyTP (stop_tdTP (failTP `adhocTP` (funApp nm))) t
@@ -692,30 +692,10 @@ addDefaultActualArgInClientMod pn qual argPName toBeQualified t = do
       | GHC.nameUnique (rdrName2NamePure nm (GHC.L l pname)) == GHC.nameUnique pn
        = do
             logm $ "addDefaultActualArgInClientMod:hit"
-            vs <- hsVisibleNamesRdr (GHC.L l pname) t
+            -- vs <- hsVisibleNamesRdr (GHC.L l pname) t
             let argExp = GHC.unLoc argPName
-            -- let argExp=if toBeQualified || elem (pNtoName argPName) vs
-            --              then pNtoExp (qualifyPName qual argPName)
-            --              else pNtoExp argPName
             addParamToExp expr argExp
-{-
-            ss1 <- liftT uniqueSrcSpanT
-            ss2 <- liftT uniqueSrcSpanT
-            ss3 <- liftT uniqueSrcSpanT
-            let argExp = GHC.L ss3 (GHC.HsVar (GHC.unLoc argPName))
-            -- let argExp=if toBeQualified || elem (pNtoName argPName) vs
-            --              then pNtoExp (qualifyPName qual argPName)
-            --              else pNtoExp argPName
-                newExp = (GHC.L ss1 (GHC.HsPar (GHC.L ss2 (GHC.HsApp exp argExp))))
-            liftT $ addSimpleAnnT argExp (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
-            liftT $ addSimpleAnnT newExp (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
-            liftT $ transferEntryDPT exp newExp
-            liftT $ setEntryDPT exp (DP (0,0))
-            return newExp
--}
     funApp _ _ = mzero
-
-myfst (a,_,_,_) = a
 
 {-
 
@@ -847,7 +827,7 @@ doRmParam pn nTh = do
 
              -- --2. pn is declared locally in the where clause of a match.
              inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-             inMatch match@(GHC.L l (GHC.Match (Just (fun,_)) pats mtyp (GHC.GRHSs rhs ds)))
+             inMatch match@(GHC.L _ (GHC.Match (Just (_fun,_)) _pats _mtyp (GHC.GRHSs _rhs _ds)))
                = doRemoving' match
              inMatch _ = mzero
 
@@ -858,9 +838,9 @@ doRmParam pn nTh = do
 
              -- --4: pn is declared locally in a  Let expression
              inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-             inLet letExp@(GHC.L l (GHC.HsLet bs e))
+             inLet letExp@(GHC.L _ (GHC.HsLet _bs _e))
                = doRemoving' letExp
-             inLet doStmt@(GHC.L l (GHC.HsDo ctx stmts ptt))
+             inLet (GHC.L l (GHC.HsDo ctx stmts ptt))
                = do
                    nm <- getRefactNameMap
                    if not ( null (definingDeclsRdrNames' nm [pn] stmts))
@@ -877,12 +857,12 @@ doRmParam pn nTh = do
 
              -- --6.pn is declared locally in a let statement.
              inLetStmt :: GHC.ExprLStmt GHC.RdrName -> RefactGhc (GHC.ExprLStmt GHC.RdrName)
-             inLetStmt letStmt@(GHC.L l (GHC.LetStmt _))
+             inLetStmt letStmt@(GHC.L _ (GHC.LetStmt _))
                = doRemoving' letStmt
              inLetStmt _ = mzero
 
              failure = idTP `adhocTP` modu
-               where modu (m::GHC.ParsedSource) = error "Refactoring failed"
+               where modu (_m::GHC.ParsedSource) = error "Refactoring failed"
 
              -- ------------------------
 
@@ -897,27 +877,27 @@ doRmParam pn nTh = do
              doRemoving parent ds  --PROBLEM: How about doRemoving fails?
                 =do
                     -- Check the preconditions, will error on failure
-                    void $ rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False ds
+                    void $ rmFormalArg pn nTh False True =<< rmNthArgInFunCall pn nTh False ds
 
                     -- preconditions passed, do the transformation
-                    ds' <- rmNthArgInSig pn nth   =<< rmFormalArg pn nth True False  ds
+                    ds' <- rmNthArgInSig pn nTh   =<< rmFormalArg pn nTh True False  ds
                     ds'' <- liftT $ replaceDecls parent ds'
-                    rmNthArgInFunCall pn nth True ds''
+                    rmNthArgInFunCall pn nTh True ds''
 
              doRemovingStmts :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc [GHC.ExprLStmt GHC.RdrName]
              doRemovingStmts stmts
                 =do
                     -- Check the preconditions, will error on failure
-                    void $ rmFormalArg pn nth False True =<< rmNthArgInFunCall pn nth False stmts
+                    void $ rmFormalArg pn nTh False True =<< rmNthArgInFunCall pn nTh False stmts
 
                     -- preconditions passed, do the transformation
-                    stmts' <- rmFormalArg pn nth True False stmts
-                    rmNthArgInFunCall pn nth True stmts'
+                    stmts' <- rmFormalArg pn nTh True False stmts
+                    rmNthArgInFunCall pn nTh True stmts'
 
              -- |Just remove the nth formal parameter.
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
-             rmFormalArg pn nth updateToks checking t = do
-               logm $ "rmFormalArg:(pn,nth,updateToks,checking)=" ++ showGhc (pn,nth,updateToks,checking)
+             rmFormalArg pn' nTh' updateToks checking t = do
+               logm $ "rmFormalArg:(pn,nTh,updateToks,checking)=" ++ showGhc (pn',nTh',updateToks,checking)
                logDataWithAnns "rmFormalArg:t=" t
                nm <- getRefactNameMap
                applyTP (stop_tdTP (failTP `adhocTP` (rmInMatch nm))) t
@@ -925,9 +905,9 @@ doRmParam pn nTh = do
                where
                  -- a formal parameter only exists in a match
                  rmInMatch nm (match@(GHC.L l (GHC.Match (Just (fun,b)) pats typ (GHC.GRHSs rhs decls)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-                   | rdrName2NamePure nm fun == pn =
-                       let  pat = pats!!nth     --get the nth formal parameter
-                            pats' = take nth pats ++ drop (nth + 1) pats
+                   | rdrName2NamePure nm fun == pn' =
+                       let  pat = pats!!nTh'     --get the nth formal parameter
+                            pats' = take nTh' pats ++ drop (nTh' + 1) pats
                             -- pNames = hsPNs pat  --get all the names in this pat. (the pat may be just be a variable)
                             pNames = map (rdrName2NamePure nm) $ hsNamessRdr pat  --get all the names in this pat. (the pat may be just be a variable)
                        in if checking && not ( all (==False) ((map (flip (findNameInRdr nm) rhs) pNames)) && --not used in rhs
@@ -1028,25 +1008,25 @@ doRmParam pn nth mod fileName tokList
 -- |Remove the nth argument of function pn in all the calling places. The index
 -- for the first argument is zero.
 rmNthArgInFunCall :: (SYB.Data t) => GHC.Name -> Int -> Bool -> t -> RefactGhc t
-rmNthArgInFunCall pn nth updateToks t = do
+rmNthArgInFunCall pn nTh updateToks t = do
   nm <- getRefactNameMap
   applyTP (stop_tdTP (failTP `adhocTP` (funApp nm))) t
    where
-         funApp nm (exp@(GHC.L _ (GHC.HsPar (GHC.L l (GHC.HsApp e1 e2))))::GHC.LHsExpr GHC.RdrName)
-              | nth == 0 && Just pn == expToNameRdr nm e1
+         funApp nm (expr@(GHC.L _ (GHC.HsPar (GHC.L _ (GHC.HsApp e1 _e2))))::GHC.LHsExpr GHC.RdrName)
+              | nTh == 0 && Just pn == expToNameRdr nm e1
              = do
-                 liftT $ transferEntryDPT exp e1
+                 liftT $ transferEntryDPT expr e1
                  return e1 -- handle the case like '(fun x) => fun "
-         funApp nm (exp@(GHC.L _ (GHC.HsApp _e1 _e2))) = do
+         funApp nm (expr@(GHC.L _ (GHC.HsApp _e1 _e2))) = do
                 --test if this application is a calling of fun pn.
-              let expu = unfoldHsApp exp
-              ed <- liftT $ getEntryDPT exp
+              let expu = unfoldHsApp expr
+              ed <- liftT $ getEntryDPT expr
               logm $ "rmNthArgInFunCall:expu=" ++ showGhc expu
               if Just pn == (expToNameRdr nm.snd.(ghead "rmNthArgInFunCall")) expu
                then do
-                  logDataWithAnns "rmNthArgInFunCall:(exp)=" exp
-                  logDataWithAnns "rmNthArgInFunCall:(unfoldHsApp exp)=" expu
-                  let (before,after)=splitAt (nth+1) expu   --remove the nth argument
+                  logDataWithAnns "rmNthArgInFunCall:(expr)=" expr
+                  logDataWithAnns "rmNthArgInFunCall:(unfoldHsApp expr)=" expu
+                  let (before,after)=splitAt (nTh+1) expu   --remove the nth argument
                   let exp' = (foldHsApp (before++tail after))  --reconstruct the function application.
                   liftT $ setEntryDPT exp' ed
                   logDataWithAnns "rmNthArgInFunCall:(foldHsApp (before++tail after))=" exp'

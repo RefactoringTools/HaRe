@@ -1481,6 +1481,7 @@ addParamsToDecls decls pn paramPNames = do
 -- the export list is empty, then if the third argument is True, then create an
 -- explict export list to contain only the new identifiers, otherwise do
 -- nothing.
+-- TODO:AZ: re-arrange params to line up with addItemsToExport
 addItemsToExport ::
                     GHC.ParsedSource                    -- ^The module AST.
                    -> Maybe GHC.Name                    -- ^The condtion identifier.
