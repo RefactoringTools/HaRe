@@ -22,7 +22,7 @@ import Control.Monad
 
 import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
-import Language.Haskell.GHC.ExactPrint.Utils
+-- import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.GhcUtils
 
