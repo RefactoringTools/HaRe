@@ -69,6 +69,16 @@ main = do
                          "Rename an identifier"
                          runCmd
                          renameCmdOpts
+
+              addCommand "addOneParam"
+                         "Add a new parameter to a function in first position"
+                         runCmd
+                         addOneParamCmdOpts
+
+              addCommand "rmOneParam"
+                         "Remove a new parameter from a function"
+                         runCmd
+                         rmOneParamCmdOpts
     run global
 
 -- ---------------------------------------------------------------------
@@ -82,6 +92,8 @@ data HareParams = DemoteCmd      FilePath Row Col
                 | LiftOneLevel   FilePath Row Col
                 | LiftToTopLevel FilePath Row Col
                 | RenameCmd      FilePath String Row Col
+                | AddOneParam    FilePath String Row Col
+                | RmOneParam     FilePath Row Col
                deriving Show
 
 runCmd :: HareParams -> RefactSettings -> IO ()
@@ -102,6 +114,48 @@ runCmd (LiftToTopLevel fileName r c) opt
 
 runCmd (RenameCmd fileName newname r c) opt
   = runFunc $ rename opt GM.defaultOptions fileName newname (r,c)
+
+runCmd (AddOneParam fileName newname r c) opt
+  = runFunc $ addOneParameter opt GM.defaultOptions fileName newname (r,c)
+
+runCmd (RmOneParam fileName r c) opt
+  = runFunc $ rmOneParameter opt GM.defaultOptions fileName (r,c)
+
+-- ---------------------------------------------------------------------
+
+rmOneParamCmdOpts :: Parser HareParams
+rmOneParamCmdOpts =
+    LiftOneLevel
+      <$> strArgument
+            ( metavar "FILE"
+           <> help "Specify Haskell file to process"
+            )
+      <*> argument auto
+            ( metavar "line"
+           <> help "The line the function name is on")
+      <*> argument auto
+            ( metavar "col"
+           <> help "The col the function name starts at")
+
+-- ---------------------------------------------------------------------
+
+addOneParamCmdOpts :: Parser HareParams
+addOneParamCmdOpts =
+    DupDefCmd
+      <$> strArgument
+            ( metavar "FILE"
+           <> help "Specify Haskell file to process"
+            )
+      <*> strArgument
+            ( metavar "NAME"
+           <> help "The name for the parameter"
+            )
+      <*> argument auto
+            ( metavar "line"
+           <> help "The line the function name is on")
+      <*> argument auto
+            ( metavar "col"
+           <> help "A col inside the function name name")
 
 -- ---------------------------------------------------------------------
 
