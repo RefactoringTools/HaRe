@@ -196,6 +196,21 @@ spec = do
                                  "./AddOneParameter/Nested.refactored.hs"
       diffD `shouldBe` []
 
+    -- -------------------
+
+    it "addOneParameter in MultiFun1" $ do
+      r <- ct $ addOneParameter defaultTestSettings testOptions "./AddOneParameter/MultiFun1.hs" "x" (9,1)
+      -- r <- ct $ addOneParameter logTestSettings testOptions "./AddOneParameter/MultiFun1.hs" "x" (9,1)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "AddOneParameter/MultiFun1.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./AddOneParameter/MultiFun1.expected.hs"
+                                 "./AddOneParameter/MultiFun1.refactored.hs"
+      diffD `shouldBe` []
+
     -- ---------------------------------
     -- Negative tests
     -- ---------------------------------
@@ -426,6 +441,21 @@ negative=[(["PatIn2.hs"],["x","7","20"]),
 
       diffD <- ct $ compareFiles "./RmOneParameter/SubFun3.expected.hs"
                                  "./RmOneParameter/SubFun3.refactored.hs"
+      diffD `shouldBe` []
+
+    -- -------------------
+
+    it "rmOneParameter in MultiFun1" $ do
+      r <- ct $ rmOneParameter defaultTestSettings testOptions "./RmOneParameter/MultiFun1.hs" (10,8)
+      -- r <- ct $ rmOneParameter logTestSettings testOptions "./RmOneParameter/MultiFun1.hs" (10,8)
+
+      r' <- ct $ mapM makeRelativeToCurrentDirectory r
+
+      r' `shouldBe` [ "RmOneParameter/MultiFun1.hs"
+                    ]
+
+      diffD <- ct $ compareFiles "./RmOneParameter/MultiFun1.expected.hs"
+                                 "./RmOneParameter/MultiFun1.refactored.hs"
       diffD `shouldBe` []
 
     -- ---------------------------------
