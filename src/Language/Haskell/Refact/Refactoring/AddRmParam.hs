@@ -1,7 +1,7 @@
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.AddRmParam
-       ( addOneParameter, compAdd
-       , rmOneParameter, compRm
+       ( addOneParameter, compAddOneParameter
+       , rmOneParameter, compRmOneParameter
        ) where
 
 import qualified Data.Generics as SYB
@@ -43,10 +43,10 @@ import Data.Generics.Strafunski.StrategyLib.StrategyLib
 addOneParameter :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 addOneParameter settings opts fileName paramName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts (compAdd absFileName paramName (row,col))
+  runRefacSession settings opts (compAddOneParameter absFileName paramName (row,col))
 
-compAdd :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
-compAdd fileName paramName (row, col) = do
+compAddOneParameter :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
+compAddOneParameter fileName paramName (row, col) = do
   if isVarId paramName
     then
       do
@@ -735,10 +735,10 @@ myfst (a,_,_,_) = a
 rmOneParameter :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 rmOneParameter settings opts fileName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts (compRm absFileName (row,col))
+  runRefacSession settings opts (compRmOneParameter absFileName (row,col))
 
-compRm :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
-compRm fileName (row, col) = do
+compRmOneParameter :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
+compRmOneParameter fileName (row, col) = do
   parseSourceFileGhc fileName
   logParsedSource "compRm entry"
   -- pn is the function names.
