@@ -11,24 +11,21 @@ module Language.Haskell.Refact.HaRe
  , GM.defaultOptions
 
  -- * Refactorings
- , ifToCase
- , compIfToCase
- , duplicateDef
- , compDuplicateDef
- , liftToTopLevel
- , compLiftToTopLevel
- , liftOneLevel
- , compLiftOneLevel
- , demote
- , compDemote
- , rename
- , compRename
+ , ifToCase,        compIfToCase
+ , duplicateDef,    compDuplicateDef
+ , liftToTopLevel,  compLiftToTopLevel
+ , liftOneLevel,    compLiftOneLevel
+ , demote,          compDemote
+ , rename,          compRename
+ , addOneParameter, compAddOneParameter
+ , rmOneParameter,  compRmOneParameter
  -- , swapArgs
  , roundTrip
 
  )
 where
 
+import Language.Haskell.Refact.Refactoring.AddRmParam
 import Language.Haskell.Refact.Refactoring.Case
 import Language.Haskell.Refact.Refactoring.DupDef
 import Language.Haskell.Refact.Refactoring.MoveDef
