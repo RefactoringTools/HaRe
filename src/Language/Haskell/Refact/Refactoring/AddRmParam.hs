@@ -71,15 +71,15 @@ compAddOneParameter fileName paramName (row, col) = do
                      clients <- clientModsAndFiles targetModule
                      decls <- liftT $ hsDecls parsed
                      let inscopes = []
-                     defaultArg <- mkTopLevelDefaultArgName pn paramName fileName modName inscopes decls
+                     defaultArg <- mkTopLevelDefaultArgName pn paramName modName inscopes decls
                      logm $ "compAdd:defaultArg=" ++ showGhc defaultArg
-                     (refactoredMod,_) <- applyRefac (doAddingParam (error "p2") modName pn paramName (Just defaultArg) True) RSAlreadyLoaded
+                     (refactoredMod,_) <- applyRefac (doAddingParam pn paramName (Just defaultArg) True) RSAlreadyLoaded
                      refactoredClients <- mapM (addArgInClientMod pn defaultArg) clients
                      -- let refactoredClients = []
                      return $ refactoredMod:refactoredClients
                     else do
                      logm $ "compAdd:not exported"
-                     (refactoredMod,_) <- applyRefac (doAddingParam (error "p1") modName pn paramName Nothing False) (RSFile fileName)
+                     (refactoredMod,_) <- applyRefac (doAddingParam pn paramName Nothing False) (RSFile fileName)
                      return [refactoredMod]
 
                else error "Invalid cursor position or identifier is not a function/pattern name defined in this module!\n"
@@ -115,9 +115,9 @@ addOneParameter args
 
 -- ---------------------------------------------------------------------
 
-doAddingParam :: FilePath -> GHC.ModuleName -> GHC.Name -> String -> Maybe (GHC.Located GHC.RdrName) -> Bool
+doAddingParam :: GHC.Name -> String -> Maybe (GHC.Located GHC.RdrName) -> Bool
               -> RefactGhc ()
-doAddingParam fileName modName pn newParam defaultArg isExported' = do
+doAddingParam pn newParam defaultArg isExported' = do
     logm $ "doAddingParam entered:defaultArg=" ++ showGhc defaultArg
     parsed <- getRefactParsed
     -- logDataWithAnns "parsed" parsed
@@ -231,7 +231,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported' = do
                        logm $ "doAddingParam.doAdding: True leg of paramNameOk:newParam=" ++ showGhc (mkRdrName newParam)
                        ds' <- addParamsToDecls ds pn [mkRdrName newParam] --addFormalParam pn newParam ds
                        defaultParamPName <-if isNothing defaultArg
-                                           then mkLocalDefaultArgName pn newParam modName parent
+                                           then mkLocalDefaultArgName pn newParam parent
                                            else return (gfromJust "doAdding" defaultArg)
                        logm $ "doAddingParam.doAdding: defaultParamPName=" ++ showGhc defaultParamPName
                        parent1 <- liftT $ replaceDecls parent ds'
@@ -252,7 +252,7 @@ doAddingParam fileName modName pn newParam defaultArg isExported' = do
                    then do
                        logm $ "doAddingParam.doAddingStmts: True leg of paramNameOk:newParam=" ++ showGhc (mkRdrName newParam)
                        defaultParamPName <-if isNothing defaultArg
-                                           then mkLocalDefaultArgName pn newParam modName stmts
+                                           then mkLocalDefaultArgName pn newParam stmts
                                            else return (gfromJust "doAddingStmts" defaultArg)
                        logm $ "doAddingParam.doAddingStmts: defaultParamPName=" ++ showGhc defaultParamPName
                        stmts' <- addDefaultActualArg False pn defaultParamPName stmts
@@ -405,8 +405,8 @@ addDefaultActualArgDecl defaultParamPName parent pn isExported
 -- |suppose function name is f, parameter name is p, then the default argument
 -- name is like f_p.
 mkLocalDefaultArgName :: (SYB.Data t)
-                      => GHC.Name -> String -> c -> t -> RefactGhc (GHC.Located GHC.RdrName)
-mkLocalDefaultArgName fun paramName modName t = do
+                      => GHC.Name -> String -> t -> RefactGhc (GHC.Located GHC.RdrName)
+mkLocalDefaultArgName fun paramName t = do
   logm $ "mkLocalDefaultArgName"
   (f,d) <- hsFDNamesFromInsideRdr t
   vs <- hsVisibleNamesRdr fun t -- ++AZ++ TODO : FindEntity on fun will fail in a RdrName AST
@@ -428,11 +428,10 @@ mkLocalDefaultArgName fun paramName modName t
 -- ---------------------------------------------------------------------
 
 mkTopLevelDefaultArgName :: (SYB.Data t,GHC.Outputable a)
-                         => a -> String -> c
-                         -> GHC.ModuleName
+                         => a -> String -> GHC.ModuleName
                          -> [String] -> t
                          -> RefactGhc (GHC.Located GHC.RdrName)
-mkTopLevelDefaultArgName fun paramName fileName modName inscopeNames t = do
+mkTopLevelDefaultArgName fun paramName modName inscopeNames t = do
   logm $ "mkTopLevelDefaultArgName entered"
   (f,d) <- hsFDNamesFromInsideRdr t
   let name = mkNewName ((showGhc fun)++"_"++paramName) (nub (f `union` d `union` inscopeNames)) 0
@@ -877,22 +876,22 @@ doRmParam pn nTh = do
              doRemoving parent ds  --PROBLEM: How about doRemoving fails?
                 =do
                     -- Check the preconditions, will error on failure
-                    void $ rmFormalArg pn nTh False True =<< rmNthArgInFunCall pn nTh False ds
+                    void $ rmFormalArg pn nTh False True =<< rmNthArgInFunCall pn nTh ds
 
                     -- preconditions passed, do the transformation
                     ds' <- rmNthArgInSig pn nTh   =<< rmFormalArg pn nTh True False  ds
                     ds'' <- liftT $ replaceDecls parent ds'
-                    rmNthArgInFunCall pn nTh True ds''
+                    rmNthArgInFunCall pn nTh ds''
 
              doRemovingStmts :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc [GHC.ExprLStmt GHC.RdrName]
              doRemovingStmts stmts
                 =do
                     -- Check the preconditions, will error on failure
-                    void $ rmFormalArg pn nTh False True =<< rmNthArgInFunCall pn nTh False stmts
+                    void $ rmFormalArg pn nTh False True =<< rmNthArgInFunCall pn nTh stmts
 
                     -- preconditions passed, do the transformation
                     stmts' <- rmFormalArg pn nTh True False stmts
-                    rmNthArgInFunCall pn nTh True stmts'
+                    rmNthArgInFunCall pn nTh stmts'
 
              -- |Just remove the nth formal parameter.
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
@@ -1007,8 +1006,8 @@ doRmParam pn nth mod fileName tokList
 
 -- |Remove the nth argument of function pn in all the calling places. The index
 -- for the first argument is zero.
-rmNthArgInFunCall :: (SYB.Data t) => GHC.Name -> Int -> Bool -> t -> RefactGhc t
-rmNthArgInFunCall pn nTh updateToks t = do
+rmNthArgInFunCall :: (SYB.Data t) => GHC.Name -> Int -> t -> RefactGhc t
+rmNthArgInFunCall pn nTh t = do
   nm <- getRefactNameMap
   applyTP (stop_tdTP (failTP `adhocTP` (funApp nm))) t
    where
@@ -1230,7 +1229,7 @@ getParam toks pos
 rmParamInClientMod :: GHC.Name -> Int -> TargetModule -> RefactGhc ApplyRefacResult
 rmParamInClientMod pn nTh serverModName = do
   logm $ "rmParamInClientMod:serverModName" ++ showGhc serverModName
-  (r,_) <- applyRefac (rmNthArgInFunCallMod pn nTh True) (RSTarget serverModName)
+  (r,_) <- applyRefac (rmNthArgInFunCallMod pn nTh) (RSTarget serverModName)
   return r
  -- = do (inscps, exps, mod, ts) <-parseSourceFile fileName
  --      let qualifier = hsQualifier pnt inscps
@@ -1254,15 +1253,15 @@ rmParamInClientMod pnt nth (m, fileName)
 
 -}
 
-rmNthArgInFunCallMod :: GHC.Name -> Int -> Bool -> RefactGhc ()
-rmNthArgInFunCallMod pn nTh f = do
+rmNthArgInFunCallMod :: GHC.Name -> Int -> RefactGhc ()
+rmNthArgInFunCallMod pn nTh = do
   parsed <- getRefactParsed
   newNames <- equivalentNameInNewMod pn
   logm $ "rmNthArgInFunCallMod:(newNames)=" ++ showGhcQual newNames
   case newNames of
     [] -> return ()
     [_pnt] -> do
-      parsed' <- rmNthArgInFunCall pn nTh f parsed
+      parsed' <- rmNthArgInFunCall pn nTh parsed
       putRefactParsed parsed' emptyAnns
       return ()
     _ns   -> error "HaRe: rmParam: more than one name matches"
