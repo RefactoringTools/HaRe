@@ -1835,7 +1835,6 @@ duplicateDecl decls n newFunName
 -- according to the PNT, where 'parent' is the first decl containing
 -- the PNT, 'before' are those decls before 'parent' and 'after' are
 -- those decls after 'parent'.
-
 divideDecls :: SYB.Data t =>
   [t] -> GHC.Located GHC.Name -> RefactGhc ([t], [t], [t])
 divideDecls ds (GHC.L _ pnt) = do

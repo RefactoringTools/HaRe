@@ -723,7 +723,7 @@ willBeUnQualImportedBy modName = do
 -- |get the subset of 'pns', which need to be hided in the import
 -- declaration in module 'mod'
 -- Note: these are newly exported from the module, so we cannot use
--- the GHC name resolution i nthis case.
+-- the GHC name resolution in this case.
 namesNeedToBeHided :: GHC.Module -> [GHC.ModuleName] -> [GHC.Name]
    -> RefactGhc [GHC.Name]
 namesNeedToBeHided clientModule modNames pns = do
@@ -785,19 +785,18 @@ namesNeedToBeHided clientModule modNames pns = do
 
 -- ---------------------------------------------------------------------
 
+-- |When liftOneLevel is complete, identify whether any new declarations have
+-- been put at the top level
 liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
 liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
-  -- logm $ "liftedToTopLevel entered"
+  logm $ "liftedToTopLevel entered:pn=" ++ showGhc pn
   nm <- getRefactNameMap
-  -- logm $ "liftedToTopLevel:got nm"
   decls <- liftT $ hsDecls parsed
   let topDecs = definingDeclsRdrNames nm [pn] decls False False
   -- ++AZ++ :TODO: we are not updating the nameMap to reflect moved decls
   if nonEmptyList topDecs
      then do
-       (_, parent,_) <- divideDecls decls pnt
-       let declsp = parent
-       let liftedDecls = definingDeclsRdrNames nm [pn] declsp False False
+       let liftedDecls = definingDeclsRdrNames nm [pn] topDecs False False
            declaredPns  = nub $ concatMap (definedNamesRdr nm) liftedDecls
        return (True, declaredPns)
      else return (False, [])
