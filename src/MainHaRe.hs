@@ -14,6 +14,9 @@ import           Options.Applicative.Simple
 import qualified Language.Haskell.GhcMod as GM
 import qualified Paths_HaRe as Meta
 
+-- temporary until exposed by ghc-mod
+import           Options
+
 main :: IO ()
 main = do
     -- Version code from stack. Maybe move this stuff into optparse-simple ?
@@ -38,7 +41,8 @@ main = do
             versionString'
             "HaRe - the haskell refactorer"
             ""
-            (numericVersion <*> globalOptsParser) $
+            -- (numericVersion <*> globalOptsParser) $
+            (numericVersion <*> allOptsParser) $
             do
               addCommand "demote"
                          "Demote a declaration"
@@ -96,30 +100,30 @@ data HareParams = DemoteCmd      FilePath Row Col
                 | RmOneParam     FilePath Row Col
                deriving Show
 
-runCmd :: HareParams -> RefactSettings -> IO ()
-runCmd (DemoteCmd fileName r c) opt
-  = runFunc $ demote opt GM.defaultOptions fileName (r,c)
+runCmd :: HareParams -> (RefactSettings,GM.Options) -> IO ()
+runCmd (DemoteCmd fileName r c) (opt, gOpt)
+  = runFunc $ demote opt gOpt fileName (r,c)
 
-runCmd (DupDefCmd fileName newname r c) opt
-  = runFunc $ duplicateDef opt GM.defaultOptions fileName newname (r,c)
+runCmd (DupDefCmd fileName newname r c) (opt, gOpt)
+  = runFunc $ duplicateDef opt gOpt fileName newname (r,c)
 
-runCmd (IfToCaseCmd fileName sr sc er ec) opt
-  = runFunc $ ifToCase opt GM.defaultOptions fileName (sr,sc) (er,ec)
+runCmd (IfToCaseCmd fileName sr sc er ec) (opt, gOpt)
+  = runFunc $ ifToCase opt gOpt fileName (sr,sc) (er,ec)
 
-runCmd (LiftOneLevel fileName r c) opt
-  = runFunc $ liftOneLevel opt GM.defaultOptions fileName (r,c)
+runCmd (LiftOneLevel fileName r c) (opt, gOpt)
+  = runFunc $ liftOneLevel opt gOpt fileName (r,c)
 
-runCmd (LiftToTopLevel fileName r c) opt
-  = runFunc $ liftToTopLevel opt GM.defaultOptions fileName (r,c)
+runCmd (LiftToTopLevel fileName r c) (opt, gOpt)
+  = runFunc $ liftToTopLevel opt gOpt fileName (r,c)
 
-runCmd (RenameCmd fileName newname r c) opt
-  = runFunc $ rename opt GM.defaultOptions fileName newname (r,c)
+runCmd (RenameCmd fileName newname r c) (opt, gOpt)
+  = runFunc $ rename opt gOpt fileName newname (r,c)
 
-runCmd (AddOneParam fileName newname r c) opt
-  = runFunc $ addOneParameter opt GM.defaultOptions fileName newname (r,c)
+runCmd (AddOneParam fileName newname r c) (opt, gOpt)
+  = runFunc $ addOneParameter opt gOpt fileName newname (r,c)
 
-runCmd (RmOneParam fileName r c) opt
-  = runFunc $ rmOneParameter opt GM.defaultOptions fileName (r,c)
+runCmd (RmOneParam fileName r c) (opt, gOpt)
+  = runFunc $ rmOneParameter opt gOpt fileName (r,c)
 
 -- ---------------------------------------------------------------------
 
@@ -271,6 +275,9 @@ dupDefCmdOpts =
 
 -- ---------------------------------------------------------------------
 
+allOptsParser :: Parser (RefactSettings,GM.Options)
+allOptsParser = (,) <$> globalOptsParser <*> globalArgSpec
+
 globalOptsParser :: Parser RefactSettings
 globalOptsParser = mkRefSet
      <$> ((\b -> if b then Debug else Normal) <$> switch
@@ -280,7 +287,7 @@ globalOptsParser = mkRefSet
   where
     mkRefSet v = RefSet v (True,True,True,True)
 
-----------------------------------------------------------------
+-- ---------------------------------------------------------------------
 
 -- | Return the result of an Either as a sexp for emacs etc.
 runFunc :: IO [String] -> IO ()
