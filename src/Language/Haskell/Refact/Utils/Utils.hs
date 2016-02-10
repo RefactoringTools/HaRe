@@ -26,7 +26,7 @@ module Language.Haskell.Refact.Utils.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-       , lookupAllAnns
+       , lookupAnns
        , runMultRefacSession
        ) where
 
@@ -510,6 +510,6 @@ serverModsAndFiles m = do
 -- ---------------------------------------------------------------------
 
 -- | Finds all anotations that are contained within the given source span
-lookupAllAnns :: Anns -> GHC.SrcSpan -> Anns
-lookupAllAnns anns (GHC.RealSrcSpan span) = Map.filterWithKey isInSpan anns
+lookupAnns :: Anns -> GHC.SrcSpan -> Anns
+lookupAnns anns (GHC.RealSrcSpan span) = Map.filterWithKey isInSpan anns
   where isInSpan k@(AnnKey (GHC.RealSrcSpan annSpan) conN) v = GHC.containsSpan span annSpan

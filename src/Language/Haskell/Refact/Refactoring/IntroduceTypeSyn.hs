@@ -84,7 +84,7 @@ updateTypeDecs synName ty = do
           let oldKey = mkAnnKey old
               (Just oldAnn) = Map.lookup oldKey currAnns
               correctSig = (GHC.L l (GHC.HsTyVar synName))
-              relevantAnns = lookupAllAnns currAnns l
+              relevantAnns = lookupAnns currAnns l
               newKey = mkAnnKey correctSig
               newAnn = oldAnn{annsDP = [((G GHC.AnnVal),(DP (0,0)))]}
               finalAnns = Map.insert newKey newAnn (Map.difference currAnns relevantAnns)          

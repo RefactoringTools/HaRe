@@ -41,7 +41,7 @@ module Language.Haskell.Refact.API
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-       , lookupAllAnns  
+       , lookupAnns  
 
 
  -- * from `Language.Haskell.Refact.Utils.MonadFunctions`
