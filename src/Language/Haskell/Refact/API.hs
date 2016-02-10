@@ -20,6 +20,8 @@ module Language.Haskell.Refact.API
 
        , logm
        , logDataWithAnns
+       , logExactprint
+       , logParsedSource
 
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
@@ -75,6 +77,9 @@ module Language.Haskell.Refact.API
        , setStateStorage
        , getStateStorage
 
+       -- * Parsing source
+       , parseDeclWithAnns
+
        -- , logm
 
 
@@ -104,12 +109,14 @@ module Language.Haskell.Refact.API
    , inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    , isExported, isExplicitlyExported, modIsExported
    , equivalentNameInNewMod
+   , hsQualifier
 
     -- *** Variable analysis
     , isFieldName
     , isClassName
     , isInstanceName
-    , hsPNs
+    , hsTypeVbls
+    , hsPNs, hsNamess, hsNamessRdr
     , hsBinds
     , HsValBinds(..)
     ,isDeclaredIn,isDeclaredInRdr
@@ -123,7 +130,7 @@ module Language.Haskell.Refact.API
 
     ,hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
     ,hsVisibleNamesRdr
-    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr
+    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
     ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
     ,rdrName2Name, rdrName2NamePure
@@ -140,7 +147,7 @@ module Language.Haskell.Refact.API
     ,sameOccurrence
     , findIdForName
     , getTypeForName
-    ,defines, definesP,definesTypeSig
+    , definesTypeSig,definesTypeSigRdr,definesSigDRdr
     ,sameBind,sameBindRdr
     ,UsedByRhs(..)
 
@@ -150,13 +157,15 @@ module Language.Haskell.Refact.API
 
     -- *** Locations
     ,defineLoc, useLoc, locToExp
+    ,findLRdrName
     ,locToName, locToRdrName
     ,getName
 
  -- * Program transformation
     -- *** Adding
     ,addDecl, addItemsToImport, addItemsToExport, addHiding
-    ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl -- , moveDecl
+    ,addParamsToDecls, addParamsToSigs, addActualParamsToRhs, addImportDecl, duplicateDecl
+
     -- *** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs
 
@@ -177,7 +186,8 @@ module Language.Haskell.Refact.API
 
     -- *** Others
     , divideDecls
-    , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , mkRdrName,mkQualifiedRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , registerRdrName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports
@@ -225,8 +235,12 @@ module Language.Haskell.Refact.API
   , NameMap
 
  -- * from `Language.Haskell.Refact.Utils.ExactPrint'`
- , replace
- , setRefactAnns
+  , replace
+  , setRefactAnns
+  , setAnnKeywordDP
+  , copyAnn
+  , clearPriorComments
+  , balanceAllComments
 
  ) where
 

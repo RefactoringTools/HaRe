@@ -1,6 +1,6 @@
 #!/bin/sh
 
-(cd ../../alanz/ghc-mod             && cabal clean && cabal install --allow-newer)
+#(cd ../../alanz/ghc-mod             && cabal clean && cabal install --allow-newer)
 
 cabal clean && cabal install    --enable-tests --dependencies-only
 cabal clean && cabal configure  --enable-tests

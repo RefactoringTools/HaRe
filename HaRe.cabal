@@ -46,6 +46,8 @@ data-files:                     elisp/*.el
                                 configure.sh
                                 test/testdata/*.cabal
                                 test/testdata/*.hs
+                                test/testdata/AddOneParameter/*.hs
+                                test/testdata/AddOneParameter/*.expected.hs
                                 test/testdata/Case/*.hs
                                 test/testdata/Case/*.hs.expected
                                 test/testdata/Case/*.hs.expected.dd
@@ -72,6 +74,8 @@ data-files:                     elisp/*.el
                                 test/testdata/Renaming/*.expected.hs
                                 test/testdata/Renaming/*.hs
                                 test/testdata/Renaming/*.hs.expected
+                                test/testdata/RmOneParameter/*.expected.hs
+                                test/testdata/RmOneParameter/*.hs
                                 test/testdata/Simple/*.hs
                                 test/testdata/Simple/*.hs.expected
                                 test/testdata/SwapArgs/*.hs
@@ -193,8 +197,11 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
+                                , gitrev >= 1.1
                                 , ghc-mod >= 5.5.0.0
                                 , mtl
+                                , optparse-applicative
+                                , optparse-simple
                                 , old-time
                                 , parsec >= 3.1.6
                                 , pretty
@@ -233,7 +240,8 @@ test-suite spec
     src
     test
   other-modules:
-      CaseSpec
+      AddRmParamSpec
+    , CaseSpec
     , DupDefSpec
     , GhcUtilsSpec
     , LocUtilsSpec
