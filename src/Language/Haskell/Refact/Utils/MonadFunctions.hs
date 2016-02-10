@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 
 -- |
 
@@ -471,7 +472,11 @@ initRdrNameMap tm = r
       Just v -> v
       Nothing -> case n of
                    GHC.Unqual u -> mkNewGhcNamePure 'h' i Nothing  (GHC.occNameString u)
+#if __GLASGOW_HASKELL__ <= 710
                    GHC.Qual q u -> mkNewGhcNamePure 'h' i (Just (GHC.Module (GHC.stringToPackageKey "") q)) (GHC.occNameString u)
+#else
+                   GHC.Qual q u -> mkNewGhcNamePure 'h' i (Just (GHC.Module (GHC.stringToUnitId "") q)) (GHC.occNameString u)
+#endif
                    _            -> error "initRdrNameMap:should not happen"
 
     r = Map.fromList $ map (\((l,n),i) -> (l,lookupName l n i)) $ zip rdrNames [1..]
@@ -493,15 +498,18 @@ nameSybTransform :: (Monad m,SYB.Typeable t)
 nameSybTransform changer = q
   where
     q = SYB.mkM  worker
+#if __GLASGOW_HASKELL__ <= 710
         `SYB.extM` workerBind
         `SYB.extM` workerExpr
         `SYB.extM` workerLIE
         `SYB.extM` workerHsTyVarBndr
         `SYB.extM` workerLHsType
+#endif
 
     worker (pnt :: (GHC.Located GHC.RdrName))
       = changer pnt
 
+#if __GLASGOW_HASKELL__ <= 710
     workerBind (GHC.L l (GHC.VarPat name))
       = do
         (GHC.L _ n) <- changer (GHC.L l name)
@@ -531,6 +539,7 @@ nameSybTransform changer = q
           (GHC.L _ n) <- changer (GHC.L l name)
           return (GHC.L l (GHC.HsTyVar n))
     workerLHsType x = return x
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -539,15 +548,18 @@ nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
 nameSybQuery checker = q
   where
     q = Nothing `SYB.mkQ`  worker
+#if __GLASGOW_HASKELL__ <= 710
                 `SYB.extQ` workerBind
                 `SYB.extQ` workerExpr
                 -- `SYB.extQ` workerLIE
                 `SYB.extQ` workerHsTyVarBndr
                 `SYB.extQ` workerLHsType
+#endif
 
     worker (pnt :: (GHC.Located a))
       = checker pnt
 
+#if __GLASGOW_HASKELL__ <= 710
     workerBind (GHC.L l (GHC.VarPat name))
       = checker (GHC.L l name)
     workerBind _ = Nothing
@@ -567,6 +579,7 @@ nameSybQuery checker = q
     workerLHsType ((GHC.L l (GHC.HsTyVar name)))
       = checker (GHC.L l name)
     workerLHsType _ = Nothing
+#endif
 
 -- ---------------------------------------------------------------------
 
