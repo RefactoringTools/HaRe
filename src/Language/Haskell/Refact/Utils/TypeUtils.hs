@@ -146,7 +146,9 @@ import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified RdrName       as GHC
 import qualified TyCon         as GHC
+#if __GLASGOW_HASKELL__ <= 710
 import qualified TypeRep       as GHC
+#endif
 import qualified Unique        as GHC
 import qualified Var           as GHC
 

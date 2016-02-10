@@ -1,9 +1,10 @@
-{-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE FunctionalDependencies #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeSynonymInstances #-}
 {-# LANGUAGE UndecidableInstances #-} -- for GHC.DataId
 
 --------------------------------------------------------------------------------
@@ -130,6 +131,14 @@ instance (GHC.DataId name,Data name)
 
   hsTyDecls _ = []
 
+
+#if __GLASGOW_HASKELL__ > 710
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.Located (GHC.HsLocalBinds name)) name where
+  hsValBinds (GHC.L _ b) = hsValBinds b
+  hsTyDecls (GHC.L _ b)  = hsTyDecls b
+#endif
+
 instance (GHC.DataId name,Data name)
   => HsValBinds (GHC.HsLocalBinds name) name where
   hsValBinds lb = case lb of
@@ -154,6 +163,13 @@ instance (GHC.DataId name,Data name)
   hsTyDecls _ = []
 
 -- ---------------------------------------------------------------------
+
+#if __GLASGOW_HASKELL__ > 710
+instance (GHC.DataId name,Data name)
+  => HsValBinds (GHC.Located [GHC.LMatch name (GHC.LHsExpr name)]) name where
+    hsValBinds (GHC.L _ ms) = hsValBinds ms
+    hsTyDecls  (GHC.L _ ms) = hsTyDecls  ms
+#endif
 
 instance (GHC.DataId name,Data name)
   => HsValBinds [GHC.LMatch name (GHC.LHsExpr name)] name where
@@ -183,7 +199,11 @@ instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
   hsValBinds (GHC.PatBind _p rhs _typ _fvs _) = hsValBinds rhs
 
   -- TODO: ++AZ++ added for compatibility with hsDecls.
+#if __GLASGOW_HASKELL__ <= 710
   hsValBinds (GHC.FunBind _ _ matches _ _ _) = hsValBinds matches
+#else
+  hsValBinds (GHC.FunBind _ matches _ _ _) = hsValBinds matches
+#endif
   hsValBinds other = error $ "hsValBinds (GHC.HsBind name) undefined for:" ++ (showGhc other)
 
   hsTyDecls _ = []
@@ -213,7 +233,11 @@ instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
 
 instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
   => HsValBinds (GHC.LHsBind name) name where
+#if __GLASGOW_HASKELL__ <= 710
   hsValBinds (GHC.L _ (GHC.FunBind _ _ matches _ _ _)) = hsValBinds matches
+#else
+  hsValBinds (GHC.L _ (GHC.FunBind _ matches _ _ _)) = hsValBinds matches
+#endif
   hsValBinds (GHC.L _ (GHC.PatBind _ rhs _ _ _))       = hsValBinds rhs
   hsValBinds (GHC.L _ (GHC.VarBind _ rhs _))           = hsValBinds rhs
   hsValBinds (GHC.L _ (GHC.AbsBinds _ _ _ _ binds))    = hsValBinds binds
@@ -407,6 +431,23 @@ instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
   hsValBinds _ = emptyValBinds
   hsTyDecls _ = []
 
+-- ---------------------------------------------------------------------
+#if __GLASGOW_HASKELL__ > 710
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds [GHC.LHsSigType name] name where
+  hsValBinds _ = emptyValBinds
+  hsTyDecls _ = []
+
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LHsSigType name) name where
+  hsValBinds _ = emptyValBinds
+  hsTyDecls _ = []
+
+instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
+  => HsValBinds (GHC.LHsSigWcType name) name where
+  hsValBinds _ = emptyValBinds
+  hsTyDecls _ = []
+#endif
 -- ---------------------------------------------------------------------
 
 instance (GHC.OutputableBndr name,GHC.DataId name,Data name)
