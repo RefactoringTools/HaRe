@@ -2335,7 +2335,11 @@ renamePN oldPN newName useQual t = do
      = do
           logTr $ "renamePN:renameTyVar at :" ++ (showGhc l)
           let nn = newNameCalcBool useQual' n
+#if __GLASGOW_HASKELL__ <= 710
+          return (GHC.L l (GHC.HsTyVar nn))
+#else
           return (GHC.L l (GHC.HsTyVar (GHC.L l nn)))
+#endif
     renameTyVar _ x = return x
 
 
