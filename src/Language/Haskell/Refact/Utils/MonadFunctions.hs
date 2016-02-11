@@ -41,6 +41,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , getRefactModule
        , getRefactModuleName
        , getRefactNameMap
+       , addToNameMap
 
        -- * New ghc-exactprint interfacing
        , liftT
@@ -64,6 +65,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , logDataWithAnns
        , logAnns
        , logParsedSource
+       , logExactprint
 
        -- * For use by the tests only
        , initRefactModule
@@ -83,6 +85,7 @@ import qualified Unique        as GHC
 import qualified Data.Generics as SYB
 
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Utils
 
@@ -345,6 +348,20 @@ getRefactNameMap = do
 
 -- ---------------------------------------------------------------------
 
+addToNameMap :: GHC.SrcSpan -> GHC.Name -> RefactGhc ()
+addToNameMap ss n = do
+  s <- get
+  let mtm = rsModule s
+  case mtm of
+    Nothing  -> error $ "Hare.MonadFunctions.addToNameMap:no module loaded"
+    Just tm -> do
+      let nm = rsNameMap tm
+          nm' = Map.insert ss n nm
+          mtm' = Just tm { rsNameMap = nm'}
+      put s { rsModule = mtm'}
+
+-- ---------------------------------------------------------------------
+
 getRefactDone :: RefactGhc Bool
 getRefactDone = do
   flags <- gets rsFlags
@@ -381,6 +398,13 @@ logDataWithAnns :: (SYB.Data a) => String -> a -> RefactGhc ()
 logDataWithAnns str ast = do
   anns <- getRefactAnns
   logm $ str ++ showAnnData anns 0 ast
+
+-- ---------------------------------------------------------------------
+
+logExactprint :: (Annotate a) => String -> GHC.Located a -> RefactGhc ()
+logExactprint str ast = do
+  anns <- getRefactAnns
+  logm $ str ++ "\n[" ++ exactPrint ast anns ++ "]"
 
 -- ---------------------------------------------------------------------
 
@@ -517,7 +541,7 @@ nameSybQuery checker = q
     q = Nothing `SYB.mkQ`  worker
                 `SYB.extQ` workerBind
                 `SYB.extQ` workerExpr
-                `SYB.extQ` workerLIE
+                -- `SYB.extQ` workerLIE
                 `SYB.extQ` workerHsTyVarBndr
                 `SYB.extQ` workerLHsType
 
@@ -532,9 +556,9 @@ nameSybQuery checker = q
       = checker (GHC.L l name)
     workerExpr _ = Nothing
 
-    workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
-      = checker (GHC.L ln name)
-    workerLIE _ = Nothing
+    -- workerLIE ((GHC.L _l (GHC.IEVar (GHC.L ln name))) :: (GHC.LIE a))
+    --   = checker (GHC.L ln name)
+    -- workerLIE _ = Nothing
 
     workerHsTyVarBndr ((GHC.L l (GHC.UserTyVar name)))
       = checker (GHC.L l name)
@@ -548,7 +572,9 @@ nameSybQuery checker = q
 
 parseDeclWithAnns :: String -> RefactGhc (GHC.LHsDecl GHC.RdrName)
 parseDeclWithAnns src = do
-  let label = "<interactive"
+  u <- gets rsUniqState
+  putUnique (u+1)
+  let label = "HaRe-" ++ show (u + 1)
   r  <- GHC.liftIO $ withDynFlags (\df -> parseDecl df label src)
   case r of
     Left err -> error (show err)

@@ -2,7 +2,6 @@ module Language.Haskell.Refact.Utils.Types
        (
         ApplyRefacResult
        , RefacResult(..)
-       , RefacSource(..)
        -- *
        , TreeId(..)
        , mainTid
@@ -27,11 +26,6 @@ type ApplyRefacResult = ((FilePath, RefacResult), (Anns,GHC.ParsedSource))
 
 data RefacResult = RefacModified | RefacUnmodifed
                  deriving (Show,Ord,Eq)
-
-
-data RefacSource = RSFile FilePath
-                 | RSMod GHC.ModSummary
-                 | RSAlreadyLoaded
 
 -- ---------------------------------------------------------------------
 

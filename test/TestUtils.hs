@@ -1,6 +1,5 @@
 module TestUtils
        ( compareFiles
-       , compareStrings
        , parsedFileGhc
        , parsedFileGhcCd
        , parseSourceFileTest
@@ -43,6 +42,7 @@ import qualified Name          as GHC
 import qualified Unique        as GHC
 
 import Data.Algorithm.Diff
+import Data.Algorithm.DiffOutput
 import Data.Data
 import Exception
 import Language.Haskell.GHC.ExactPrint
@@ -81,18 +81,15 @@ hex v = "0x" ++ showHex v ""
 
 -- ---------------------------------------------------------------------
 
-compareFiles :: FilePath -> FilePath -> IO [Diff [String]]
+compareFiles :: FilePath -> FilePath -> IO String
 compareFiles fileA fileB = do
   astr <- readFile fileA
   bstr <- readFile fileB
-  -- return $ filter (\c -> not( isBoth c)) $ getGroupedDiff (lines astr) (lines bstr)
-  return $ compareStrings astr bstr
-
-compareStrings :: String -> String -> [Diff [String]]
-compareStrings astr bstr = filter (\c -> not( isBoth c)) $ getGroupedDiff (lines astr) (lines bstr)
-    where
-      isBoth (Both _ _) = True
-      isBoth _        = False
+  let
+    diffToString ds = case ppDiff ds of
+      "\n" -> ""
+      s    -> s
+  return $ diffToString $ getGroupedDiff (lines astr) (lines bstr)
 
 -- ---------------------------------------------------------------------
 

@@ -16,17 +16,14 @@ module Language.Haskell.Refact.Refactoring.MoveDef
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+
 import qualified Data.Generics.Zipper as Z
 
 
 import qualified Exception             as GHC
-import qualified FastString            as GHC
 import qualified GHC                   as GHC
 import qualified Name                  as GHC
 import qualified RdrName               as GHC
-import qualified TyCon                 as GHC
-import qualified TypeRep               as GHC
-import qualified Var                   as Var
 
 import Control.Exception
 import Control.Monad.State
@@ -156,19 +153,22 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
       else error "\nThe identifier is not a local function/pattern name!"
 
     where
-       {-step1: divide the module's top level declaration list into three parts:
-         'parent' is the top level declaration containing the lifted declaration,
-         'before' and `after` are those declarations before and after 'parent'.
+       {-step1: divide the module's top level declaration list into three parts: 'parent'
+                is the top level declaration containing the lifted declaration, 'before'
+                and `after` are those declarations before and after 'parent'.
          step2: get the declarations to be lifted from parent, bind it to liftedDecls
-         step3: remove the lifted declarations from parent and extra arguments may be introduce.
+         step3: remove the lifted declarations from parent and extra arguments
+                may be introduced.
          step4. test whether there are any names need to be renamed.
        -}
        liftToMod = do
          renamed <- getRefactRenamed
-         parsed <- getRefactParsed
+         parsed' <- getRefactParsed
+         parsed  <- liftT $ balanceAllComments parsed'
+         logDataWithAnns "parsed after balanceAllComments" parsed
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
-         {- ++AZ++ : hsBinds does not return class or instance definitions
+         {- ++AZ++TODO: reinstate this, hsDecls does : hsBinds does not return class or instance definitions
          when (isClassDecl $ ghead "liftToMod" parent)
                $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
          when (isInstDecl $ ghead "liftToMod" parent)
@@ -625,8 +625,8 @@ pnsNeedRenaming dest parent _liftedDecls pns
        = do
             logm $ "MoveDef.pnsNeedRenaming' entered"
             nm <- getRefactNameMap
-            (FN f,DN d) <- hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
-                                                      --d: declaread variables names that may clash with pn
+            let (FN f,DN d) = hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
+                                                         --d: declaread variables names that may clash with pn
             logm $ "MoveDef.pnsNeedRenaming':(f,d)=" ++ showGhc (f,d)
             vs <- hsVisiblePNsRdr nm pn parent  --vs: declarad variables that may shadow pn
             logm $ "MoveDef.pnsNeedRenaming':vs=" ++ showGhc vs
@@ -723,7 +723,7 @@ willBeUnQualImportedBy modName = do
 -- |get the subset of 'pns', which need to be hided in the import
 -- declaration in module 'mod'
 -- Note: these are newly exported from the module, so we cannot use
--- the GHC name resolution i nthis case.
+-- the GHC name resolution in this case.
 namesNeedToBeHided :: GHC.Module -> [GHC.ModuleName] -> [GHC.Name]
    -> RefactGhc [GHC.Name]
 namesNeedToBeHided clientModule modNames pns = do
@@ -785,19 +785,18 @@ namesNeedToBeHided clientModule modNames pns = do
 
 -- ---------------------------------------------------------------------
 
+-- |When liftOneLevel is complete, identify whether any new declarations have
+-- been put at the top level
 liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
 liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
-  -- logm $ "liftedToTopLevel entered"
+  logm $ "liftedToTopLevel entered:pn=" ++ showGhc pn
   nm <- getRefactNameMap
-  -- logm $ "liftedToTopLevel:got nm"
   decls <- liftT $ hsDecls parsed
   let topDecs = definingDeclsRdrNames nm [pn] decls False False
   -- ++AZ++ :TODO: we are not updating the nameMap to reflect moved decls
   if nonEmptyList topDecs
      then do
-       (_, parent,_) <- divideDecls decls pnt
-       let declsp = parent
-       let liftedDecls = definingDeclsRdrNames nm [pn] declsp False False
+       let liftedDecls = definingDeclsRdrNames nm [pn] topDecs False False
            declaredPns  = nub $ concatMap (definedNamesRdr nm) liftedDecls
        return (True, declaredPns)
      else return (False, [])
@@ -844,7 +843,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
          else return (parent,liftedDecls,mLiftedSigs)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- TODO: perhaps move this to TypeUtils
 addParamsToSigs :: [GHC.Name] -> GHC.LSig GHC.RdrName -> RefactGhc (GHC.LSig GHC.RdrName)
 addParamsToSigs [] ms = return ms
@@ -1036,6 +1035,7 @@ HsTyLit HsTyLit
 HsWrapTy HsTyWrapper (HsType name)
 -}
 
+-}
 
 --------------------------------End of Lifting-----------------------------------------
 
@@ -1628,7 +1628,7 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
                        -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
                        -> RefactGhc [GHC.Name]
        getClashedNames nm oldNames newNames match'
-         = do  (_f,DN d) <- hsFDsFromInsideRdr nm match'
+         = do  let (_f,DN d) = hsFDsFromInsideRdr nm match'
                ds' <- mapM (flip (hsVisiblePNsRdr nm) match') oldNames
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub

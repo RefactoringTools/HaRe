@@ -30,12 +30,12 @@ module Language.Haskell.Refact.Utils.Utils
 
        ) where
 
-import Control.Exception
+-- import Control.Exception
 import Control.Monad.Identity
 import Control.Monad.State
 import Data.List
 
-import Language.Haskell.GHC.ExactPrint
+-- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
 import Language.Haskell.GHC.ExactPrint.Print
 import Language.Haskell.GHC.ExactPrint.Types
@@ -103,7 +103,6 @@ setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (
 
 setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
 setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
--- setDynFlags df = return df
 
 -- ---------------------------------------------------------------------
 
@@ -208,15 +207,6 @@ runRefacSession settings opt comp = do
 
 -- ---------------------------------------------------------------------
 
-cdAndDo :: FilePath -> IO a -> IO a
-cdAndDo path fn = do
-  old <- getCurrentDirectory
-  r <- GHC.gbracket (setCurrentDirectory path) (\_ -> setCurrentDirectory old)
-          $ const fn
-  return r
-
--- ---------------------------------------------------------------------
-
 canonicalizeTargets :: Targets-> IO Targets
 canonicalizeTargets tgts = do
   cur <- getCurrentDirectory
@@ -245,6 +235,8 @@ applyRefac refac source = do
     fileName <- case source of
          RSFile fname    -> do parseSourceFileGhc fname
                                return fname
+         RSTarget tgt    -> do getTargetGhc tgt
+                               return (GM.mpPath tgt)
          RSMod  ms       -> do parseSourceFileGhc $ fileNameFromModSummary ms
                                return $ fileNameFromModSummary ms
          RSAlreadyLoaded -> do mfn <- getRefactFileName

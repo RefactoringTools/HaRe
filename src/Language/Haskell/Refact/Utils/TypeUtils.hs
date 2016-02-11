@@ -43,6 +43,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    , isExported, isExplicitlyExported, modIsExported
    , equivalentNameInNewMod
+   , hsQualifier
 
     -- ** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName
@@ -76,7 +77,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
  -- * Program transformation
     -- ** Adding
     ,addDecl, addItemsToImport, addItemsToExport, addHiding
-    ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl
+    ,addParamsToDecls, addParamsToSigs, addActualParamsToRhs, addImportDecl, duplicateDecl
+
     -- ** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs -- , commentOutTypeSig, rmParams
     -- ,rmItemsFromExport, rmSubEntsFromExport, Delete(delete)
@@ -92,7 +94,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Others
     , divideDecls
-    , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , mkRdrName,mkQualifiedRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , registerRdrName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports {- , inRegion , unmodified -}
@@ -134,15 +137,20 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 
 -- Modules from GHC
+-- import qualified Outputable    as GHC
 import qualified Bag           as GHC
+-- import qualified Exception     as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
--- import qualified Outputable    as GHC
 import qualified RdrName       as GHC
+import qualified TyCon         as GHC
+import qualified TypeRep       as GHC
 import qualified Unique        as GHC
 import qualified Var           as GHC
+
+import qualified Var           as Var
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -254,6 +262,30 @@ equivalentNameInNewMod old = do
 
 -- ---------------------------------------------------------------------
 
+-- | Return all the possible qualifiers for the identifier. The identifier
+-- is not inscope if the result is an empty list. NOTE: This is intended to be
+-- used when processing a client module, so the 'GHC.Name' parameter is actually
+-- from a different module.
+hsQualifier :: GHC.Name                   -- ^ The identifier.
+            -> RefactGhc [GHC.ModuleName] -- ^ The result.
+hsQualifier pname = do
+  names <- inScopeNames (showGhc pname)
+  let mods = map (GHC.moduleName . GHC.nameModule) names
+  return mods
+
+{-
+hsQualifier::PNT                   -- ^ The identifier.
+            ->InScopes             -- ^ The in-scope relation.
+            ->[ModuleName]         -- ^ The result.
+hsQualifier pnt@(PNT pname _ _ ) inScopeRel
+  = let r = filter ( \ ( name, nameSpace, modName, qual) -> pNtoName pname == name
+                   && hasModName pname == Just modName && hasNameSpace pnt == nameSpace
+                   && isJust qual) $ inScopeInfo inScopeRel
+    in  map (\ (_,_,_,qual) -> fromJust qual ) r
+-}
+
+-- ---------------------------------------------------------------------
+
 -- TODO: get rid of this
 defaultName :: GHC.Name
 defaultName = n
@@ -263,10 +295,30 @@ defaultName = n
 
 -- ---------------------------------------------------------------------
 
+-- |Make a qualified 'GHC.RdrName'
+mkQualifiedRdrName :: GHC.ModuleName -> String -> GHC.RdrName
+mkQualifiedRdrName mn s = GHC.mkRdrQual mn (GHC.mkVarOcc s)
+
 -- |Make a simple unqualified 'GHC.RdrName'
 mkRdrName :: String -> GHC.RdrName
 mkRdrName s = GHC.mkVarUnqual (GHC.mkFastString s)
 
+-- ---------------------------------------------------------------------
+
+-- |Register a 'GHC.Located' 'GHC.RdrName' in the 'NameMap' so it can be looked
+-- up if needed. This will create a brand new 'GHC.Name', so no guarantees are
+-- given as to matches later. Perhaps this is a bad idea.
+registerRdrName :: GHC.Located GHC.RdrName -> RefactGhc ()
+registerRdrName (GHC.L l rn) = do
+  case GHC.isQual_maybe rn of
+    Nothing -> do
+      n <- mkNewGhcName Nothing (showGhc rn)
+      addToNameMap l n
+    Just (mn,oc) -> do
+      n <- mkNewGhcName (Just (GHC.Module (GHC.stringToPackageKey "HaRe") mn)) (showGhc oc)
+      addToNameMap l n
+
+-- ---------------------------------------------------------------------
 
 -- | Make a new GHC.Name, using the Unique Int sequence stored in the
 -- RefactState.
@@ -997,6 +1049,7 @@ addDecl parent pn (declSig, mDeclAnns) = do
               [] -> (before,[])
               _  -> (before ++ [ghead "appendDecl14" after],
                      gtail "appendDecl15" after)
+        unless (null decls1 || null decls2) $ do liftT $ balanceComments (last decls1) (head decls2)
         liftT $ replaceDecls parent' (decls1++newDeclSig++decls2)
 
       workerBind :: (GHC.LHsBind GHC.RdrName -> RefactGhc (GHC.LHsBind GHC.RdrName))
@@ -1087,7 +1140,7 @@ addHiding::
   -> RefactGhc GHC.ParsedSource -- ^ The result
 addHiding mn p ns = do
   logm $ "addHiding called for (module,names):" ++ showGhc (mn,ns)
-  p' <- addItemsToImport' mn p ns Hide
+  p' <- addItemsToImport' mn p (Left ns) Hide
   putRefactParsed p' emptyAnns
   return p'
 
@@ -1117,24 +1170,29 @@ mkNewEnt addCommaAnn pn = do
 data ImportType = Hide     -- ^ Used for addHiding
                 | Import   -- ^ Used for addItemsToImport
 
--- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
---   specified module name. This function does nothing if the import declaration does not have an explicit entity list.
-addItemsToImport::
-    GHC.ModuleName       -- ^ The imported module name
-  ->GHC.ParsedSource     -- ^ The current module
-  ->[GHC.RdrName]        -- ^ The items to be added
---  ->Maybe GHC.Name       -- ^ The condition identifier.
-  ->RefactGhc GHC.ParsedSource -- ^ The result
-addItemsToImport mn r ns = addItemsToImport' mn r ns Import
+-- | Add identifiers (given by the third argument) to the explicit entity list
+--   in the declaration importing the specified module name. This function does
+--   nothing if the import declaration does not have an explicit entity list.
+addItemsToImport ::
+     GHC.ModuleName        -- ^ The imported module name
+  -> Maybe GHC.Name       -- ^ The condition identifier.
+  -- -> [GHC.RdrName]         -- ^ The items to be added
+  -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName] -- ^ The items to be added
+  -> GHC.ParsedSource      -- ^ The current module
+  -> RefactGhc GHC.ParsedSource -- ^ The result
+addItemsToImport mn mc ns r = addItemsToImport' mn r ns Import
 
--- | Add identifiers (given by the third argument) to the explicit entity list in the declaration importing the
---   specified module name. If the ImportType argument is Hide, then the items will be added to the "hiding"
---   list. If it is Import, they will be added to the explicit import entries. This function does nothing if
---   the import declaration does not have an explicit entity list and ImportType is Import.
+-- | Add identifiers (given by the third argument) to the explicit entity list
+--   in the declaration importing the specified module name. If the ImportType
+--   argument is Hide, then the items will be added to the "hiding" list. If it
+--   is Import, they will be added to the explicit import entries. This function
+--   does nothing if the import declaration does not have an explicit entity
+--   list and ImportType is Import.
 addItemsToImport'::
      GHC.ModuleName       -- ^ The imported module name
   -> GHC.ParsedSource     -- ^ The current module
-  -> [GHC.RdrName]        -- ^ The items to be added
+  -- -> [GHC.RdrName]        -- ^ The items to be added
+  -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName] -- ^ The items to be added
 --  ->Maybe GHC.Name       -- ^ The condition identifier.
   -> ImportType           -- ^ Whether to hide the names or import them. Uses special data for clarity.
   -> RefactGhc GHC.ParsedSource -- ^ The result
@@ -1166,7 +1224,10 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
          else do
             logm $ "addItemsToImport':insertEnts:doing stuff"
             newSpan <- liftT uniqueSrcSpanT
-            newEnts <- mkNewEntList pns
+            -- newEnts <- mkNewEntList pns
+            newEnts <- case pns of
+                            Left pns'  -> mkNewEntList pns'
+                            Right pns' -> return pns'
             let lNewEnts = GHC.L newSpan (ents++newEnts)
             logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
             if isHide
@@ -1180,6 +1241,196 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
 
     replaceHiding (GHC.L l1 (GHC.ImportDecl st mn q src safe isQ isImp as _h)) h1 =
                   (GHC.L l1 (GHC.ImportDecl st mn q src safe isQ isImp as h1))
+
+-- ---------------------------------------------------------------------
+
+addParamsToSigs :: [GHC.Name] -> GHC.LSig GHC.RdrName -> RefactGhc (GHC.LSig GHC.RdrName)
+addParamsToSigs [] ms = return ms
+addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp pns)) = do
+  mts <- mapM getTypeForName newParams
+  let ts = catMaybes mts
+  logm $ "addParamsToSigs:ts=" ++ showGhc ts
+  logDataWithAnns "addParamsToSigs:ts=" ts
+  let newStr = ":: " ++ (intercalate " -> " $ map printSigComponent ts) ++ " -> "
+  logm $ "addParamsToSigs:newStr=[" ++ newStr ++ "]"
+  typ' <- liftT $ foldlM addOneType ltyp (reverse ts)
+  sigOk <- isNewSignatureOk ts
+  logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
+  if sigOk
+    then return (GHC.L l (GHC.TypeSig lns typ' pns))
+    else error $ "\nNew type signature may fail type checking: " ++ newStr ++ "\n"
+  where
+    addOneType :: GHC.LHsType GHC.RdrName -> GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+    addOneType et t = do
+      hst <- typeToLHsType t
+      ss1 <- uniqueSrcSpanT
+      hst1 <- case t of
+        (GHC.FunTy _ _) -> do
+          ss <- uniqueSrcSpanT
+          let t1 = GHC.L ss (GHC.HsParTy hst)
+          setEntryDPT hst (DP (0,0))
+          addSimpleAnnT t1  (DP (0,0)) [((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+          return t1
+        _ -> return hst
+      let typ = GHC.L ss1 (GHC.HsFunTy hst1 et)
+
+      addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+      return typ
+
+    printSigComponent :: GHC.Type -> String
+    printSigComponent x = ppType x
+
+addParamsToSigs np ls = error $ "addParamsToSigs: no match for:" ++ showGhc (np,ls)
+
+-- ---------------------------------------------------------------------
+
+-- |Fail any signature having a forall in it.
+-- TODO: this is unnecesarily restrictive, but needs
+-- a) proper reversing of GHC.Type to GHC.LhsType
+-- b) some serious reverse type inference to ensure that the
+--    constraints are modified properly to merge the old signature
+--    part and the new.
+isNewSignatureOk :: [GHC.Type] -> RefactGhc Bool
+isNewSignatureOk types = do
+  -- NOTE: under some circumstances enabling Rank2Types or RankNTypes
+  --       can resolve the type conflict, this can potentially be checked
+  --       for.
+  -- NOTE2: perhaps proceed and reload the tentative refactoring into
+  --        the GHC session and accept it only if it type checks
+  let
+    r = SYB.everythingStaged SYB.TypeChecker (++) []
+          ([] `SYB.mkQ` usesForAll) types
+    usesForAll (GHC.ForAllTy _ _) = [1::Int]
+    usesForAll _                  = []
+
+  return $ emptyList r
+
+-- ---------------------------------------------------------------------
+
+-- TODO: perhaps move this to TypeUtils
+-- TODO: complete this
+typeToLHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+typeToLHsType (GHC.TyVarTy v)   = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyVar (GHC.nameRdrName $ Var.varName v))
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
+
+typeToLHsType (GHC.AppTy t1 t2) = do
+  t1' <- typeToLHsType t1
+  t2' <- typeToLHsType t2
+  ss <- uniqueSrcSpanT
+  return $ GHC.L ss (GHC.HsAppTy t1' t2')
+
+typeToLHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
+
+typeToLHsType (GHC.FunTy t1 t2) = do
+  t1' <- typeToLHsType t1
+  t2' <- typeToLHsType t2
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsFunTy t1' t2')
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+  return typ
+
+typeToLHsType (GHC.ForAllTy _v t) = do
+  t' <- typeToLHsType t
+  ss1 <- uniqueSrcSpanT
+  ss2 <- uniqueSrcSpanT
+  return $ GHC.L ss1 (GHC.HsForAllTy GHC.Explicit Nothing (GHC.HsQTvs [] []) (GHC.L ss2 []) t')
+
+typeToLHsType (GHC.LitTy (GHC.NumTyLit i)) = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyLit (GHC.HsNumTy (show i) i)) :: GHC.LHsType GHC.RdrName
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
+
+typeToLHsType (GHC.LitTy (GHC.StrTyLit s)) = do
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsTyLit (GHC.HsStrTy "" s)) :: GHC.LHsType GHC.RdrName
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  return typ
+
+
+{-
+data Type
+  = TyVarTy Var	-- ^ Vanilla type or kind variable (*never* a coercion variable)
+
+  | AppTy         -- See Note [AppTy invariant]
+	Type
+	Type		-- ^ Type application to something other than a 'TyCon'. Parameters:
+	                --
+                        --  1) Function: must /not/ be a 'TyConApp',
+                        --     must be another 'AppTy', or 'TyVarTy'
+	                --
+	                --  2) Argument type
+
+  | TyConApp      -- See Note [AppTy invariant]
+	TyCon
+	[KindOrType]	-- ^ Application of a 'TyCon', including newtypes /and/ synonyms.
+	                -- Invariant: saturated appliations of 'FunTyCon' must
+	                -- use 'FunTy' and saturated synonyms must use their own
+                        -- constructors. However, /unsaturated/ 'FunTyCon's
+                        -- do appear as 'TyConApp's.
+	                -- Parameters:
+	                --
+	                -- 1) Type constructor being applied to.
+	                --
+                        -- 2) Type arguments. Might not have enough type arguments
+                        --    here to saturate the constructor.
+                        --    Even type synonyms are not necessarily saturated;
+                        --    for example unsaturated type synonyms
+	                --    can appear as the right hand side of a type synonym.
+
+  | FunTy
+	Type
+	Type		-- ^ Special case of 'TyConApp': @TyConApp FunTyCon [t1, t2]@
+			-- See Note [Equality-constrained types]
+
+  | ForAllTy
+	Var         -- Type or kind variable
+	Type	        -- ^ A polymorphic type
+
+  | LitTy TyLit     -- ^ Type literals are simillar to type constructors.
+
+-}
+
+tyConAppToHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
+tyConAppToHsType (GHC.TyConApp tc _ts) = r (show $ GHC.tyConName tc)
+  where
+    r str = do
+      ss <- uniqueSrcSpanT
+      let typ = GHC.L ss (GHC.HsTyLit (GHC.HsStrTy str $ GHC.mkFastString str)) :: GHC.LHsType GHC.RdrName
+      addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,1))]
+      return typ
+
+-- tyConAppToHsType t@(GHC.TyConApp _tc _ts)
+--    = error $ "tyConAppToHsType: unexpected:" ++ (SYB.showData SYB.TypeChecker 0 t)
+
+{-
+HsType
+HsForAllTy HsExplicitFlag (LHsTyVarBndrs name) (LHsContext name) (LHsType name)
+HsTyVar name
+HsAppTy (LHsType name) (LHsType name)
+HsFunTy (LHsType name) (LHsType name)
+HsListTy (LHsType name)
+HsPArrTy (LHsType name)
+HsTupleTy HsTupleSort [LHsType name]
+HsOpTy (LHsType name) (LHsTyOp name) (LHsType name)
+HsParTy (LHsType name)
+HsIParamTy HsIPName (LHsType name)
+HsEqTy (LHsType name) (LHsType name)
+HsKindSig (LHsType name) (LHsKind name)
+HsQuasiQuoteTy (HsQuasiQuote name)
+HsSpliceTy (HsSplice name) FreeVars PostTcKind
+HsDocTy (LHsType name) LHsDocString
+HsBangTy HsBang (LHsType name)
+HsRecTy [ConDeclField name]
+HsCoreTy Type
+HsExplicitListTy PostTcKind [LHsType name]
+HsExplicitTupleTy [PostTcKind] [LHsType name]
+HsTyLit HsTyLit
+HsWrapTy HsTyWrapper (HsType name)
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -1222,15 +1473,86 @@ addParamsToDecls decls pn paramPNames = do
 
 -- ---------------------------------------------------------------------
 
+-- ++AZ++: This looks like it is trying to do too many things
+-- | Add identifiers to the export list of a module. If the second argument
+-- is like: Just p, then do the adding only if p occurs in the export list, and
+-- the new identifiers are added right after p in the export list. Otherwise the
+-- new identifiers are add to the beginning of the export list. In the case that
+-- the export list is empty, then if the third argument is True, then create an
+-- explict export list to contain only the new identifiers, otherwise do
+-- nothing.
+-- TODO:AZ: re-arrange params to line up with addItemsToExport
 addItemsToExport ::
-                    GHC.ParsedSource                    -- The module AST.
-                   -> Maybe PName                       -- The condtion identifier.
-                   -> Bool                              -- Create an explicit list or not
-                   -> Either [String] [GHC.LIE GHC.RdrName] -- The identifiers to add in either String or HsExportEntP format.
-                   -> RefactGhc GHC.ParsedSource        -- The result.
-addItemsToExport = assert False undefined
-{-
+                    GHC.ParsedSource                    -- ^The module AST.
+                   -> Maybe GHC.Name                    -- ^The condtion identifier.
+                   -> Bool                              -- ^Create an explicit list or not
+                   -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName]
+                            -- ^The identifiers to add in either String or HsExportEntP format.
+                   -> RefactGhc GHC.ParsedSource        -- ^The result.
+addItemsToExport modu _  _ (Left [])  = return modu
+addItemsToExport modu _  _ (Right []) = return modu
+-- addItemsToExport modu@(HsModule loc modName exps imps ds) (Just pn) _ ids
+addItemsToExport modu@(GHC.L l (GHC.HsModule modName exps imps ds deps hs)) (Just pn) _ ids
+  =  case exps  of
+       Just (GHC.L le ents) -> do
+                   logm $ "addItemsToExport:pn=" ++ showGhc pn
+                   nm <- getRefactNameMap
+                   let (e1,e2) = break (findLRdrName nm pn) ents
+                   if e2 /= []
+                        then do
+                           es <- case ids of
+                             Left is' -> mkNewEntList is'
+                             Right es' -> return es'
+                           let e = (ghead "addVarItemInExport" e2)
+                               lNewEnts = GHC.L le (e1++(e:es)++tail e2)
+                           liftT (addTrailingCommaT e)
+                           return (GHC.L l (GHC.HsModule modName (Just lNewEnts) imps ds deps hs))
+                        -- then do ((toks,_),others)<-get
+                        --         let e = (ghead "addVarItemInExport" e2)
+                        --             es = case ids of
+                        --                   (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+                        --                   (Right es') -> es'
+                        --         let (_,endPos) = getStartEndLoc toks e
+                        --             (t, (_,s)) = ghead "addVarItemInExport" $ getToks (endPos,endPos) toks
+                        --             newToken = mkToken t endPos (s++","++ showEntities (render.ppi) es)
+                        --             toks' = replaceToks toks endPos endPos [newToken]
+                        --         put ((toks',modified),others)
+                        --         return (HsModule loc modName (Just (e1++(e:es)++tail e2)) imps ds)
+                        else return modu
+       Nothing   -> return modu
 
+addItemsToExport modu@(GHC.L l (GHC.HsModule _ (Just ents) _ _ _ _)) Nothing createExp ids
+  = assert False undefined
+    -- = do ((toks,_),others)<-get
+    --      let es = case ids of
+    --                 (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+    --                 (Right es') -> es'
+    --          (t, (pos,s))=fromJust $ find isOpenBracket toks  -- s is the '('
+    --          newToken = if ents /=[] then  (t, (pos,(s++showEntities (render.ppi) es++",")))
+    --                                  else  (t, (pos,(s++showEntities (render.ppi) es)))
+    --          pos'= simpPos pos
+    --          toks' = replaceToks toks pos' pos' [newToken]
+    --      put ((toks',modified),others)
+    --      return modu {hsModExports=Just (es++ ents)}
+
+-- addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _)  Nothing createExp ids
+addItemsToExport modu@(GHC.L l (GHC.HsModule modName Nothing _ _ _ _))  Nothing createExp ids
+  = assert False undefined
+  -- =case createExp of
+  --      True ->do ((toks,_),others)<-get
+  --                let es = case ids of
+  --                              (Left is' ) ->map (\x-> (EntE (Var (nameToPNT x)))) is'
+  --                              (Right es') -> es'
+  --                    pos = (row,col)
+  --                    newToken = mkToken Varid pos (modNameToStr modName++ "("
+  --                                        ++ showEntities (render.ppi) es++")")
+  --                    toks' = replaceToks toks pos pos [newToken]
+  --                put  ((toks', modified), others)
+  --                return modu {hsModExports=Just es}
+  --      False ->return modu
+
+
+{-
 -- | Add identifiers to the export list of a module. If the second argument is like: Just p, then do the adding only if p occurs
 -- in the export list, and the new identifiers are added right after p in the export list. Otherwise the new identifiers are add
 -- to the beginning of the export list. In the case that the export list is emport, then if the third argument is True, then create
@@ -1298,7 +1620,6 @@ addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _
                  put  ((toks', modified), others)
                  return mod {hsModExports=Just es}
        False ->return mod
-
 -}
 -- ---------------------------------------------------------------------
 
@@ -1313,7 +1634,7 @@ addActualParamsToRhs pn paramPNames rhs = do
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
               logDataWithAnns "addActualParamsToRhs:oldExp=" oldExp
-              newExp' <- liftT $ foldlM addParamToExp oldExp paramPNames
+              newExp' <- foldlM addParamToExp oldExp paramPNames
 
               edp <- liftT $ getEntryDPT oldExp
               liftT $ setEntryDPT oldExp (DP (0,0))
@@ -1324,14 +1645,16 @@ addActualParamsToRhs pn paramPNames rhs = do
               return newExp
        worker x = return x
 
-       addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> Transform (GHC.LHsExpr GHC.RdrName)
+       addParamToExp :: (GHC.LHsExpr GHC.RdrName) -> GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
        addParamToExp expr param = do
-         ss1 <- uniqueSrcSpanT
-         ss2 <- uniqueSrcSpanT
+         ss1 <- liftT $ uniqueSrcSpanT
+         ss2 <- liftT $ uniqueSrcSpanT
+         logm $ "addActualParamsToRhs.addParamsToExp:(ss1,ss2):" ++ showGhc (ss1,ss2)
+         registerRdrName (GHC.L ss2 param)
          let var   = GHC.L ss2 (GHC.HsVar param)
          let expr' = GHC.L ss1 (GHC.HsApp expr var)
-         addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
-         addSimpleAnnT expr' (DP (0,0)) []
+         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
+         liftT $ addSimpleAnnT expr' (DP (0,0)) []
          return expr'
 
     r <- applyTP (full_buTP (idTP  `adhocTP` worker)) rhs
@@ -1512,7 +1835,6 @@ duplicateDecl decls n newFunName
 -- according to the PNT, where 'parent' is the first decl containing
 -- the PNT, 'before' are those decls before 'parent' and 'after' are
 -- those decls after 'parent'.
-
 divideDecls :: SYB.Data t =>
   [t] -> GHC.Located GHC.Name -> RefactGhc ([t], [t], [t])
 divideDecls ds (GHC.L _ pnt) = do
@@ -1602,7 +1924,7 @@ rmDecl pn incSig t = do
              nameMap <- getRefactNameMap
              decls <- liftT $ hsDecls parent
              let (decls1,decls2) = break (definesDeclRdr nameMap pn) decls
-             if not $ emptyList decls2
+             if not (null decls2)
                then do
                  -- logDataWithAnns "doRmDeclList:(parent)" (parent)
                  let decl = ghead "doRmDeclList" decls2
@@ -2133,16 +2455,6 @@ findAllNameOccurences  name t
 
 -- ---------------------------------------------------------------------
 
-findNameInRdr :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
-findNameInRdr nm pn t =
- isJust $ SYB.something (Nothing `SYB.mkQ` worker) t
-   where
-      worker (ln :: GHC.Located GHC.RdrName)
-         | GHC.nameUnique pn == GHC.nameUnique (rdrName2NamePure nm ln) = Just True
-      worker _ = Nothing
-
--- ---------------------------------------------------------------------
-
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
 findPNT (GHC.L _ pn) = findPN pn
@@ -2166,6 +2478,12 @@ findPNs pns
         worker (n::GHC.Name)
            | elem (GHC.nameUnique n) uns = Just True
         worker _ = Nothing
+
+-- ---------------------------------------------------------------------
+
+-- | Return True if the specified Name ocuurs in the given syntax phrase.
+findNameInRdr :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
+findNameInRdr nm pn t = findNamesRdr nm [pn] t
 
 -- ---------------------------------------------------------------------
 
