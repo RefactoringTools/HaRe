@@ -112,7 +112,7 @@ extra-source-files:             ChangeLog
 
 Library
         -- GHC 7.10.2 ships with base 4.8.1.0
-        Build-Depends:          base >= 4.8.1.0  && < 4.9
+        Build-Depends:          base >= 4.8.1.0  && < 5
                                 , containers
                                 , directory
 
@@ -183,7 +183,7 @@ Executable ghc-hare
           ./src
 
         -- GHC 7.10.2 ships with base 4.8.1.0
-        Build-Depends:          base >= 4.8.1.0  && < 4.9
+        Build-Depends:          base >= 4.8.1.0  && < 5
                                 , array
                                 , containers
                                 , directory
@@ -276,7 +276,7 @@ test-suite spec
     -- , Paths_HaRe
   build-depends:
       -- GHC 7.10.2 ships with base 4.8.1.0
-      base        >= 4.8.1.0  && < 4.9
+      base        >= 4.8.1.0  && < 5
     , Diff >= 0.3.0
     , HUnit
     , QuickCheck  >= 2.5

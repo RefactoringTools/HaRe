@@ -148,6 +148,9 @@ import qualified RdrName       as GHC
 import qualified TyCon         as GHC
 #if __GLASGOW_HASKELL__ <= 710
 import qualified TypeRep       as GHC
+#else
+import qualified TyCoRep       as GHC
+import qualified BasicTypes    as GHC
 #endif
 import qualified Unique        as GHC
 import qualified Var           as GHC
@@ -317,7 +320,11 @@ registerRdrName (GHC.L l rn) = do
       n <- mkNewGhcName Nothing (showGhc rn)
       addToNameMap l n
     Just (mn,oc) -> do
+#if __GLASGOW_HASKELL__ <= 710
       n <- mkNewGhcName (Just (GHC.Module (GHC.stringToPackageKey "HaRe") mn)) (showGhc oc)
+#else
+      n <- mkNewGhcName (Just (GHC.Module (GHC.stringToUnitId "HaRe") mn)) (showGhc oc)
+#endif
       addToNameMap l n
 
 -- ---------------------------------------------------------------------
@@ -521,11 +528,19 @@ usedWithoutQualR name parsed = fromMaybe False res
      worker  (pname :: GHC.Located GHC.RdrName) =
        checkName pname
 
+#if __GLASGOW_HASKELL__ <= 710
      workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.RdrName))) =
+#else
+     workerBind (GHC.L l (GHC.VarPat (GHC.L _ n)) :: (GHC.Located (GHC.Pat GHC.RdrName))) =
+#endif
        checkName (GHC.L l n)
      workerBind _ = Nothing
 
+#if __GLASGOW_HASKELL__ <= 710
      workerExpr ((GHC.L l (GHC.HsVar n)) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
+#else
+     workerExpr ((GHC.L l (GHC.HsVar (GHC.L _ n))) :: (GHC.Located (GHC.HsExpr GHC.RdrName)))
+#endif
        = checkName (GHC.L l n)
      workerExpr _ = Nothing
 
@@ -628,21 +643,21 @@ isQualifiedPN name = return $ GHC.isQual $ GHC.nameRdrName name
 
 -- | Return True if a declaration is a type signature declaration.
 isTypeSig :: GHC.LSig a -> Bool
-isTypeSig (GHC.L _ (GHC.TypeSig _ _ _)) = True
+isTypeSig (GHC.L _ (GHC.TypeSig{})) = True
 isTypeSig _ = False
 
 -- | Return True if a declaration is a type signature declaration.
 isTypeSigDecl :: GHC.LHsDecl a -> Bool
-isTypeSigDecl (GHC.L _ (GHC.SigD (GHC.TypeSig _ _ _))) = True
+isTypeSigDecl (GHC.L _ (GHC.SigD (GHC.TypeSig{}))) = True
 isTypeSigDecl _ = False
 
 -- | Return True if a declaration is a function definition.
 isFunBindP::HsDeclP -> Bool
-isFunBindP (GHC.L _ (GHC.ValD (GHC.FunBind _ _ _ _ _ _))) = True
+isFunBindP (GHC.L _ (GHC.ValD (GHC.FunBind{}))) = True
 isFunBindP _ =False
 
 isFunBindR::GHC.LHsBind t -> Bool
-isFunBindR (GHC.L _l (GHC.FunBind _ _ _ _ _ _)) = True
+isFunBindR (GHC.L _l (GHC.FunBind{})) = True
 isFunBindR _ =False
 
 -- | Returns True if a declaration is a pattern binding.
@@ -808,9 +823,11 @@ instance UsedByRhs (GHC.RoleAnnotDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
   usedByRhs _ _ = assert False undefined
 
+#if __GLASGOW_HASKELL__ <= 710
 instance UsedByRhs (GHC.HsQuasiQuote GHC.RdrName) where
   usedByRhsRdr = assert False undefined
   usedByRhs _ _ = assert False undefined
+#endif
 
 instance UsedByRhs (GHC.DefaultDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
@@ -868,7 +885,11 @@ instance UsedByRhs [GHC.LHsBind GHC.Name] where
   usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsBind GHC.Name) where
+#if __GLASGOW_HASKELL__ <= 710
   usedByRhs (GHC.FunBind _ _ matches _ _ _) pns = findPNs pns matches
+#else
+  usedByRhs (GHC.FunBind _ matches _ _ _)   pns = findPNs pns matches
+#endif
   usedByRhs (GHC.PatBind _ rhs _ _ _)       pns = findPNs pns rhs
   usedByRhs (GHC.VarBind _ rhs _)           pns = findPNs pns rhs
   usedByRhs (GHC.AbsBinds _ _ _ _ _)       _pns = False
@@ -879,7 +900,11 @@ instance UsedByRhs (GHC.HsBind GHC.Name) where
 
 instance UsedByRhs (GHC.HsBind GHC.RdrName) where
   usedByRhs _ _ = assert False undefined
+#if __GLASGOW_HASKELL__ <= 710
   usedByRhsRdr nm  (GHC.FunBind _ _ matches _ _ _)        pns = findNamesRdr nm pns matches
+#else
+  usedByRhsRdr nm  (GHC.FunBind _ matches _ _ _)          pns = findNamesRdr nm pns matches
+#endif
   usedByRhsRdr nm  (GHC.PatBind _ rhs _ _ _)              pns = findNamesRdr nm pns rhs
   usedByRhsRdr nm  (GHC.PatSynBind (GHC.PSB _ _ _ rhs _)) pns = findNamesRdr nm pns rhs
   usedByRhsRdr nm  (GHC.VarBind _ rhs _)                  pns = findNamesRdr nm pns rhs
@@ -921,14 +946,21 @@ getName::(SYB.Data t)=> String           -- ^ The name to find
                      -> Maybe GHC.Name   -- ^ The result
 getName str t
   = res
+  -- ++AZ++:TODO use nameSybQuery?
        where
         res = SYB.somethingStaged SYB.Renamer Nothing
-            (Nothing `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+            (Nothing `SYB.mkQ` worker
+#if __GLASGOW_HASKELL__ <= 710
+                     `SYB.extQ` workerBind
+                     `SYB.extQ` workerExpr
+#endif
+            ) t
 
         worker ((GHC.L _ n) :: (GHC.Located GHC.Name))
           | showGhcQual n == str = Just n
         worker _ = Nothing
 
+#if __GLASGOW_HASKELL__ <= 710
         workerBind (GHC.L _ (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
           | showGhcQual name == str = Just name
         workerBind _ = Nothing
@@ -937,6 +969,7 @@ getName str t
         workerExpr ((GHC.L _ (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
           | showGhcQual name == str = Just name
         workerExpr _ = Nothing
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -951,7 +984,11 @@ getName str t
 addImportDecl ::
     GHC.ParsedSource
     -> GHC.ModuleName
+#if __GLASGOW_HASKELL__ <= 710
     -> Maybe GHC.FastString -- ^qualifier
+#else
+    -> Maybe GHC.StringLiteral -- ^qualifier
+#endif
     -> Bool -> Bool -> Bool
     -> Maybe String         -- ^alias
     -> Bool
@@ -1088,10 +1125,22 @@ addDecl parent pn (declSig, mDeclAnns) = do
       workerBind b = do
         logm $ "workerBind entered"
         case b of
+#if __GLASGOW_HASKELL__ <= 710
           GHC.L l (GHC.FunBind n i (GHC.MG [match] a ptt o) co fvs t) -> do
+#else
+          GHC.L l (GHC.FunBind n (GHC.MG (GHC.L lm [match]) a ptt o) co fvs t) -> do
+#endif
             match' <- workerHasDecls match
+#if __GLASGOW_HASKELL__ <= 710
             return (GHC.L l (GHC.FunBind n i (GHC.MG [match'] a ptt o) co fvs t))
+#else
+            return (GHC.L l (GHC.FunBind n (GHC.MG (GHC.L lm [match']) a ptt o) co fvs t))
+#endif
+#if __GLASGOW_HASKELL__ <= 710
           GHC.L _ (GHC.FunBind _ _ (GHC.MG _matches _ _ _) _ _ _) -> do
+#else
+          GHC.L _ (GHC.FunBind _ (GHC.MG _matches _ _ _) _ _ _) -> do
+#endif
             error "addDecl:Cannot add a local decl to a FunBind with multiple matches"
           p@(GHC.L _ (GHC.PatBind _pat _rhs _ty _fvs _t)) -> do
             logm $ "workerBind.PatBind entered"
@@ -1248,7 +1297,11 @@ addItemsToImport' serverModName (GHC.L l p) pns impType = do
 
 addParamsToSigs :: [GHC.Name] -> GHC.LSig GHC.RdrName -> RefactGhc (GHC.LSig GHC.RdrName)
 addParamsToSigs [] ms = return ms
+#if __GLASGOW_HASKELL__ <= 710
 addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp pns)) = do
+#else
+addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns (GHC.HsIB ivs (GHC.HsWC wcs mwc ltyp)))) = do
+#endif
   mts <- mapM getTypeForName newParams
   let ts = catMaybes mts
   logm $ "addParamsToSigs:ts=" ++ showGhc ts
@@ -1259,13 +1312,18 @@ addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp pns)) = do
   sigOk <- isNewSignatureOk ts
   logm $ "addParamsToSigs:(sigOk,newStr)=" ++ show (sigOk,newStr)
   if sigOk
+#if __GLASGOW_HASKELL__ <= 710
     then return (GHC.L l (GHC.TypeSig lns typ' pns))
+#else
+    then return (GHC.L l (GHC.TypeSig lns (GHC.HsIB ivs (GHC.HsWC wcs mwc typ'))))
+#endif
     else error $ "\nNew type signature may fail type checking: " ++ newStr ++ "\n"
   where
     addOneType :: GHC.LHsType GHC.RdrName -> GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
     addOneType et t = do
       hst <- typeToLHsType t
       ss1 <- uniqueSrcSpanT
+#if __GLASGOW_HASKELL__ <= 710
       hst1 <- case t of
         (GHC.FunTy _ _) -> do
           ss <- uniqueSrcSpanT
@@ -1277,6 +1335,9 @@ addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp pns)) = do
       let typ = GHC.L ss1 (GHC.HsFunTy hst1 et)
 
       addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+#else
+      let typ = error $ "addParamsToSigs:need to update for GHC 8"
+#endif
       return typ
 
     printSigComponent :: GHC.Type -> String
@@ -1314,7 +1375,11 @@ isNewSignatureOk types = do
 typeToLHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
 typeToLHsType (GHC.TyVarTy v)   = do
   ss <- uniqueSrcSpanT
+#if __GLASGOW_HASKELL__ <= 710
   let typ = GHC.L ss (GHC.HsTyVar (GHC.nameRdrName $ Var.varName v))
+#else
+  let typ = GHC.L ss (GHC.HsTyVar (GHC.L ss (GHC.nameRdrName $ Var.varName v)))
+#endif
   addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
   return typ
 
@@ -1326,6 +1391,7 @@ typeToLHsType (GHC.AppTy t1 t2) = do
 
 typeToLHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
 
+#if __GLASGOW_HASKELL__ <= 710
 typeToLHsType (GHC.FunTy t1 t2) = do
   t1' <- typeToLHsType t1
   t2' <- typeToLHsType t2
@@ -1333,12 +1399,17 @@ typeToLHsType (GHC.FunTy t1 t2) = do
   let typ = GHC.L ss (GHC.HsFunTy t1' t2')
   addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
   return typ
+#endif
 
 typeToLHsType (GHC.ForAllTy _v t) = do
   t' <- typeToLHsType t
   ss1 <- uniqueSrcSpanT
   ss2 <- uniqueSrcSpanT
+#if __GLASGOW_HASKELL__ <= 710
   return $ GHC.L ss1 (GHC.HsForAllTy GHC.Explicit Nothing (GHC.HsQTvs [] []) (GHC.L ss2 []) t')
+#else
+  return $ GHC.L ss1 (GHC.HsForAllTy [] t')
+#endif
 
 typeToLHsType (GHC.LitTy (GHC.NumTyLit i)) = do
   ss <- uniqueSrcSpanT
@@ -1450,11 +1521,19 @@ addParamsToDecls decls pn paramPNames = do
         else return decls
   where
    addParamToDecl :: NameMap -> GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
    addParamToDecl nameMap (GHC.L l1 (GHC.ValD (GHC.FunBind lp@(GHC.L l2 pname) i (GHC.MG matches a ptt o) co fvs t)))
+#else
+   addParamToDecl nameMap (GHC.L l1 (GHC.ValD (GHC.FunBind lp@(GHC.L l2 pname) (GHC.MG (GHC.L lm matches) a ptt o) co fvs t)))
+#endif
     | eqRdrNamePure nameMap lp pn
     = do
          matches' <- mapM addParamtoMatch matches
+#if __GLASGOW_HASKELL__ <= 710
          return (GHC.L l1 (GHC.ValD (GHC.FunBind (GHC.L l2 pname) i (GHC.MG matches' a ptt o) co fvs t)))
+#else
+         return (GHC.L l1 (GHC.ValD (GHC.FunBind (GHC.L l2 pname) (GHC.MG (GHC.L lm matches') a ptt o) co fvs t)))
+#endif
       where
        addParamtoMatch (GHC.L l (GHC.Match fn1 pats mtyp rhs))
         = do
@@ -1632,7 +1711,11 @@ addActualParamsToRhs pn paramPNames rhs = do
     nameMap <- getRefactNameMap
     let
        worker :: (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
        worker oldExp@(GHC.L l2 (GHC.HsVar pname))
+#else
+       worker oldExp@(GHC.L l2 (GHC.HsVar (GHC.L _ pname)))
+#endif
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
               logDataWithAnns "addActualParamsToRhs:oldExp=" oldExp
@@ -1653,7 +1736,11 @@ addActualParamsToRhs pn paramPNames rhs = do
          ss2 <- liftT $ uniqueSrcSpanT
          logm $ "addActualParamsToRhs.addParamsToExp:(ss1,ss2):" ++ showGhc (ss1,ss2)
          registerRdrName (GHC.L ss2 param)
+#if __GLASGOW_HASKELL__ <= 710
          let var   = GHC.L ss2 (GHC.HsVar param)
+#else
+         let var   = GHC.L ss2 (GHC.HsVar (GHC.L ss2 param))
+#endif
          let expr' = GHC.L ss1 (GHC.HsApp expr var)
          liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
          liftT $ addSimpleAnnT expr' (DP (0,0)) []
@@ -2076,11 +2163,19 @@ rmTypeSig pn t
          if not $ null decls2
             then do
               -- logDataWithAnns "doRmTypeSig:parent" parent
+#if __GLASGOW_HASKELL__ <= 710
               let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ p))) = ghead "rmTypeSig" decls2
+#else
+              let sig@(GHC.L sspan (GHC.SigD (GHC.TypeSig names typ))) = ghead "rmTypeSig" decls2
+#endif
               if length names > 1
                   then do
                       let newNames = filter (\rn -> rdrName2NamePure nameMap rn /= pn) names
+#if __GLASGOW_HASKELL__ <= 710
                           newSig = GHC.L sspan (GHC.SigD (GHC.TypeSig newNames typ p))
+#else
+                          newSig = GHC.L sspan (GHC.SigD (GHC.TypeSig newNames typ))
+#endif
 
                       liftT $ removeTrailingCommaT (glast "doRmTypeSig" newNames)
 
@@ -2090,7 +2185,11 @@ rmTypeSig pn t
                       -- Construct the old signature, by keeping the
                       -- signature part but discarding the other names
                       newSpan <- liftT uniqueSrcSpanT
+#if __GLASGOW_HASKELL__ <= 710
                       let oldSig = (GHC.L newSpan (GHC.TypeSig [pnt] typ p))
+#else
+                      let oldSig = (GHC.L newSpan (GHC.TypeSig [pnt] typ))
+#endif
                       liftT $ modifyAnnsT (copyAnn sig oldSig)
                       setStateStorage (StorageSigRdr oldSig)
 
@@ -2204,7 +2303,11 @@ renamePN oldPN newName useQual t = do
     rename _ x = return x
 
     renameVar :: Bool -> (GHC.Located (GHC.HsExpr GHC.RdrName)) -> Transform (GHC.Located (GHC.HsExpr GHC.RdrName))
+#if __GLASGOW_HASKELL__ <= 710
     renameVar useQual' (GHC.L l (GHC.HsVar n))
+#else
+    renameVar useQual' (GHC.L l (GHC.HsVar (GHC.L _ n)))
+#endif
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameVar at :" ++ (showGhc l)
@@ -2214,27 +2317,43 @@ renamePN oldPN newName useQual t = do
             nn = if useQual'
                    then newNameCalcBool useQual'        n
                    else newNameCalc     PreserveQualify n
+#if __GLASGOW_HASKELL__ <= 710
           return (GHC.L l (GHC.HsVar nn))
+#else
+          return (GHC.L l (GHC.HsVar (GHC.L l nn)))
+#endif
     renameVar _ x = return x
 
     -- HsTyVar {Name: Renaming.D1.Tree}))
     renameTyVar :: Bool -> (GHC.Located (GHC.HsType GHC.RdrName)) -> Transform (GHC.Located (GHC.HsType GHC.RdrName))
+#if __GLASGOW_HASKELL__ <= 710
     renameTyVar useQual' (GHC.L l (GHC.HsTyVar n))
+#else
+    renameTyVar useQual' (GHC.L l (GHC.HsTyVar (GHC.L _ n)))
+#endif
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameTyVar at :" ++ (showGhc l)
           let nn = newNameCalcBool useQual' n
-          return (GHC.L l (GHC.HsTyVar nn))
+          return (GHC.L l (GHC.HsTyVar (GHC.L l nn)))
     renameTyVar _ x = return x
 
 
     renameHsTyVarBndr :: Bool -> GHC.LHsTyVarBndr GHC.RdrName -> Transform (GHC.LHsTyVarBndr GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
     renameHsTyVarBndr useQual' (GHC.L l (GHC.UserTyVar n))
+#else
+    renameHsTyVarBndr useQual' (GHC.L l (GHC.UserTyVar (GHC.L _ n)))
+#endif
      | cond (GHC.L l n)
      = do
           logTr $ "renamePN:renameHsTyVarBndr at :" ++ (showGhc l)
           let nn = newNameCalcBool useQual' n
+#if __GLASGOW_HASKELL__ <= 710
           return (GHC.L l (GHC.UserTyVar nn))
+#else
+          return (GHC.L l (GHC.UserTyVar (GHC.L l nn)))
+#endif
     renameHsTyVarBndr _ x = return x
 
     -- ---------------------------------
@@ -2274,7 +2393,11 @@ renamePN oldPN newName useQual t = do
           return (GHC.L l (GHC.IEThingAll (GHC.L ln new)))
 
     -- TODO: check inside the ns here too
+#if __GLASGOW_HASKELL__ <= 710
     renameLIE useQual' (GHC.L l (GHC.IEThingWith old@(GHC.L ln n) ns))
+#else
+    renameLIE useQual' (GHC.L l (GHC.IEThingWith old@(GHC.L ln n) wc ns fls))
+#endif
      = do
 
          old' <- if (cond (GHC.L ln n))
@@ -2292,7 +2415,11 @@ renamePN oldPN newName useQual t = do
          ns' <- if (any (\(GHC.L lnn nn) -> cond (GHC.L lnn nn)) ns)
            then renameTransform useQual' ns
            else return ns
+#if __GLASGOW_HASKELL__ <= 710
          return (GHC.L l (GHC.IEThingWith old' ns'))
+#else
+         return (GHC.L l (GHC.IEThingWith old' wc ns' fls))
+#endif
 
     renameLIE _ x = do
          -- logTr $ "renamePN:renameLIE miss for :" ++ (showGhc x)
@@ -2301,16 +2428,28 @@ renamePN oldPN newName useQual t = do
     -- ---------------------------------
 
     renameLPat :: Bool -> (GHC.LPat GHC.RdrName) -> Transform (GHC.LPat GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
     renameLPat useQual' (GHC.L l (GHC.VarPat n))
+#else
+    renameLPat useQual' (GHC.L l (GHC.VarPat (GHC.L _ n)))
+#endif
      | cond (GHC.L l n)
      = do
           logTr $ "renamePNworker:renameLPat at :" ++ (showGhc l)
           let nn = newNameCalcBool useQual' n
+#if __GLASGOW_HASKELL__ <= 710
           return (GHC.L l (GHC.VarPat nn))
+#else
+          return (GHC.L l (GHC.VarPat (GHC.L l nn)))
+#endif
     renameLPat _ x = return x
 
     renameFunBind :: Bool -> GHC.HsBindLR GHC.RdrName GHC.RdrName -> Transform (GHC.HsBindLR GHC.RdrName GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
     renameFunBind _useQual (GHC.FunBind (GHC.L ln n) fi (GHC.MG matches a typ o) co fvs tick)
+#else
+    renameFunBind _useQual (GHC.FunBind (GHC.L ln n) (GHC.MG (GHC.L lm matches) a typ o) co fvs tick)
+#endif
      | cond (GHC.L ln n)
      = do -- Need to (a) rename the actual funbind name
           --         NOTE: due to bottom-up traversal, (a) should
@@ -2322,6 +2461,7 @@ renamePN oldPN newName useQual t = do
           logTr $ "renamePN.renameFunBind.renameFunBind:starting matches"
           let w lmatch@(GHC.L lm (GHC.Match mln pats typ' grhss)) = do
                 case mln of
+#if __GLASGOW_HASKELL__ <= 710
                   Just (old@(GHC.L lmn _),f) -> do
                     -- A RdrName Can have a number of constructors, which are used to
                     -- index the annotations associated with it. Make sure the annotation
@@ -2331,9 +2471,24 @@ renamePN oldPN newName useQual t = do
 
                     return (GHC.L lm (GHC.Match (Just (new,f)) pats typ' grhss))
                   Nothing -> return lmatch
+#else
+                  GHC.FunBindMatch old@(GHC.L lmn _) f -> do
+                    -- A RdrName Can have a number of constructors, which are used to
+                    -- index the annotations associated with it. Make sure the annotation
+                    -- lines up.
+                    let new = (GHC.L lmn newNameUnqual)
+                    modifyAnnsT (replaceAnnKey old new)
+
+                    return (GHC.L lm (GHC.Match (GHC.FunBindMatch new f) pats typ' grhss))
+                  GHC.NonFunBindMatch -> return lmatch
+#endif
           matches' <- mapM w matches
           logTr $ "renamePN.renameFunBind.renameFunBind.renameFunBind:matches done"
+#if __GLASGOW_HASKELL__ <= 710
           return (GHC.FunBind (GHC.L ln newNameRdr) fi (GHC.MG matches' a typ o) co fvs tick)
+#else
+          return (GHC.FunBind (GHC.L ln newNameRdr) (GHC.MG (GHC.L lm matches') a typ o) co fvs tick)
+#endif
     renameFunBind _ x = return x
 
     renameImportDecl :: Bool -> (GHC.ImportDecl GHC.RdrName) -> Transform (GHC.ImportDecl GHC.RdrName)
@@ -2344,14 +2499,22 @@ renamePN oldPN newName useQual t = do
     renameImportDecl _ x = return x
 
     renameTypeSig :: Bool -> (GHC.Sig GHC.RdrName) -> Transform (GHC.Sig GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
     renameTypeSig _useQual (GHC.TypeSig ns typ p)
+#else
+    renameTypeSig _useQual (GHC.TypeSig ns typ)
+#endif
      = do
          logTr $ "renamePN:renameTypeSig"
          -- Has already been renamed, make sure qualifier is removed
          ns'  <- renameTransform False ns
          typ' <- renameTransform False typ
          logTr $ "renamePN:renameTypeSig done"
+#if __GLASGOW_HASKELL__ <= 710
          return (GHC.TypeSig ns' typ' p)
+#else
+         return (GHC.TypeSig ns' typ')
+#endif
     renameTypeSig _ x = return x
 
     renameTransform useQual' t' =
@@ -2401,7 +2564,11 @@ autoRenameLocalVar pn t = do
 -- ---------------------------------------------------------------------
 
 isMainModule :: GHC.Module -> Bool
+#if __GLASGOW_HASKELL__ <= 710
 isMainModule modu = GHC.modulePackageKey modu == GHC.mainPackageKey
+#else
+isMainModule modu = GHC.moduleUnitId modu == GHC.mainUnitId
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -2426,11 +2593,19 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
     notInLhs = fromMaybe False $ SYB.somethingStaged SYB.Parser Nothing
             (Nothing `SYB.mkQ` inMatch `SYB.extQ` inDecl) t
      where
+#if __GLASGOW_HASKELL__ <= 710
       inMatch ((GHC.FunBind name _ (GHC.MG _matches _ _ _) _ _ _) :: GHC.HsBind GHC.Name)
+#else
+      inMatch ((GHC.FunBind name (GHC.MG _matches _ _ _) _ _ _) :: GHC.HsBind GHC.Name)
+#endif
          | isJust (find (sameOccurrence pnt) [name]) = Just True
       inMatch _ = Nothing
 
+#if __GLASGOW_HASKELL__ <= 710
       inDecl ((GHC.TypeSig is _ _) :: GHC.Sig GHC.Name)
+#else
+      inDecl ((GHC.TypeSig is _) :: GHC.Sig GHC.Name)
+#endif
         |isJust (find (sameOccurrence pnt) is)   = Just True
       inDecl _ = Nothing
 
@@ -2439,14 +2614,20 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
 findAllNameOccurences :: (SYB.Data t) => GHC.Name -> t -> [(GHC.Located GHC.Name)]
 findAllNameOccurences  name t
   = res
+  -- ++AZ++:TODO: should use nameSybQuery?
        where
         res = SYB.everythingStaged SYB.Renamer (++) []
-            ([] `SYB.mkQ` worker `SYB.extQ` workerBind `SYB.extQ` workerExpr) t
+            ([] `SYB.mkQ` worker
+#if __GLASGOW_HASKELL__ <= 710
+             `SYB.extQ` workerBind `SYB.extQ` workerExpr
+#endif
+            ) t
 
         worker (ln@(GHC.L _l n) :: (GHC.Located GHC.Name))
           | GHC.nameUnique n == GHC.nameUnique name = [ln]
         worker _ = []
 
+#if __GLASGOW_HASKELL__ <= 710
         workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.Name)))
           | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
         workerBind _ = []
@@ -2454,6 +2635,7 @@ findAllNameOccurences  name t
         workerExpr (GHC.L l (GHC.HsVar n) :: (GHC.Located (GHC.HsExpr GHC.Name)))
           | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
         workerExpr _ = []
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -2574,14 +2756,22 @@ lghcToPN (GHC.L _ rdr) = PN rdr
 -- | If an expression consists of only one identifier then return this
 -- identifier in the GHC.Name format, otherwise return the default Name
 expToName:: GHC.LHsExpr GHC.Name -> GHC.Name -- TODO: Use a Maybe, rather than defaultName
+#if __GLASGOW_HASKELL__ <= 710
 expToName (GHC.L _ (GHC.HsVar pnt)) = pnt
+#else
+expToName (GHC.L _ (GHC.HsVar (GHC.L _ pnt))) = pnt
+#endif
 expToName (GHC.L _ (GHC.HsPar e))   = expToName e
 expToName _ = defaultName
 
 -- | If an expression consists of only one identifier then return this
 -- identifier in the GHC.Name format, otherwise return the default Name
 expToNameRdr :: NameMap -> GHC.LHsExpr GHC.RdrName -> Maybe GHC.Name
+#if __GLASGOW_HASKELL__ <= 710
 expToNameRdr nm (GHC.L l (GHC.HsVar pnt)) = Just (rdrName2NamePure nm (GHC.L l pnt))
+#else
+expToNameRdr nm (GHC.L l (GHC.HsVar pnt)) = Just (rdrName2NamePure nm pnt)
+#endif
 expToNameRdr nm (GHC.L _ (GHC.HsPar e))   = expToNameRdr nm e
 expToNameRdr _ _ = Nothing
 
@@ -2592,18 +2782,30 @@ nameToString name = showGhcQual name
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing
 patToNameRdr :: NameMap -> GHC.LPat GHC.RdrName -> Maybe GHC.Name
+#if __GLASGOW_HASKELL__ <= 710
 patToNameRdr nm (GHC.L l (GHC.VarPat n)) = Just (rdrName2NamePure nm (GHC.L l n))
+#else
+patToNameRdr nm (GHC.L l (GHC.VarPat n)) = Just (rdrName2NamePure nm n)
+#endif
 patToNameRdr _ _ = Nothing
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing
 patToPNT :: GHC.LPat GHC.Name -> Maybe GHC.Name
+#if __GLASGOW_HASKELL__ <= 710
 patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
+#else
+patToPNT (GHC.L _ (GHC.VarPat (GHC.L _ n))) = Just n
+#endif
 patToPNT _ = Nothing
 
 -- | Compose a pattern from a pName.
 pNtoPat :: name -> GHC.Pat name
+#if __GLASGOW_HASKELL__ <= 710
 pNtoPat pname = GHC.VarPat pname
+#else
+pNtoPat pname = GHC.VarPat (GHC.noLoc pname)
+#endif
 
 -- EOF
 

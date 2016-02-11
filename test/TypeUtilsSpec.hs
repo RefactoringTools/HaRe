@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module TypeUtilsSpec (main, spec) where
 
 import           Test.Hspec
@@ -889,7 +890,11 @@ spec = do
       let Just tup = getName "LiftOneLevel.LetIn2.sumSquares" renamed
       let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
 
+#if __GLASGOW_HASKELL__ <= 710
       let (GHC.L _ (GHC.FunBind _ _ (GHC.MG [match] _ _ _) _ _ _)) = decl
+#else
+      let (GHC.L _ (GHC.FunBind _ (GHC.MG (GHC.L _ [match]) _ _ _) _ _ _)) = decl
+#endif
       let (GHC.L _ (GHC.Match _ _pat _ grhss)) = match
 
       let
@@ -1278,7 +1283,11 @@ spec = do
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
+#if __GLASGOW_HASKELL__ <= 710
       let (GHC.L _ (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _)) = head $ hsBinds binds
+#else
+      let (GHC.L _ (GHC.FunBind _ (GHC.MG (GHC.L _ matches) _ _ _) _ _ _)) = head $ hsBinds binds
+#endif
       let [(GHC.L _ (GHC.Match _ pats _ _))] = matches
       let lpat = head pats
 
@@ -1318,7 +1327,11 @@ spec = do
 
       let Just n = getName "FreeAndDeclared.Binders.findNewPName" renamed
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
+#if __GLASGOW_HASKELL__ <= 710
       let (GHC.L _ (GHC.FunBind _ _ (GHC.MG [match] _ _ _) _ _ _)) = decl
+#else
+      let (GHC.L _ (GHC.FunBind _ (GHC.MG (GHC.L _ [match]) _ _ _) _ _ _)) = decl
+#endif
       let (GHC.L _ (GHC.Match _ _pats _rhs binds)) = match
 
       let
@@ -1374,7 +1387,11 @@ spec = do
       let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
 
       let binds = hsValBinds [decl]
+#if __GLASGOW_HASKELL__ <= 710
       let (GHC.L _ (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _)) = head $ hsBinds binds
+#else
+      let (GHC.L _ (GHC.FunBind _ (GHC.MG (GHC.L _ matches) _ _ _) _ _ _)) = head $ hsBinds binds
+#endif
       let [(GHC.L _ (GHC.Match _ pats _ _))] = matches
       let pat@(GHC.L lp _) = head pats
 
@@ -2651,7 +2668,11 @@ spec = do
       t <- ct $ parsedFileGhc "./LocToName.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+#if __GLASGOW_HASKELL__ <= 710
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
+#else
+      let modu = GHC.mkModule (GHC.stringToUnitId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+#endif
 
       let Just (GHC.L _l n) = locToName (20, 1) renamed
       let
@@ -2702,7 +2723,11 @@ spec = do
       t <- ct $ parsedFileGhc "./ScopeAndQual.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+#if __GLASGOW_HASKELL__ <= 710
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
+#else
+      let modu = GHC.mkModule (GHC.stringToUnitId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+#endif
 
       let Just (GHC.L _l n) = locToName (4, 24) renamed
       let
@@ -2728,7 +2753,11 @@ spec = do
       t <- ct $ parsedFileGhc "./Renaming/C7.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+#if __GLASGOW_HASKELL__ <= 710
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
+#else
+      let modu = GHC.mkModule (GHC.stringToUnitId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+#endif
 
       let Just (GHC.L _l n) = locToName (5, 1) renamed
       let
