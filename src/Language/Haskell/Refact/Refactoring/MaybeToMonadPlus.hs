@@ -17,6 +17,7 @@ import qualified Outputable as GHC
 import Control.Applicative
 import qualified Data.Map as Map
 import qualified OccName as GHC
+import qualified RdrName as GHC
 import qualified BasicTypes as GHC
 
 maybeToMonadPlus :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> IO [FilePath]
@@ -41,21 +42,23 @@ doMaybeToPlus fileName pos@(row,col) funNm = do
   case mBind of
     Nothing -> error "Function bind not found"
     Just funBind -> do
-      hasNtoN <- containsNothingToNothing funNm funBind
+      hasNtoN <- containsNothingToNothing funNm pos funBind
       case hasNtoN of
-        (False, _) -> return ()
-        (True, otherMatches) -> do
-          doRewriteAsBind fileName pos funNm otherMatches
-      logm $ "Result of searching for nothing to nothing: " ++ (show (fst hasNtoN)) ++ ", number of matches left " ++ (show $ (length . snd) hasNtoN)
+        False -> return ()
+        True -> do
+          doRewriteAsBind fileName pos funNm
+      logm $ "Result of searching for nothing to nothing: " ++ (show hasNtoN)
       return ()
 
-
-doRewriteAsBind :: FilePath -> SimpPos -> String -> [GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> RefactGhc ()
-doRewriteAsBind fileName pos funNm matches = do
+doRewriteAsBind :: FilePath -> SimpPos -> String -> RefactGhc ()
+doRewriteAsBind fileName pos funNm = do
+  parsed <- getRefactParsed
+  let bind = gfromJust "doRewriteAsBind" $ getHsBind pos funNm parsed
+      matches = GHC.mg_alts . GHC.fun_matches $ bind
   if (length matches) > 1
     then error "Multiple matches not supported"
     else do
-    let match = head matches
+    let (GHC.L _ match) = head matches
     (varPat, rhs) <- getVarAndRHS match
     (newPat, _) <- liftT $ cloneT varPat
     (newRhs, _) <- liftT $ cloneT rhs
@@ -68,26 +71,36 @@ replaceGRHS :: String -> (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> Re
 replaceGRHS funNm new_rhs = do
   parsed <- getRefactParsed
   newParsed <- SYB.everywhereM (SYB.mkM worker) parsed
-  logm $ "The new parsed: " ++ (SYB.showData SYB.Parser 3 newParsed)
-  return ()
+  --logm $ "new_rhs: " ++ (SYB.showData SYB.Parser 3 new_rhs)
+  --logm $ "The new parsed: " ++ (SYB.showData SYB.Parser 3 newParsed)
+  (liftT getAnnsT) >>= putRefactParsed newParsed
+ -- return ()
     where rdrName = GHC.Unqual $ GHC.mkDataOcc funNm
           worker :: GHC.HsBind GHC.RdrName -> RefactGhc (GHC.HsBind GHC.RdrName)
           worker fb@(GHC.FunBind (GHC.L _ nm) _ _ _ _ _) |
-            nm == rdrName = do
+            (GHC.occNameString . GHC.rdrNameOcc) nm == funNm = do
               logm $ "=======Found funbind========"
-              new_bind <- SYB.somewhere (SYB.mkM worker') fb
-              return $ new_bind
+              new_matches <- SYB.everywhereM (SYB.mkM worker') (GHC.fun_matches fb)
+              return $ fb{GHC.fun_matches = new_matches}
           worker bind = return bind
-          worker' (GHC.GRHSs _ _) = return new_rhs
+          worker' :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) 
+          worker' (GHC.GRHSs _ _) = do
+            logm "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! worker'!!!!!!!!!!!!!!!!!!!!!!"
+            return new_rhs
             
 
 wrapInLambda :: String -> GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
 wrapInLambda funNm varPat rhs = do
   let gen_rhs = justToReturn rhs
   match <- mkMatch varPat gen_rhs
-  logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match)
+  --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match)
   let mg = GHC.MG [match] [] GHC.PlaceHolder GHC.Generated
-  locate (GHC.HsLam mg)
+  currAnns <- fetchAnnsFinal
+  l_lam <- locate (GHC.HsLam mg)
+  let ppr = exactPrint l_lam currAnns
+  logm $ "=========== PPR ===========: " ++ ppr
+  return l_lam
+  
 
 createGRHS :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
 createGRHS lam_par = do
@@ -134,8 +147,10 @@ getHsBind pos funNm a =
             | name == rNm = (Just bnd)
           isBind _ = Nothing
 
-containsNothingToNothing :: String -> GHC.HsBind GHC.RdrName -> RefactGhc (Bool, [GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)])
-containsNothingToNothing funNm a = do
+--This function takes in the name of a function and determines if the binding contains the case "Nothing = Nothing"
+--If the Nothing to Nothing case is found then it is removed from the parsed source
+containsNothingToNothing :: String -> SimpPos -> GHC.HsBind GHC.RdrName -> RefactGhc Bool
+containsNothingToNothing funNm pos a = do
   dFlags <- GHC.getSessionDynFlags
   let nToNStr = funNm ++ " Nothing = Nothing"
   (_, pRes) <- handleParseResult "containsNothingToNothing" $ parseDecl dFlags "MaybeToMonad.hs" nToNStr
@@ -146,15 +161,39 @@ containsNothingToNothing funNm a = do
       zipped = zip [0..] comps
       filtered = filter (\(_,c2) -> c2 == c1) zipped
   case filtered of
-    [] -> return (False, [])
-    [(i,_)] -> do return (True, dropI i matches)
+    [] -> return False
+    [(i,_)] -> do
+      let newMatches = dropI i matches
+          oldMatch = matches !! i
+          newMG = (GHC.fun_matches a) {GHC.mg_alts = newMatches}
+          newBind = a{GHC.fun_matches = newMG}
+      removeMatch pos newBind oldMatch
+      return True
     where
-      extractMatches :: (Data (a b)) => a b -> [(GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))]
+      extractMatches :: (Data (a b)) => a b -> [(GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))]
       extractMatches = SYB.everything (++) ([] `SYB.mkQ` isMatch)
-      isMatch :: (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> [(GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))]
-      isMatch m@(GHC.Match _ _ _ _) = [m]
+      isMatch :: (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> [(GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))]
+      isMatch m@(GHC.L _ (GHC.Match _ _ _ _)) = [m]
       dropI i lst = let (xs,ys) = splitAt i lst in xs ++ (tail ys)
 
+
+removeMatch :: SimpPos -> GHC.HsBind GHC.RdrName -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc ()
+removeMatch pos newBind old@(GHC.L l oldMatch) = do
+  parsed <- getRefactParsed
+  let rdrNm = gfromJust "Couldn't get rdrName in replaceBind" $ locToRdrName pos parsed
+  newParsed <- SYB.everywhereMStaged SYB.Parser (SYB.mkM (replaceBind rdrNm)) parsed
+  currAnns <- fetchAnnsFinal
+  let oldKey = mkAnnKey old
+      newAnns = Map.delete oldKey currAnns
+  setRefactAnns newAnns
+  (liftT getAnnsT) >>= putRefactParsed newParsed
+  return ()
+    where replaceBind :: GHC.Located GHC.RdrName -> GHC.HsBind GHC.RdrName -> RefactGhc (GHC.HsBind GHC.RdrName)
+          replaceBind rdrNm (bnd@(GHC.FunBind name _ _ _ _ _) :: GHC.HsBind GHC.RdrName)
+            | name == rdrNm = return newBind
+          replaceBind _ a = return a
+
+--This just pulls out the successful result from an exact print parser or throws an error if the parse was unsuccessful.
 handleParseResult :: String -> Either (GHC.SrcSpan, String) (Anns, a) -> RefactGhc (Anns, a)
 handleParseResult msg e = case e of
   (Left (_, errStr)) -> error $ "The parse from: " ++ msg ++ " with error: " ++ errStr
