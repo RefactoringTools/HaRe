@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.SwapArgs (swapArgs) where
 
@@ -71,11 +72,19 @@ doSwap (GHC.L _s n1) = do
 
     where
          -- 1. The definition is at top level...
+#if __GLASGOW_HASKELL__ <= 710
          inMod nm ((GHC.FunBind ln2 infixity (GHC.MG matches p m1 m2) a locals tick)::GHC.HsBind GHC.RdrName)
+#else
+         inMod nm ((GHC.FunBind ln2 (GHC.MG (GHC.L lm matches) p m1 m2) a locals tick)::GHC.HsBind GHC.RdrName)
+#endif
             | GHC.nameUnique n1 == GHC.nameUnique (rdrName2NamePure nm ln2)
                     = do logm ("inMatch>" ++ SYB.showData SYB.Parser 0 ln2 ++ "<")
                          newMatches <- updateMatches matches
+#if __GLASGOW_HASKELL__ <= 710
                          return (GHC.FunBind ln2 infixity (GHC.MG newMatches p m1 m2) a locals tick)
+#else
+                         return (GHC.FunBind ln2 (GHC.MG (GHC.L lm newMatches) p m1 m2) a locals tick)
+#endif
          inMod _ func = return func
 
          -- 2. All call sites of the function...
@@ -94,7 +103,11 @@ doSwap (GHC.L _s n1) = do
          inExp _ e = return e
 
          -- 3. Type signature...
+#if __GLASGOW_HASKELL__ <= 710
          inType nm (GHC.L x (GHC.TypeSig [lname] types pns)::GHC.LSig GHC.RdrName)
+#else
+         inType nm (GHC.L x (GHC.TypeSig [lname] (GHC.HsIB ivs (GHC.HsWC wcs mwc types)))::GHC.LSig GHC.RdrName)
+#endif
            | GHC.nameUnique (rdrName2NamePure nm lname) == GHC.nameUnique n1
                 = do
                      logm $ "doSwap.inType"
@@ -103,9 +116,17 @@ doSwap (GHC.L _s n1) = do
                      -- t2' <- update t2 t1 t2
                      let t1' = t2
                      let t2' = t1
+#if __GLASGOW_HASKELL__ <= 710
                      return (GHC.L x (GHC.TypeSig [lname] (tyListToFun (t1':t2':ts)) pns))
+#else
+                     return (GHC.L x (GHC.TypeSig [lname] (GHC.HsIB ivs (GHC.HsWC wcs mwc (tyListToFun (t1':t2':ts))))))
+#endif
 
+#if __GLASGOW_HASKELL__ <= 710
          inType nm (GHC.L _x (GHC.TypeSig (n:ns) _types _)::GHC.LSig GHC.RdrName)
+#else
+         inType nm (GHC.L _x (GHC.TypeSig (n:ns) _types )::GHC.LSig GHC.RdrName)
+#endif
            | GHC.nameUnique n1 `elem` (map (\n' -> GHC.nameUnique (rdrName2NamePure nm n')) (n:ns))
             = error "Error in swapping arguments in type signature: signature bound to muliple entities!"
 
@@ -116,7 +137,11 @@ doSwap (GHC.L _s n1) = do
            return (GHC.L l (GHC.SigD s'))
          inTypeDecl _ x = return x
 
+#if __GLASGOW_HASKELL__ <= 710
          tyFunToList (GHC.L _ (GHC.HsForAllTy _ _ _ _ (GHC.L _ (GHC.HsFunTy t1 t2)))) = t1 : (tyFunToList t2)
+#else
+         tyFunToList (GHC.L _ (GHC.HsForAllTy _ (GHC.L _ (GHC.HsFunTy t1 t2)))) = t1 : (tyFunToList t2)
+#endif
          tyFunToList (GHC.L _ (GHC.HsFunTy t1 t2)) = t1 : (tyFunToList t2)
          tyFunToList t = [t]
 

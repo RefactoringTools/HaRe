@@ -647,7 +647,11 @@ addParamsToParent  pn params t = do
   nm <- getRefactNameMap
   applyTP (full_buTP (idTP  `adhocTP` (inExp nm))) t
   where
+#if __GLASGOW_HASKELL__ <= 710
     inExp nm (e@(GHC.L l (GHC.HsVar n)) :: GHC.LHsExpr GHC.RdrName) = do
+#else
+    inExp nm (e@(GHC.L l (GHC.HsVar (GHC.L _ n))) :: GHC.LHsExpr GHC.RdrName) = do
+#endif
       let ne = rdrName2NamePure nm (GHC.L l n)
       if GHC.nameUnique ne == GHC.nameUnique pn
          then addActualParamsToRhs pn params e
@@ -1285,7 +1289,11 @@ doDemoting' t pn = do
                 where
 
                   used :: GHC.LHsDecl GHC.RdrName -> [Int]
+#if __GLASGOW_HASKELL__ <= 710
                   used (GHC.L _ (GHC.ValD (GHC.FunBind _n _ (GHC.MG matches _ _ _) _ _ _)))
+#else
+                  used (GHC.L _ (GHC.ValD (GHC.FunBind _n (GHC.MG (GHC.L _ matches) _ _ _) _ _ _)))
+#endif
                      = concatMap (usedInMatch pns) matches
 
                   used (GHC.L _ (GHC.ValD (GHC.PatBind pat rhs _ _ _)))
@@ -1456,7 +1464,11 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
     where
 
        matchesInDecls :: GHC.LHsDecl GHC.RdrName -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)]
+#if __GLASGOW_HASKELL__ <= 710
        matchesInDecls (GHC.L _ (GHC.ValD (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _))) = matches
+#else
+       matchesInDecls (GHC.L _ (GHC.ValD (GHC.FunBind _ (GHC.MG (GHC.L _ matches) _ _ _) _ _ _))) = matches
+#endif
        matchesInDecls _x = []
 
        patsInMatch (GHC.L _ (GHC.Match _ pats' _ _)) = pats'
@@ -1472,7 +1484,11 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
           nm <- getRefactNameMap
           SYB.everywhereMStaged SYB.Parser (SYB.mkM (worker nm) `SYB.extM` (workerBind nm)) decls
           where
+#if __GLASGOW_HASKELL__ <= 710
           worker nm (match'@(GHC.L _ (GHC.FunBind ln _ (GHC.MG _matches _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
+#else
+          worker nm (match'@(GHC.L _ (GHC.FunBind ln (GHC.MG _matches _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
+#endif
             = do
                 logm $ "foldInDemotedDecls:rdrName2NamePure nm ln=" ++ show (rdrName2NamePure nm ln)
                 if isJust (find (== rdrName2NamePure nm ln) pns')

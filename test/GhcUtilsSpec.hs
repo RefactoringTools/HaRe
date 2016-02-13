@@ -1,4 +1,5 @@
 {-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE CPP #-}
 module GhcUtilsSpec (main, spec) where
 
 import           Test.Hspec
@@ -73,7 +74,11 @@ spec = do
              worker (nn::GHC.Name) = [showGhc nn]
              g = onelayerStaged SYB.Renamer ["-1"] (["-10"] `SYB.mkQ` worker) duplicatedDecls
 
+#if __GLASGOW_HASKELL__ <= 710
              worker2 ((GHC.L _ (GHC.FunBind (GHC.L _ n') _ _ _ _ _))::GHC.Located (GHC.HsBind GHC.Name))
+#else
+             worker2 ((GHC.L _ (GHC.FunBind (GHC.L _ n') _ _ _ _))::GHC.Located (GHC.HsBind GHC.Name))
+#endif
                | n == n' = ["found"]
              worker2 _ = []
              g2 = onelayerStaged SYB.Renamer ["-1"] (["-10"] `SYB.mkQ` worker2) duplicatedDecls

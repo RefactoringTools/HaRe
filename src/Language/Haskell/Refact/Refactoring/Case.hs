@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE StandaloneDeriving #-}
 module Language.Haskell.Refact.Refactoring.Case
   ( ifToCase
@@ -82,13 +83,26 @@ ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
   falseLoc       <- liftT uniqueSrcSpanT -- HaRe:-1:7
   falseMatchLoc  <- liftT uniqueSrcSpanT -- HaRe:-1:8
   falseRhsLoc    <- liftT uniqueSrcSpanT -- HaRe:-1:9
+#if __GLASGOW_HASKELL__ > 710
+  matchesLoc     <- liftT uniqueSrcSpanT -- HaRe:-1:10
+  lbTrueLoc      <- liftT uniqueSrcSpanT -- HaRe:-1:11
+  lbFalseLoc     <- liftT uniqueSrcSpanT -- HaRe:-1:11
+#endif
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
   let ret = GHC.L caseLoc (GHC.HsCase e1
              (GHC.MG
+              (
+#if __GLASGOW_HASKELL__ > 710
+              GHC.L matchesLoc
+#endif
               [
                 (GHC.L trueMatchLoc $ GHC.Match
+#if __GLASGOW_HASKELL__ <= 710
                  Nothing
+#else
+                 GHC.NonFunBindMatch
+#endif
                  [
                    GHC.L trueLoc1 $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
                  ]
@@ -96,10 +110,19 @@ ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                  (GHC.GRHSs
                    [
                      GHC.L trueRhsLoc $ GHC.GRHS [] e2
-                   ] GHC.EmptyLocalBinds)
+                   ]
+                   (
+#if __GLASGOW_HASKELL__ > 710
+                    GHC.L lbTrueLoc
+#endif
+                   GHC.EmptyLocalBinds))
                 )
               , (GHC.L falseMatchLoc $ GHC.Match
-                 Nothing
+#if __GLASGOW_HASKELL__ <= 710
+                  Nothing
+#else
+                  GHC.NonFunBindMatch
+#endif
                  [
                    GHC.L falseLoc1 $ GHC.ConPatIn (GHC.L falseLoc falseName) (GHC.PrefixCon [])
                  ]
@@ -107,9 +130,14 @@ ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                  (GHC.GRHSs
                    [
                      GHC.L falseRhsLoc $ GHC.GRHS [] e3
-                   ] GHC.EmptyLocalBinds)
+                   ]
+                   (
+#if __GLASGOW_HASKELL__ > 710
+                   GHC.L lbFalseLoc
+#endif
+                   GHC.EmptyLocalBinds))
                 )
-              ] [] GHC.placeHolderType GHC.FromSource))
+              ]) [] GHC.placeHolderType GHC.FromSource))
 
   oldAnns <- liftT $ getAnnsT
   let annIf   = gfromJust "Case.annIf"   $ getAnnotationEP li oldAnns
