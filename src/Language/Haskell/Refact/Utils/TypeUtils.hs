@@ -71,7 +71,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
 
     -- ** Locations
     ,defineLoc, useLoc, locToExp
-    ,locToName, locToRdrName
+    -- ,locToName
+    , locToRdrName
     ,getName
 
  -- * Program transformation

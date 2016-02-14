@@ -33,7 +33,7 @@ module Language.Haskell.Refact.Utils.Variables
   , hsVisibleDs, hsVisibleDsRdr
   , rdrName2Name, rdrName2NamePure
   , eqRdrNamePure
-  , rdrName2Name'
+  -- , rdrName2Name'
 
   -- ** Identifiers, expressions, patterns and declarations
   , FindEntity(..)
@@ -51,13 +51,15 @@ module Language.Haskell.Refact.Utils.Variables
   , hsTypeVbls
   , hsPNs, hsNamess, hsNamessRdr
   , findLRdrName
-  , locToName, locToRdrName
+  , locToNameRdr, locToNameRdrPure
+  , locToRdrName
   ) where
 
 import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Data.Monoid
+import Debug.Trace
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -2817,14 +2819,6 @@ hsFDNamesFromInsideRdrPure nm t = ((nub.map showGhc) f, (nub.map showGhc) d)
 
 -- ---------------------------------------------------------------------
 
-rdrName2Name' :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
-rdrName2Name' (GHC.L l rdr) = do
-  renamed <- getRefactRenamed
-  let mn = locToName (getGhcLoc l) renamed
-  return (GHC.unLoc $ gfromJust ("rdrName2Name':failed for:" ++ showGhc (GHC.L l rdr)) mn)
-
--- ---------------------------------------------------------------------
-
 rdrName2Name :: GHC.Located GHC.RdrName -> RefactGhc GHC.Name
 rdrName2Name ln = do
   nameMap <- getRefactNameMap
@@ -2842,7 +2836,7 @@ eqRdrNamePure nameMap rn n
   = GHC.nameUnique (rdrName2NamePure nameMap rn) == GHC.nameUnique n
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Find the identifier(in GHC.Name format) whose start position is
 -- (row,col) in the file specified by the fileName, and returns
 -- `Nothing` if such an identifier does not exist.
@@ -2851,6 +2845,31 @@ locToName::(SYB.Data t)
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located GHC.Name)  -- ^ The result
 locToName (row,col) t = locToName' (row,col) t
+-}
+
+-- |Find the identifier(in GHC.Name format) whose start position is
+-- (row,col) in the file specified by the fileName, and returns
+-- `Nothing` if such an identifier does not exist.
+locToNameRdr :: (SYB.Data t)
+                     => SimpPos          -- ^ The row and column number
+                     -> t                -- ^ The syntax phrase, parameterised by RdrName
+                     -> RefactGhc (Maybe GHC.Name)  -- ^ The result
+locToNameRdr pos t = do
+   nm <- getRefactNameMap
+   let mn = locToRdrName pos t
+   return $ fmap (rdrName2NamePure nm) mn
+
+ -- |Find the identifier(in GHC.Name format) whose start position is
+ -- (row,col) in the file specified by the fileName, and returns
+ -- `Nothing` if such an identifier does not exist.
+locToNameRdrPure :: (SYB.Data t)
+                    => NameMap
+                    -> SimpPos         -- ^ The row and column number
+                    -> t               -- ^ The syntax phrase, parameterised by RdrName
+                    -> Maybe GHC.Name  -- ^ The result
+locToNameRdrPure nm pos t =
+  let mn = locToRdrName pos t
+  in fmap (rdrName2NamePure nm) mn
 
 -- |Find the identifier(in GHC.RdrName format) whose start position is
 -- (row,col) in the file specified by the fileName, and returns
@@ -2876,6 +2895,7 @@ locToName' (row,col) t = res1
         res1 = SYB.something (nameSybQuery checker) t
 
         checker pnt =
+          trace ("locToName':pnt=" ++ show (GHC.getLoc pnt)) $
           if inScope pnt
              then Just pnt
              else Nothing
