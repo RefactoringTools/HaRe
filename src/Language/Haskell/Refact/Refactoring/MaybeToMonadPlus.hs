@@ -92,12 +92,13 @@ replaceGRHS funNm new_rhs = do
 wrapInLambda :: String -> GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
 wrapInLambda funNm varPat rhs = do
   let gen_rhs = justToReturn rhs
-  match <- mkMatch varPat gen_rhs
+  match@(GHC.L l match') <- mkMatch varPat gen_rhs
   --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match)
   let mg = GHC.MG [match] [] GHC.PlaceHolder GHC.Generated
   currAnns <- fetchAnnsFinal
-  l_lam <- locate (GHC.HsLam mg)
+  let l_lam = (GHC.L l (GHC.HsLam mg))
   let ppr = exactPrint l_lam currAnns
+  
   logm $ "=========== PPR ===========: " ++ ppr
   return l_lam
   
@@ -137,6 +138,7 @@ getVarAndRHS match = do
   return (pat , GHC.m_grhss match)
     where varPat lPat@(GHC.L _ (GHC.VarPat _ )) = Just lPat
           varPat _ = Nothing
+
 getHsBind :: (Data a) => SimpPos -> String -> a -> Maybe (GHC.HsBind GHC.RdrName)
 getHsBind pos funNm a =
   let rdrNm = locToRdrName pos a in
