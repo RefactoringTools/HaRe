@@ -59,7 +59,7 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Data.Monoid
-import Debug.Trace
+-- import Debug.Trace
 
 import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -2895,7 +2895,7 @@ locToName' (row,col) t = res1
         res1 = SYB.something (nameSybQuery checker) t
 
         checker pnt =
-          trace ("locToName':pnt=" ++ show (GHC.getLoc pnt)) $
+          -- trace ("locToName':pnt=" ++ show (GHC.getLoc pnt)) $
           if inScope pnt
              then Just pnt
              else Nothing
