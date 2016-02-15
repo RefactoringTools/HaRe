@@ -664,7 +664,7 @@ spec = do
           nm <- getRefactNameMap
           let rr = hsFreeAndDeclaredRdr nm parsed
           let r  = hsFreeAndDeclaredPNsOld renamed
-          rg <-    hsFreeAndDeclaredPNs    renamed
+          rg <-    hsFreeAndDeclaredPNs    parsed
           return (r,rg,rr)
       -- ((res,resg,rrr),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((res,resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -729,13 +729,13 @@ spec = do
       -- GHC version
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
-                   "[(Data.Generics.Text.gshow, (-1, -1)),\n "++
+                   "[(GHC.Num.*, (-1, -1)), "++
+                   "(GHC.Base.$, (-1, -1)),\n "++
+                   "(GHC.List.head, (-1, -1)), "++
+                   "(GHC.List.zip, (-1, -1)),\n "++
                    "(System.IO.getChar, (-1, -1)), "++
                    "(System.IO.putStrLn, (-1, -1)),\n "++
-                   "(GHC.List.head, (-1, -1)), "++
-                   "(GHC.Base.$, (-1, -1)),\n "++
-                   "(GHC.List.zip, (-1, -1)), "++
-                   "(GHC.Num.*, (-1, -1))]"
+                   "(Data.Generics.Text.gshow, (-1, -1))]"
 
       -- Declared Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
@@ -1165,7 +1165,8 @@ spec = do
         comp = do
           nameMap <- getRefactNameMap
           fds' <- hsVisibleDsRdr nameMap e rhs
-          ffds <- hsFreeAndDeclaredGhc rhsr
+          -- ffds <- hsFreeAndDeclaredGhc rhsr
+          let ffds = hsFreeAndDeclaredRdr nameMap rhs
           return (fds',ffds)
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -1188,7 +1189,8 @@ spec = do
         comp = do
           nameMap <- getRefactNameMap
           fds' <- hsVisibleDsRdr nameMap ln parsed
-          ffds <- hsFreeAndDeclaredGhc renamed
+          -- ffds <- hsFreeAndDeclaredGhc renamed
+          let ffds = hsFreeAndDeclaredRdr nameMap parsed
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
@@ -1261,8 +1263,10 @@ spec = do
 
       let
         comp = do
+          nm <- getRefactNameMap
           fds' <- hsVisibleDs e rhs
-          ffds <- hsFreeAndDeclaredGhc rhs
+          -- ffds <- hsFreeAndDeclaredGhc rhs
+          let ffds = hsFreeAndDeclaredRdr nm rhs
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1283,7 +1287,8 @@ spec = do
       let
         comp = do
           fds' <- hsVisibleDs n renamed
-          ffds <- hsFreeAndDeclaredGhc renamed
+          -- ffds <- hsFreeAndDeclaredGhc renamed
+          let ffds = hsFreeAndDeclaredRdr nm parsed
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1312,7 +1317,9 @@ spec = do
 
       let
         comp = do
-          fds' <- hsFreeAndDeclaredGhc $  head $ hsBinds binds
+          nm <- getRefactNameMap
+          -- fds' <- hsFreeAndDeclaredGhc $  head $ hsBinds binds
+          let fds' = hsFreeAndDeclaredRdr nm $  head $ hsBinds binds
           return (fds')
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1341,7 +1348,9 @@ spec = do
 
       let
         comp = do
-          fds' <- hsFreeAndDeclaredGhc $ lpat
+          nm <- getRefactNameMap
+          -- fds' <- hsFreeAndDeclaredGhc $ lpat
+          let fds' = hsFreeAndDeclaredRdr nm lpat
           return (fds')
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1358,7 +1367,9 @@ spec = do
 
       let
         comp = do
-          fds' <- hsFreeAndDeclaredGhc $ decls
+          nm <- getRefactNameMap
+          -- fds' <- hsFreeAndDeclaredGhc $ decls
+          let fds' = hsFreeAndDeclaredRdr nm decls
           return (fds')
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1384,7 +1395,9 @@ spec = do
 
       let
         comp = do
-          fds' <- hsFreeAndDeclaredGhc $ binds
+          nm <- getRefactNameMap
+          -- fds' <- hsFreeAndDeclaredGhc $ binds
+          let fds' = hsFreeAndDeclaredRdr nm binds
           return (fds')
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 

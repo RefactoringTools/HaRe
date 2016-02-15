@@ -23,7 +23,7 @@ module Language.Haskell.Refact.Utils.Variables
   , hsFreeAndDeclaredRdr
   , hsFreeAndDeclaredNameStrings
   , hsFreeAndDeclaredPNs
-  , hsFreeAndDeclaredGhc
+  -- , hsFreeAndDeclaredGhc
   , getDeclaredTypes
   , getDeclaredTypesRdr
   , getFvs, getFreeVars, getDeclaredVars
@@ -631,12 +631,14 @@ hsFreeAndDeclaredNameStrings t = do
 
 hsFreeAndDeclaredPNs :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
-   -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
-  (FN f,DN d) <- hsFreeAndDeclaredGhc t
+  -- (FN f,DN d) <- hsFreeAndDeclaredGhc t
+  nm <- getRefactNameMap
+  let (FN f,DN d) = hsFreeAndDeclaredRdr nm t
   return (f,d)
 
 -- ---------------------------------------------------------------------
 
+{-
 -- | Collect the free and declared variables (in the GHC.Name format)
 -- in a given syntax phrase t. In the result, the first list contains
 -- the free variables, and the second list contains the declared
@@ -1384,7 +1386,7 @@ ClassDecl
     recurseList xs = do
       fds <- mapM hsFreeAndDeclaredGhc xs
       return $ mconcat fds
-
+-}
 
 -- ---------------------------------------------------------------------
 
@@ -2444,7 +2446,9 @@ hsVisibleDs e t = do
            return (DN []) -- TODO: extend this
       | findEntity e rhs = do
            -- logm $ "hsVisibleDs.lmatch:doing rhs"
-           (_pf,pd) <- hsFreeAndDeclaredGhc pats
+           nm <- getRefactNameMap
+           -- (_pf,pd) <- hsFreeAndDeclaredGhc pats
+           let (_pf,pd) = hsFreeAndDeclaredRdr nm pats
            -- logm $ "hsVisibleDs.lmatch:(pf,pd)=" ++ (show (pf,pd))
            (    rd) <- hsVisibleDs e rhs
            return (pd <> rd)
@@ -2478,15 +2482,21 @@ hsVisibleDs e t = do
       | findEntity e n  = return (DN [n])
     lexpr (GHC.L _ (GHC.HsLet lbinds expr))
       | findEntity e lbinds || findEntity e expr  = do
-        (_,lds) <- hsFreeAndDeclaredGhc lbinds
-        (_,eds) <- hsFreeAndDeclaredGhc expr
+        nm <- getRefactNameMap
+        -- (_,lds) <- hsFreeAndDeclaredGhc lbinds
+        -- (_,eds) <- hsFreeAndDeclaredGhc expr
+        let (_,lds) = hsFreeAndDeclaredRdr nm lbinds
+        let (_,eds) = hsFreeAndDeclaredRdr nm expr
         return $ lds <> eds
 
     lexpr expr
       | findEntity e expr = do
+        nm <- getRefactNameMap
         -- logm $ "hsVisibleDs.lexpr.(e,expr):" ++ (showGhc (e,expr))
-        (FN efs,_)         <- hsFreeAndDeclaredGhc expr
-        (FN _eefs,DN eeds) <- hsFreeAndDeclaredGhc e
+        -- (FN efs,_)         <- hsFreeAndDeclaredGhc expr
+        -- (FN _eefs,DN eeds) <- hsFreeAndDeclaredGhc e
+        let (FN efs,_)         = hsFreeAndDeclaredRdr nm expr
+        let (FN _eefs,DN eeds) = hsFreeAndDeclaredRdr nm e
         -- logm $ "hsVisibleDs.lexpr done"
         -- return (DN e1fs <> DN eofs <> DN e2fs)
         return (DN (efs \\ eeds))
@@ -2527,8 +2537,10 @@ hsVisibleDs e t = do
     tycldecl :: GHC.LTyClDecl GHC.Name -> RefactGhc DeclaredNames
     tycldecl tcd
       | findEntity e tcd = do
+        nm <- getRefactNameMap
         -- logm $ "hsVisibleDs.tycldecl"
-        (_,ds) <- hsFreeAndDeclaredGhc tcd
+        -- (_,ds) <- hsFreeAndDeclaredGhc tcd
+        let (_,ds) = hsFreeAndDeclaredRdr nm tcd
         return ds
     tycldecl _ = return (DN [])
 
