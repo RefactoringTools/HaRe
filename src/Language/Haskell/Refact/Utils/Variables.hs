@@ -435,7 +435,11 @@ hsFreeAndDeclaredRdr' nm t = do
           ltydecl (GHC.L _ (GHC.SynDecl ln _bndrs _rhs _fvs))
               = return (FN [],DN [rdrName2NamePure nm ln])
           ltydecl (GHC.L _ (GHC.DataDecl ln _bndrs defn _fvs)) = do
+#if __GLASGOW_HASKELL__ <= 710
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+#else
+              let dds = map (rdrName2NamePure nm) $ concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
+#endif
               return (FN [],DN (rdrName2NamePure nm ln:dds))
           ltydecl (GHC.L _ (GHC.ClassDecl _ctx ln _tyvars
                            _fds _sigs meths ats atds _docs _fvs)) = do
@@ -627,7 +631,7 @@ hsFreeAndDeclaredNameStrings t = do
 
 hsFreeAndDeclaredPNs :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
-  -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
+   -- logm $ "hsFreeAndDeclaredPNs:t=" ++ (showGhc t)
   (FN f,DN d) <- hsFreeAndDeclaredGhc t
   return (f,d)
 
@@ -878,7 +882,11 @@ hsFreeAndDeclaredGhc t = do
     ltydecl (GHC.L _ (GHC.SynDecl (GHC.L _ n) _bndrs _rhs fvs))
         = return (FN (GHC.nameSetElems fvs),DN [n])
     ltydecl (GHC.L _ (GHC.DataDecl (GHC.L _ n) _bndrs defn fvs)) = do
+#if __GLASGOW_HASKELL__ <= 710
         let dds = map GHC.unLoc $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+#else
+        let dds = map GHC.unLoc $ concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
+#endif
         logm $ "hsFreeAndDeclaredGhc.ltydecl:(n,dds)" ++ showGhc (n,dds)
         return (FN (GHC.nameSetElems fvs),DN (n:dds))
     ltydecl (GHC.L _ (GHC.ClassDecl _ctx (GHC.L _ n) _tyvars
@@ -989,6 +997,11 @@ ClassDecl
     expr ((GHC.HsVar n)) = return (FN [n],DN [])
 #else
     expr ((GHC.HsVar (GHC.L l n))) = return (FN [n],DN [])
+#endif
+
+#if __GLASGOW_HASKELL__ > 710
+   -- | HsRecFld (AmbiguousFieldOcc id) -- ^ Variable pointing to record selector
+    expr (GHC.HsRecFld (GHC.Ambiguous _ _))
 #endif
 
     expr ((GHC.HsIPVar _)) = return emptyFD
@@ -1378,7 +1391,7 @@ ClassDecl
 -- |Get the names of all types declared in the given declaration
 -- getDeclaredTypesRdr :: GHC.LTyClDecl GHC.RdrName -> RefactGhc [GHC.Name]
 getDeclaredTypesRdr :: GHC.LHsDecl GHC.RdrName -> RefactGhc [GHC.Name]
-getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
+getDeclaredTypesRdr d@(GHC.L _ (GHC.TyClD decl)) = do
   nm <- getRefactNameMap
   case decl of
 #if __GLASGOW_HASKELL__ <= 710
@@ -1388,7 +1401,11 @@ getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
 #endif
     (GHC.SynDecl ln  _ _ _) -> return [rdrName2NamePure nm ln]
     (GHC.DataDecl ln _ defn _) -> do
+#if __GLASGOW_HASKELL__ <= 710
       let dds = concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+#else
+      let dds = concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
+#endif
       let ddns = map (rdrName2NamePure nm) dds
       return $ [rdrName2NamePure nm ln] ++ ddns
 
@@ -1435,7 +1452,11 @@ getDeclaredTypes (GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ (GHC.L _ n) _ _ _))) = 
 #endif
 getDeclaredTypes (GHC.L _ (GHC.SynDecl (GHC.L _ n)  _ _ _)) = [n]
 getDeclaredTypes (GHC.L _ (GHC.DataDecl (GHC.L _ n) _ defn _)) = n:dds
+#if __GLASGOW_HASKELL__ <= 710
   where dds = map GHC.unLoc $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+#else
+  where dds = map GHC.unLoc $ concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
+#endif
 getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths _ats _atdefs _ _fvs))
   = nub $ [n] ++ ssn ++ msn -- ++ asn
   where
@@ -2284,7 +2305,6 @@ hsVisibleDsRdr nm e t = do
       fde <- hsVisibleDsRdr nm e ex
       return (fdp <> fde)
     lstmt (GHC.L _ (GHC.BodyStmt ex _ _ _)) = hsVisibleDsRdr nm e ex
-    -- lstmt (GHC.L _ (GHC.ExprStmt e _ _ _)) = hsFreeAndDeclaredGhc e
 
     lstmt (GHC.L _ (GHC.LetStmt bs)) = hsVisibleDsRdr nm e bs
 #if __GLASGOW_HASKELL__ <= 710
@@ -2859,9 +2879,9 @@ locToNameRdr pos t = do
    let mn = locToRdrName pos t
    return $ fmap (rdrName2NamePure nm) mn
 
- -- |Find the identifier(in GHC.Name format) whose start position is
- -- (row,col) in the file specified by the fileName, and returns
- -- `Nothing` if such an identifier does not exist.
+-- |Find the identifier(in GHC.Name format) whose start position is
+-- (row,col) in the file specified by the fileName, and returns
+-- `Nothing` if such an identifier does not exist.
 locToNameRdrPure :: (SYB.Data t)
                     => NameMap
                     -> SimpPos         -- ^ The row and column number

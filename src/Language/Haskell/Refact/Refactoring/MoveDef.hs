@@ -92,11 +92,12 @@ compLiftToTopLevel fileName (row,col) = do
       parseSourceFileGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
+      nm <- getRefactNameMap
 
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (row, col) renamed
+      let maybePn = locToRdrName (row, col) parsed
       case maybePn of
-        Just pn -> liftToTopLevel' modName pn
+        Just ln@(GHC.L l _) -> liftToTopLevel' modName (GHC.L l (rdrName2NamePure nm ln))
         _       -> error "\nInvalid cursor position!\n"
 
 
@@ -221,12 +222,13 @@ compLiftOneLevel fileName (row,col) = do
       parseSourceFileGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
+      nm <- getRefactNameMap
 
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (row, col) renamed
+      let maybePn = locToRdrName (row, col) parsed
       case maybePn of
-        Just pn ->  do
-            rs <- liftOneLevel' modName pn
+        Just ln@(GHC.L l _) ->  do
+            rs <- liftOneLevel' modName (GHC.L l (rdrName2NamePure nm ln))
             logm $ "compLiftOneLevel:rs=" ++ (show $ (refactDone rs,map (\((_,d),_) -> d) rs))
             if (refactDone rs)
               then return rs
@@ -564,13 +566,14 @@ compDemote fileName (row,col) = do
       parseSourceFileGhc fileName
       renamed <- getRefactRenamed
       parsed  <- getRefactParsed
+      nm <- getRefactNameMap
 
       -- TODO: make the next one an API call, that also gets the
       -- parsed source
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (row, col) renamed
+      let maybePn = locToRdrName (row, col) parsed
       case maybePn of
-        Just pn -> demote' modName pn
+        Just pn@(GHC.L l _) -> demote' modName (GHC.L l (rdrName2NamePure nm pn))
         _       -> error "\nInvalid cursor position!\n"
 
 -- ---------------------------------------------------------------------

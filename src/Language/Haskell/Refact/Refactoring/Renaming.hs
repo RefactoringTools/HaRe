@@ -68,14 +68,17 @@ compRename fileName newName (row,col) = do
     parsed       <- getRefactParsed
     modu         <- getModule
     targetModule <- getRefactTargetModule
+    nm           <- getRefactNameMap
 
     let modName = maybe (GHC.mkModuleName "Main") fst $ getModuleName parsed
-        maybePn = locToName (row, col) renamed
+        maybePn = locToRdrName (row, col) parsed
 
     logm $ "Renamed.comp:maybePn=" ++ showGhc maybePn -- ++AZ++
 
     case maybePn of
-        Just pn@(GHC.L _ n) -> do
+        Just pn'@(GHC.L l _) -> do
+            let n = rdrName2NamePure nm pn'
+                pn = GHC.L l n
             logm $ "Renaming:(n,modu)=" ++ showGhc (n,modu)
 
             let (GHC.L _ rdrName) = gfromJust "Renaming.comp.2" $ locToRdrName (row, col) parsed

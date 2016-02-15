@@ -54,12 +54,13 @@ compAddOneParameter fileName paramName (row, col) = do
         parseSourceFileGhc fileName
         renamed <- getRefactRenamed
         parsed  <- getRefactParsed
+        nm <- getRefactNameMap
         logParsedSource "compAdd entry"
         targetModule <- getRefactTargetModule
         logm $ "AddRmParam.compAdd:got targetModule"
-        let maybePn = locToName (row, col) renamed
+        let maybePn = locToNameRdrPure nm (row, col) parsed
         case maybePn of
-          Just (GHC.L _ pn) ->
+          Just pn ->
             do
               logm $ "AddRmParam.compAdd:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
               -- make sure this name is defined in this module

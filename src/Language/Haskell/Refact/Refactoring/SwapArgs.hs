@@ -33,8 +33,10 @@ comp :: String -> SimpPos
 comp fileName (row, col) = do
        parseSourceFileGhc fileName
        renamed <- getRefactRenamed
+       parsed  <- getRefactParsed
+       nm      <- getRefactNameMap
 
-       let name = locToName (row, col) renamed
+       let name = locToNameRdrPure nm (row, col) parsed
 
        case name of
             -- (Just pn) -> do refactoredMod@(_, (_t, s)) <- applyRefac (doSwap pnt pn) (Just modInfo) fileName
@@ -56,8 +58,8 @@ comp fileName (row, col) = do
        -- putStrLn "Completd"
 
 
-doSwap :: (GHC.Located GHC.Name) -> RefactGhc ()
-doSwap (GHC.L _s n1) = do
+doSwap :: GHC.Name -> RefactGhc ()
+doSwap n1 = do
     parsed <- getRefactParsed
     logm $ "doSwap:parsed=" ++ SYB.showData SYB.Parser 0 parsed
     nm <- getRefactNameMap

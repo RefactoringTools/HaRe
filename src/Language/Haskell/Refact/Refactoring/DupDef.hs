@@ -42,14 +42,17 @@ compDuplicateDef fileName newName (row, col) = do
         parseSourceFileGhc fileName
         renamed <- getRefactRenamed
         parsed  <- getRefactParsed
+        nm <- getRefactNameMap
         targetModule <- getRefactTargetModule
         logm $ "DupDef.compDuplicateDef:got targetModule"
 
         let (Just (modName,_)) = getModuleName parsed
-        let maybePn = locToName (row, col) renamed
+        let maybePn = locToRdrName (row,col) parsed
+        -- let maybePn = locToNameRdrPure nm (row, col) parsed
         case maybePn of
-          Just pn ->
+          Just lr@(GHC.L l _) ->
             do
+              let pn = GHC.L l (rdrName2NamePure nm lr)
               logm $ "DupDef.compDuplicateDef:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
               (refactoredMod,(isDone,nn)) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
               logm $ "DupDef.com:isDone=" ++ show isDone

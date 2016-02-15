@@ -54,12 +54,18 @@ spec = do
         comp = do
          parseSourceFileGhc "./DupDef/Dd1.hs"
          renamed <- getRefactRenamed
+         parsed <- getRefactParsed
+         nm <- getRefactNameMap
 
-         let mn = locToName (4,1) renamed
-         let (Just (ln@(GHC.L _ n))) = mn
+         let mn = locToRdrName (4,1) parsed
+         let Just (ln'@(GHC.L l _)) = mn
+             n = rdrName2NamePure nm ln'
+             ln = GHC.L l n
 
-         let mx = locToName (4,10) renamed
-         let (Just (lx@(GHC.L _ x))) = mx
+         let mx = locToRdrName (4,10) parsed
+         let (Just (lx'@(GHC.L l2 _))) = mx
+             x = rdrName2NamePure nm lx'
+             lx = GHC.L l2 x
 
          let declsr = hsBinds renamed
              duplicatedDecls = definingDeclsNames [n] declsr True False
