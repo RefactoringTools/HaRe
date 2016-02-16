@@ -429,20 +429,20 @@ hsFreeAndDeclaredRdr' nm t = do
 
           -- tycldecls -----------------
 
-          ltydecl :: GHC.LTyClDecl GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
+          ltydecl :: GHC.TyClDecl GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
 
-          ltydecl (GHC.L _ (GHC.FamDecl fd)) = hsFreeAndDeclaredRdr' nm fd
-          ltydecl (GHC.L _ (GHC.SynDecl ln _bndrs _rhs _fvs))
+          ltydecl (GHC.FamDecl fd) = hsFreeAndDeclaredRdr' nm fd
+          ltydecl (GHC.SynDecl ln _bndrs _rhs _fvs)
               = return (FN [],DN [rdrName2NamePure nm ln])
-          ltydecl (GHC.L _ (GHC.DataDecl ln _bndrs defn _fvs)) = do
+          ltydecl (GHC.DataDecl ln _bndrs defn _fvs) = do
 #if __GLASGOW_HASKELL__ <= 710
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
 #endif
               return (FN [],DN (rdrName2NamePure nm ln:dds))
-          ltydecl (GHC.L _ (GHC.ClassDecl _ctx ln _tyvars
-                           _fds _sigs meths ats atds _docs _fvs)) = do
+          ltydecl (GHC.ClassDecl _ctx ln _tyvars
+                           _fds _sigs meths ats atds _docs _fvs) = do
              (_,md) <- hsFreeAndDeclaredRdr' nm meths
              (_,ad) <- hsFreeAndDeclaredRdr' nm ats
              (_,atd) <- hsFreeAndDeclaredRdr' nm atds

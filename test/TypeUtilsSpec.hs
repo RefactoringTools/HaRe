@@ -657,16 +657,16 @@ spec = do
     it "finds declared HsVar" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-
       let
         comp = do
           parsed <- getRefactParsed
           nm <- getRefactNameMap
+          -- logDataWithAnns "parsed:"  parsed
           let rr = hsFreeAndDeclaredRdr nm parsed
           let r  = hsFreeAndDeclaredPNsOld renamed
           rg <-    hsFreeAndDeclaredPNs    parsed
           return (r,rg,rr)
-      -- ((res,resg,rrr),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      -- ((res,resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((res,resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       -- (showGhcQual _fff) `shouldBe` ""
@@ -713,17 +713,24 @@ spec = do
 
       -- Declared Vars - parsed
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) dr) `shouldBe`
-                   "[(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
-                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
-                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
-                   "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
-                   "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
-                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
-                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
-                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
-                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
-                   "(FreeAndDeclared.Declare.ff, (36, 1))]"
+                    "[(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
+                    "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
+                    "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
+                    "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
+                    "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
+                    "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
+                    "(FreeAndDeclared.Declare.D, (18, 1)),\n "++
+                    "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
+                    "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
+                    "(FreeAndDeclared.Declare.C, (18, 25)),\n "++
+                    "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
+                    "(FreeAndDeclared.Declare.F, (25, 1)),\n "++
+                    "(FreeAndDeclared.Declare.G, (25, 10)),\n "++
+                    "(FreeAndDeclared.Declare.:|, (25, 14)),\n "++
+                    "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
+                    "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
+                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
+                    "(FreeAndDeclared.Declare.ff, (36, 1))]"
 
       -- ---------------------
       -- GHC version
@@ -739,25 +746,25 @@ spec = do
 
       -- Declared Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
-                   "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
-                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
-                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
-                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
-                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
-                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++ -- ++AZ++ not found by old
+                   "[(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
+                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
+                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
+                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
                    "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
                    "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
-                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
-                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                   "(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
-                   "(GHC.Types.Int, (-1, -1)), (GHC.Integer.Type.Integer, (-1, -1)),\n "++
                    "(FreeAndDeclared.Declare.D, (18, 1)),\n "++
                    "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
                    "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
                    "(FreeAndDeclared.Declare.C, (18, 25)),\n "++
+                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
                    "(FreeAndDeclared.Declare.F, (25, 1)),\n "++
                    "(FreeAndDeclared.Declare.G, (25, 10)),\n "++
-                   "(FreeAndDeclared.Declare.:|, (25, 14))]"
+                   "(FreeAndDeclared.Declare.:|, (25, 14)),\n "++
+                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
+                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
+                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
+                   "(FreeAndDeclared.Declare.ff, (36, 1))]"
+
 
     -- ---------------------------------
 
