@@ -304,13 +304,17 @@ hsFreeAndDeclaredRdr' nm t = do
           hsFreeAndDeclared' :: Maybe (FreeNames,DeclaredNames)
           hsFreeAndDeclared' = applyTU (stop_tdTU (failTU
                                                       `adhocTU` expr
-                                                      `adhocTU` pattern
+                                                      `adhocTU` pat
+#if __GLASGOW_HASKELL__ <= 710
+                                                      `adhocTU` bndrs
+#endif
                                                       `adhocTU` binds
                                                       `adhocTU` bindList
                                                       `adhocTU` match
                                                       `adhocTU` stmts
                                                       `adhocTU` rhs
                                                       `adhocTU` ltydecl
+                                                      `adhocTU` hstype
                                                        )) t
 
           -- expr --
@@ -362,21 +366,88 @@ hsFreeAndDeclaredRdr' nm t = do
 
 
           -- pat --
-          pattern (GHC.L _ (GHC.AsPat ln pat)) = do
-            let (f,DN d) = fromMaybe mempty $ hsFreeAndDeclaredRdr' nm pat
-            return (f,DN (rdrName2NamePure nm ln:d))
-
+          pat :: GHC.LPat GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
+          pat (GHC.L l (GHC.WildPat _)) = mzero
 #if __GLASGOW_HASKELL__ <= 710
-          pattern (GHC.L l (GHC.VarPat n))
+          pat (GHC.L l (GHC.VarPat n))
 #else
-          pattern (GHC.L l (GHC.VarPat (GHC.L _ n)))
+          pat (GHC.L l (GHC.VarPat (GHC.L _ n)))
 #endif
             = return (FN [],DN [rdrName2NamePure nm (GHC.L l n)])
-          -- It seems all the GHC pattern match syntax elements end up
-          -- with GHC.VarPat
+          pat (GHC.L _ (GHC.AsPat ln p)) = do
+            let (f,DN d) = fromMaybe mempty $ hsFreeAndDeclaredRdr' nm p
+            return (f,DN (rdrName2NamePure nm ln:d))
 
-          pattern _ = mzero
-          -- pattern _ = return ([],[])
+          pat (GHC.L _ (GHC.ParPat p)) = pat p
+          pat (GHC.L _ (GHC.BangPat p)) = pat p
+          pat (GHC.L _ (GHC.ListPat ps _ _)) = do
+            fds <- mapM pat ps
+            return $ mconcat fds
+          pat (GHC.L _ (GHC.TuplePat ps _ _)) = do
+            fds <- mapM pat ps
+            return $ mconcat fds
+          pat (GHC.L _ (GHC.PArrPat ps _)) = do
+            fds <- mapM pat ps
+            return $ mconcat fds
+          pat (GHC.L _ (GHC.ConPatIn n det)) = do
+            -- logm $ "hsFreeAndDeclaredGhc.pat.ConPatIn:details=" ++ (SYB.showData SYB.Renamer 0 det)
+            (FN f,DN d) <- details det
+            return $ (FN [rdrName2NamePure nm n],DN d) <> (FN [],DN f)
+          -- pat (GHC.ConPatOut )
+          pat (GHC.L _ (GHC.ViewPat e p _)) = do
+            fde <- hsFreeAndDeclaredRdr' nm e
+            fdp <- pat p
+            return $ fde <> fdp
+          -- pat (GHC.QuasiQuotePat _)
+          pat (GHC.L _ (GHC.LitPat _)) = return emptyFD
+#if __GLASGOW_HASKELL__ <= 710
+          pat (GHC.L _ (GHC.NPat _ _ _)) = return emptyFD
+          pat (GHC.L _ (GHC.NPlusKPat n _ _ _)) = return (FN [],DN [rdrName2NamePure nm n])
+#else
+          pat (GHC.L _ (GHC.NPat _ _ _ _)) = return emptyFD
+          pat (GHC.L _ (GHC.NPlusKPat (GHC.L _ n) _ _ _ _ _)) = return (FN [],DN [n])
+#endif
+          pat (GHC.L _ _p@(GHC.SigPatIn p b)) = do
+            fdp <- pat p
+            (FN fb,DN _db) <- hsFreeAndDeclaredRdr' nm b
+            -- error $ "pat.SigPatIn:(b,fb,db)" ++ showGhc (b,fb,db)
+            return $ fdp <> (FN fb,DN [])
+          pat (GHC.L _ (GHC.SigPatOut p _)) = pat p
+          pat (GHC.L l (GHC.CoPat _ p _)) = pat (GHC.L l p)
+
+          -- pat p = error $ "hsFreeAndDeclaredRdr'.pat:unimplemented:" ++ (showGhc p)
+
+          -- ---------------------------
+
+          details :: GHC.HsConPatDetails GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
+          details (GHC.PrefixCon  args) = do
+            -- logm $ "hsFreeAndDeclaredGhc.details:args=" ++ (showGhc args)
+            fds <- mapM pat args
+            return $ mconcat fds
+          details (GHC.RecCon recf) =
+            recfields recf
+          details (GHC.InfixCon arg1 arg2) = do
+            fds <- mapM pat [arg1,arg2]
+            return $ mconcat fds
+
+          -- Note: this one applies to HsRecFields in LPats
+          recfields :: (GHC.HsRecFields GHC.RdrName (GHC.LPat GHC.RdrName)) -> Maybe (FreeNames,DeclaredNames)
+          recfields (GHC.HsRecFields fields _) = do
+            let args = map (\(GHC.L _ (GHC.HsRecField _ arg _)) -> arg) fields
+            fds <- mapM pat args
+            return $ mconcat fds
+
+          -- -----------------------
+
+#if __GLASGOW_HASKELL__ <= 710
+          bndrs :: GHC.HsWithBndrs GHC.RdrName (GHC.LHsType GHC.RdrName) -> Maybe (FreeNames,DeclaredNames)
+          bndrs (GHC.HsWB thing _ _ _) = do
+            (_ft,DN dt) <- hsFreeAndDeclaredRdr' nm thing
+            -- error $ "hsFreeAndDeclaredRdr'.bndrs (_ft,dt)=" ++ show (_ft,DN dt)
+            return (FN dt,DN [])
+#endif
+
+          -- ---------------------------
 
           bindList (ds :: [GHC.LHsBind GHC.RdrName])
             =do (FN f,DN d) <- hsFreeAndDeclaredList ds
@@ -447,6 +518,56 @@ hsFreeAndDeclaredRdr' nm t = do
              (_,ad) <- hsFreeAndDeclaredRdr' nm ats
              (_,atd) <- hsFreeAndDeclaredRdr' nm atds
              return (FN [],DN [rdrName2NamePure nm ln] <> md <> ad <> atd)
+
+          ------------------------------
+
+          hstype :: GHC.LHsType GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
+#if __GLASGOW_HASKELL__ <= 710
+          hstype (GHC.L _ (GHC.HsForAllTy _ _ _ _ typ)) = hsFreeAndDeclaredRdr' nm typ
+#else
+          hstype (GHC.L _ (GHC.HsForAllTy _ typ)) = hsFreeAndDeclaredRdr' nm typ
+#endif
+#if __GLASGOW_HASKELL__ <= 710
+          hstype (GHC.L l (GHC.HsTyVar n)) = return (FN [],DN [rdrName2NamePure nm (GHC.L l n)])
+#else
+          hstype (GHC.L _ (GHC.HsTyVar n)) = return (FN [],DN [rdrName2NamePure nm n])
+#endif
+          hstype (GHC.L _ (GHC.HsAppTy t1 t2)) = recurseList [t1,t2]
+          hstype (GHC.L _ (GHC.HsFunTy t1 t2)) = recurseList [t1,t2]
+          hstype (GHC.L _ (GHC.HsListTy typ)) = hsFreeAndDeclaredRdr' nm typ
+          hstype (GHC.L _ (GHC.HsPArrTy typ)) = hsFreeAndDeclaredRdr' nm typ
+          hstype (GHC.L _ (GHC.HsTupleTy _ typs)) = recurseList typs
+          hstype (GHC.L _ (GHC.HsOpTy t1 _ t2)) = recurseList [t1,t2]
+          hstype (GHC.L _ (GHC.HsParTy typ)) = hsFreeAndDeclaredRdr' nm typ
+          hstype (GHC.L _ (GHC.HsIParamTy _ typ)) = hsFreeAndDeclaredRdr' nm typ
+          hstype (GHC.L _ (GHC.HsEqTy t1 t2)) = recurseList [t1,t2]
+          hstype (GHC.L _ (GHC.HsKindSig t1 t2)) = recurseList [t1,t2]
+#if __GLASGOW_HASKELL__ <= 710
+          hstype (GHC.L _ (GHC.HsQuasiQuoteTy _)) = return emptyFD
+#endif
+          hstype (GHC.L _ (GHC.HsSpliceTy _ _)) = return (FN [],DN [])
+          hstype (GHC.L _ (GHC.HsDocTy _ typ)) = hsFreeAndDeclaredRdr' nm typ
+          hstype (GHC.L _ (GHC.HsBangTy _ typ)) = hsFreeAndDeclaredRdr' nm typ
+          hstype (GHC.L _ (GHC.HsRecTy cons)) = recurseList cons
+          hstype (GHC.L _ (GHC.HsCoreTy _)) = return emptyFD
+          hstype (GHC.L _ (GHC.HsExplicitListTy _ typs)) = recurseList typs
+          hstype (GHC.L _ (GHC.HsExplicitTupleTy _ typs)) = recurseList typs
+          hstype (GHC.L _ (GHC.HsTyLit _)) = return emptyFD
+#if __GLASGOW_HASKELL__ <= 710
+          hstype (GHC.L _ (GHC.HsWrapTy _ typ)) = hsFreeAndDeclaredRdr' nm typ
+#endif
+#if __GLASGOW_HASKELL__ <= 710
+          hstype (GHC.L _ (GHC.HsWildcardTy)) = error "To implement: hstype, HsWildcardTy"
+          hstype (GHC.L _ (GHC.HsNamedWildcardTy _)) = error "To implement: HsNamedWildcardTy"
+#else
+          hstype (GHC.L _ (GHC.HsWildCardTy _)) = error "To implement: hstype, HsWildcardTy"
+#endif
+
+          -- ---------------------------------
+
+          recurseList xs = do
+            fds <- mapM (hsFreeAndDeclaredRdr' nm) xs
+            return $ mconcat fds
 
           ------------------------------
 

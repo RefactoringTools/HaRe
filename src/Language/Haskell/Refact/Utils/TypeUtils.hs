@@ -2727,12 +2727,12 @@ locToExp:: (SYB.Data t,SYB.Typeable n) =>
                    SimpPos    -- ^ The start position.
                 -> SimpPos    -- ^ The end position.
                 -> t          -- ^ The syntax phrase.
-                -> Maybe (GHC.Located (GHC.HsExpr n)) -- ^ The result.
+                -> Maybe (GHC.LHsExpr n) -- ^ The result.
 locToExp beginPos endPos t = res
   where
      res = SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` expr) t
 
-     expr :: GHC.Located (GHC.HsExpr n) -> (Maybe (GHC.Located (GHC.HsExpr n)))
+     expr :: GHC.LHsExpr n -> Maybe (GHC.LHsExpr n)
      expr e
         |inScope e = Just e
      expr _ = Nothing

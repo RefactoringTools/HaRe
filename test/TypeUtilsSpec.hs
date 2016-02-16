@@ -1156,10 +1156,8 @@ spec = do
 
     it "Rdr:finds visible vars inside a function" $ do
       t <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
-      let Just rhsr = locToExp (14,6) (15,14) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
       let Just rhs  = locToExp (14,6) (15,14) parsed  :: (Maybe (GHC.LHsExpr GHC.RdrName))
       (showGhcQual rhs) `shouldBe` "x + y + z"
 
@@ -1185,7 +1183,6 @@ spec = do
 
     it "Rdr:finds visible vars inside a data declaration" $ do
       t <- ct $ parsedFileGhc "./Renaming/D1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let Just ln = locToRdrName (6, 6) parsed
@@ -1312,22 +1309,21 @@ spec = do
     it "finds function arguments visible in RHS fd" $ do
       t <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
-      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
-      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      (showGhcQual e) `shouldBe` "a GHC.Num.+ b"
+      let Just e  = locToExp (5,11) (5,19) parsed :: (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
+      (showGhcQual e) `shouldBe` "a + b"
 
       let Just n = getName "Visible.Simple.params" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      let binds = hsValBinds [decl]
 
       let
         comp = do
-          nm <- getRefactNameMap
-          -- fds' <- hsFreeAndDeclaredGhc $  head $ hsBinds binds
-          let fds' = hsFreeAndDeclaredRdr nm $  head $ hsBinds binds
+          decls <- liftT $ hsDecls parsed
+          let [decl] = definingDeclsRdrNames nm [n] decls False False
+          let fds' = hsFreeAndDeclaredRdr nm decl
           return (fds')
+      -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       (show fds) `shouldBe` "(FN [GHC.Num.+],DN [Visible.Simple.params])"
@@ -1337,28 +1333,31 @@ spec = do
     it "finds function arguments and free vars visible in RHS" $ do
       t <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
-      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
+      let Just e  = locToExp (9,15) (9,17) parsed :: Maybe (GHC.LHsExpr GHC.RdrName)
       (showGhcQual e) `shouldBe` "x"
 
       let Just n = getName "Visible.Simple.param2" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      let binds = hsValBinds [decl]
-#if __GLASGOW_HASKELL__ <= 710
-      let (GHC.L _ (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _)) = head $ hsBinds binds
-#else
-      let (GHC.L _ (GHC.FunBind _ (GHC.MG (GHC.L _ matches) _ _ _) _ _ _)) = head $ hsBinds binds
-#endif
-      let [(GHC.L _ (GHC.Match _ pats _ _))] = matches
-      let lpat = head pats
-
       let
         comp = do
-          nm <- getRefactNameMap
+          decls <- liftT $ hsDecls parsed
+          let [decl] = definingDeclsRdrNames nm [n] decls False False
+
+#if __GLASGOW_HASKELL__ <= 710
+          let (GHC.L _ (GHC.ValD (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _))) = decl
+#else
+          let (GHC.L _ (GHC.ValD (GHC.FunBind _ (GHC.MG (GHC.L _ matches) _ _ _) _ _ _))) = decl
+#endif
+          let [(GHC.L _ (GHC.Match _ pats _ _))] = matches
+          let lpat = head pats
+          logDataWithAnns "lpat" lpat
+
           -- fds' <- hsFreeAndDeclaredGhc $ lpat
           let fds' = hsFreeAndDeclaredRdr nm lpat
           return (fds')
+      -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       (show fds) `shouldBe` "(FN [Visible.Simple.B],DN [x])"
@@ -1368,20 +1367,21 @@ spec = do
     it "finds imported functions used in the rhs" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let Just n = getName "FreeAndDeclared.Declare.tup" renamed
-      let decls = definingDeclsNames [n] (hsBinds renamed) False False
 
       let
         comp = do
           nm <- getRefactNameMap
-          -- fds' <- hsFreeAndDeclaredGhc $ decls
-          let fds' = hsFreeAndDeclaredRdr nm decls
+          decls <- liftT $ hsDecls parsed
+          let [decl] = definingDeclsRdrNames nm [n] decls False False
+          let fds' = hsFreeAndDeclaredRdr nm decl
           return (fds')
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       (show fds) `shouldBe`
-            "(FN [GHC.List.head, GHC.Base.$, GHC.List.zip],"++
+            "(FN [GHC.Base.$, GHC.List.head, GHC.List.zip],"++
             "DN [FreeAndDeclared.Declare.tup, FreeAndDeclared.Declare.h,\n "++
                 "FreeAndDeclared.Declare.t])"
 
@@ -1392,36 +1392,40 @@ spec = do
       let renamed = fromJust $ GHC.tm_renamed_source t
 
       let Just n = getName "FreeAndDeclared.Binders.findNewPName" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-#if __GLASGOW_HASKELL__ <= 710
-      let (GHC.L _ (GHC.FunBind _ _ (GHC.MG [match] _ _ _) _ _ _)) = decl
-#else
-      let (GHC.L _ (GHC.FunBind _ (GHC.MG (GHC.L _ [match]) _ _ _) _ _ _)) = decl
-#endif
-      let (GHC.L _ (GHC.Match _ _pats _rhs binds)) = match
-
       let
         comp = do
           nm <- getRefactNameMap
+          parsed <- getRefactParsed
+          decls <- liftT $ hsDecls parsed
+          let [decl] = definingDeclsRdrNames nm [n] decls False False
+#if __GLASGOW_HASKELL__ <= 710
+          let (GHC.L _ (GHC.ValD (GHC.FunBind _ _ (GHC.MG [match] _ _ _) _ _ _))) = decl
+#else
+          let (GHC.L _ (GHC.ValD (GHC.FunBind _ (GHC.MG (GHC.L _ [match]) _ _ _) _ _ _))) = decl
+#endif
+          let (GHC.L _ (GHC.Match _ _pats _rhs binds)) = match
+
+          logDataWithAnns "binds" binds
           -- fds' <- hsFreeAndDeclaredGhc $ binds
           let fds' = hsFreeAndDeclaredRdr nm binds
           return (fds')
+      -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       (show fds) `shouldBe`
-            "(FN [FreeAndDeclared.Binders.gfromJust,"++
-            " FreeAndDeclared.Binders.Name,\n"++
-            " FreeAndDeclared.Binders.occNameString,"++
-            " GHC.Base.$,\n"++
-            " FreeAndDeclared.Binders.getOccName,"++
-            " GHC.Classes.==,"++
-            " name,\n"++
-            " GHC.Base.Just,"++
-            " GHC.Base.Nothing,\n"++
-            " FreeAndDeclared.Binders.somethingStaged,\n"++
-            " FreeAndDeclared.Binders.Renamer,"++
-            " renamed],"++
-            "DN [worker, res])"
+            "(FN [FreeAndDeclared.Binders.gfromJust,\n "++
+            "FreeAndDeclared.Binders.somethingStaged,\n "++
+            "FreeAndDeclared.Binders.Renamer, "++
+            "GHC.Base.Nothing, "++
+            "renamed,\n "++
+            "FreeAndDeclared.Binders.Name, "++
+            "GHC.Classes.==, "++
+            "GHC.Base.$,\n "++
+            "FreeAndDeclared.Binders.occNameString,\n "++
+            "FreeAndDeclared.Binders.getOccName, "++
+            "name, "++
+            "GHC.Base.Just],"++
+            "DN [res, worker])"
 
     -- -----------------------------------
 
