@@ -1,4 +1,4 @@
-{-# LANGUAGE  FlexibleContexts, ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.MaybeToMonadPlus where
 
 import Language.Haskell.Refact.API
@@ -11,6 +11,7 @@ import GHC.SYB.Utils as SYB
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Transform
 import qualified Outputable as GHC
@@ -93,9 +94,10 @@ wrapInLambda :: String -> GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHs
 wrapInLambda funNm varPat rhs = do
   let gen_rhs = justToReturn rhs
   match@(GHC.L l match') <- mkMatch varPat gen_rhs
-  --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match)
+  --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match) 
   let mg = GHC.MG [match] [] GHC.PlaceHolder GHC.Generated
   currAnns <- fetchAnnsFinal
+  logm $ "Anns :" ++ (show $ getAllAnns currAnns match)
   let l_lam = (GHC.L l (GHC.HsLam mg))
   let ppr = exactPrint l_lam currAnns
   
@@ -200,3 +202,21 @@ handleParseResult :: String -> Either (GHC.SrcSpan, String) (Anns, a) -> RefactG
 handleParseResult msg e = case e of
   (Left (_, errStr)) -> error $ "The parse from: " ++ msg ++ " with error: " ++ errStr
   (Right res) -> return res
+
+-- Retrieves all annotations that correspond to all subtrees of the provided ast chunk
+getAllAnns :: (Data a) => Anns -> a -> Anns
+getAllAnns anns = generic `SYB.ext2Q` located
+  where generic :: Data a => a -> Anns
+        generic a = foldr Map.union Map.empty (gmapQ (getAllAnns anns) a) 
+        located :: (Data b, Data loc) => GHC.GenLocated loc b -> Anns
+        located a = case (located' a) of
+          Nothing -> Map.empty
+          Just as -> as
+          where located' :: (Data b, Data loc) => GHC.GenLocated loc b -> Maybe Anns
+                located' a@(GHC.L ss b) = do
+                  s <- (cast ss) :: (Maybe GHC.SrcSpan)
+                  let k = mkAnnKey (GHC.L s b)
+                  v <- Map.lookup k anns
+                  let rst = getAllAnns anns b
+                  return $ Map.singleton k v `Map.union` rst
+     
