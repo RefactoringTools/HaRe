@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, RankNTypes, AllowAmbiguousTypes #-}
 module Language.Haskell.Refact.Refactoring.MaybeToMonadPlus where
 
 import Language.Haskell.Refact.API
@@ -64,6 +64,8 @@ doRewriteAsBind fileName pos funNm = do
     (newPat, _) <- liftT $ cloneT varPat
     (newRhs, _) <- liftT $ cloneT rhs
     lam <- wrapInLambda funNm newPat newRhs
+    currAnns <- fetchAnnsFinal
+    --logm $ "Anns after wrap: " ++ (show currAnns)
     lam_par <- locate $ GHC.HsPar lam
     new_rhs <- createGRHS lam_par
     replaceGRHS funNm new_rhs
@@ -100,8 +102,9 @@ wrapInLambda funNm varPat rhs = do
   logm $ "Anns :" ++ (show $ getAllAnns currAnns match)
   let l_lam = (GHC.L l (GHC.HsLam mg))
   let ppr = exactPrint l_lam currAnns
-  
+  logm $ "Lambda ast: " ++ (SYB.showData SYB.Parser 3 l_lam)
   logm $ "=========== PPR ===========: " ++ ppr
+  synthesizeAnns l_lam
   return l_lam
   
 
@@ -220,3 +223,29 @@ getAllAnns anns = generic `SYB.ext2Q` located
                   let rst = getAllAnns anns b
                   return $ Map.singleton k v `Map.union` rst
      
+synthesizeAnns :: (Data a) => a -> RefactGhc a
+synthesizeAnns = generic `SYB.ext2M` located
+  where generic :: Data a => a -> RefactGhc a
+        generic a = do
+          _ <- gmapM synthesizeAnns a
+          return a
+        located :: (Data b, Data loc) => GHC.GenLocated loc b -> RefactGhc (GHC.GenLocated loc b)
+        located b@(GHC.L ss a) = case cast ss of
+          Just (s :: GHC.SrcSpan) -> do
+            --logm $ "Located found: " ++ (show $ toConstr a)
+            anns <- fetchAnnsFinal
+            let castRes = (GHC.L s a)
+                ann = getAnnotationEP castRes anns
+            --logm $ "Found ann: " ++ show ann
+            case ann of
+              Nothing -> do
+                --logm "No ann found for located item"
+                let newKey = mkAnnKey castRes
+                    newAnns = Map.insert newKey annNone anns
+                setRefactAnns newAnns
+                return ()
+              _ -> return ()
+            _ <- gmapM synthesizeAnns b
+            return b
+          Nothing ->
+            return b
