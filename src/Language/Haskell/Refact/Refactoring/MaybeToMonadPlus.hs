@@ -71,7 +71,7 @@ doRewriteAsBind fileName pos funNm = do
     prsed <- getRefactParsed
     logm $ "Final parsed: " ++ (SYB.showData SYB.Parser 3 prsed)
     currAnns <- fetchAnnsFinal
-    logm $ "Anns after wrap: " ++ (show currAnns)
+    logm $ "Final anns: " ++ (show currAnns)
 
 replaceGRHS :: String -> (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc ()
 replaceGRHS funNm new_rhs = do
@@ -232,6 +232,8 @@ removeMatch pos newBind old@(GHC.L l oldMatch) = do
   setRefactAnns newAnns
   (liftT getAnnsT) >>= putRefactParsed newParsed
   _ <- removeAnns old
+  curr <- fetchAnnsFinal
+  logm $ "Making sure anns are changed by remove: " ++ (show (curr == newAnns))
   return ()
     where replaceBind :: GHC.Located GHC.RdrName -> GHC.HsBind GHC.RdrName -> RefactGhc (GHC.HsBind GHC.RdrName)
           replaceBind rdrNm (bnd@(GHC.FunBind name _ _ _ _ _) :: GHC.HsBind GHC.RdrName)
@@ -300,8 +302,10 @@ removeAnns = generic `SYB.ext2M` located
         located b@(GHC.L ss a) = case cast ss of
           Just (s :: GHC.SrcSpan) -> do
             anns <- fetchAnnsFinal
-            let k = mkAnnKey (GHC.L s a)    
-            setRefactAnns $ Map.delete k anns               
+            let k = mkAnnKey (GHC.L s a)
+            logm $ "Deleting ann at: " ++ (show s)
+            setRefactAnns $ Map.delete k anns
+            _ <- gmapM removeAnns b
             return b
           Nothing -> return b
             
