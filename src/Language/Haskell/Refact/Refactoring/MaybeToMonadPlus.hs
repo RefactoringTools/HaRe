@@ -20,6 +20,7 @@ import qualified Data.Map as Map
 import qualified OccName as GHC
 import qualified RdrName as GHC
 import qualified BasicTypes as GHC
+import qualified ApiAnnotation as GHC
 
 maybeToMonadPlus :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> IO [FilePath]
 maybeToMonadPlus settings cradle fileName pos funNm = do
@@ -101,12 +102,28 @@ wrapInLambda funNm varPat rhs = do
   currAnns <- fetchAnnsFinal
   logm $ "Anns :" ++ (show $ getAllAnns currAnns match)
   let l_lam = (GHC.L l (GHC.HsLam mg))
-  let ppr = exactPrint l_lam currAnns
+      key = mkAnnKey l_lam
+      dp = [(G GHC.AnnLam, DP (0,0))]
+      newAnn = annNone {annsDP = dp}
+  setRefactAnns $ Map.insert key newAnn currAnns
+  par_lam <- wrapInPars l_lam
+  latest <- fetchAnnsFinal
+  let ppr = exactPrint par_lam latest
   logm $ "Lambda ast: " ++ (SYB.showData SYB.Parser 3 l_lam)
   logm $ "=========== PPR ===========: " ++ ppr
-  synthesizeAnns l_lam
-  return l_lam
+--  synthesizeAnns par_lam
+  return par_lam
   
+
+wrapInPars :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+wrapInPars expr = do
+  newAst <- locate (GHC.HsPar expr)
+  let key = mkAnnKey newAst
+      dp = [(G GHC.AnnOpenP, DP (0,1)), (G GHC.AnnCloseP, DP (0,0))]
+      newAnn = annNone {annsDP = dp}
+  currAnns <- fetchAnnsFinal
+  setRefactAnns $ Map.insert key newAnn currAnns
+  return newAst
 
 createGRHS :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
 createGRHS lam_par = do
@@ -124,8 +141,17 @@ justToReturn ast = SYB.everywhere (SYB.mkT worker) ast
           then GHC.mkDataOcc "return"
           else nm
 
+--This function makes a match suitable for use inside of a lambda expression. Should change name or define it elsewhere to show that this is not a general-use function. 
 mkMatch :: GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-mkMatch varPat rhs =  locate (GHC.Match Nothing [varPat] Nothing rhs)
+mkMatch varPat rhs = do
+  lMatch@(GHC.L l m) <- locate (GHC.Match Nothing [varPat] Nothing rhs)
+  currAnns <- fetchAnnsFinal
+  let key = mkAnnKey lMatch
+      keywordId = G GHC.AnnRarrow
+      dp = [(keywordId, DP (0,1))]
+      newAnn = annNone {annsDP = dp, annEntryDelta = DP (0,-1)}
+  setRefactAnns $ Map.insert key newAnn currAnns
+  return lMatch
 
 lookupAllAnns :: Anns -> [GHC.Located a] -> Anns
 lookupAllAnns anns [] = emptyAnns
