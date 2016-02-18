@@ -65,11 +65,13 @@ doRewriteAsBind fileName pos funNm = do
     (newPat, _) <- liftT $ cloneT varPat
     (newRhs, _) <- liftT $ cloneT rhs
     lam <- wrapInLambda funNm newPat newRhs
-    currAnns <- fetchAnnsFinal
-    --logm $ "Anns after wrap: " ++ (show currAnns)
     lam_par <- locate $ GHC.HsPar lam
     new_rhs <- createGRHS lam_par
     replaceGRHS funNm new_rhs
+    prsed <- getRefactParsed
+    logm $ "Final parsed: " ++ (SYB.showData SYB.Parser 3 prsed)
+    currAnns <- fetchAnnsFinal
+    logm $ "Anns after wrap: " ++ (show currAnns)
 
 replaceGRHS :: String -> (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc ()
 replaceGRHS funNm new_rhs = do
@@ -100,7 +102,7 @@ wrapInLambda funNm varPat rhs = do
   --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match) 
   let mg = GHC.MG [match] [] GHC.PlaceHolder GHC.Generated
   currAnns <- fetchAnnsFinal
-  logm $ "Anns :" ++ (show $ getAllAnns currAnns match)
+  --logm $ "Anns :" ++ (show $ getAllAnns currAnns match)
   let l_lam = (GHC.L l (GHC.HsLam mg))
       key = mkAnnKey l_lam
       dp = [(G GHC.AnnLam, DP (0,0))]
@@ -109,8 +111,8 @@ wrapInLambda funNm varPat rhs = do
   par_lam <- wrapInPars l_lam
   latest <- fetchAnnsFinal
   let ppr = exactPrint par_lam latest
-  logm $ "Lambda ast: " ++ (SYB.showData SYB.Parser 3 l_lam)
-  logm $ "=========== PPR ===========: " ++ ppr
+  --logm $ "Lambda ast: " ++ (SYB.showData SYB.Parser 3 l_lam)
+  --logm $ "=========== PPR ===========: " ++ ppr
 --  synthesizeAnns par_lam
   return par_lam
   
@@ -118,21 +120,33 @@ wrapInLambda funNm varPat rhs = do
 wrapInPars :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
 wrapInPars expr = do
   newAst <- locate (GHC.HsPar expr)
-  let key = mkAnnKey newAst
-      dp = [(G GHC.AnnOpenP, DP (0,1)), (G GHC.AnnCloseP, DP (0,0))]
+  let dp = [(G GHC.AnnOpenP, DP (0,1)), (G GHC.AnnCloseP, DP (0,0))]
       newAnn = annNone {annsDP = dp}
-  currAnns <- fetchAnnsFinal
-  setRefactAnns $ Map.insert key newAnn currAnns
+  addAnn newAst newAnn
   return newAst
 
 createGRHS :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
 createGRHS lam_par = do
   bind_occ <- locate $ GHC.HsVar (GHC.Unqual (GHC.mkDataOcc ">>="))
+  let occDp = [(G GHC.AnnVal, DP (0,0))]
+      occAnn = annNone {annsDP = occDp}
+  addAnn bind_occ occAnn
   l_section <- locate $ GHC.SectionR bind_occ lam_par
-  l_par <- locate $ GHC.HsPar l_section
+  addEmptyAnn l_section
+  l_par <- wrapInPars l_section
   lgrhs <- locate $ GHC.GRHS [] l_par
+  addEmptyAnn lgrhs
   return $ GHC.GRHSs [lgrhs] GHC.EmptyLocalBinds
-  
+
+addEmptyAnn :: (Data a) => GHC.Located a -> RefactGhc ()
+addEmptyAnn a = addAnn a annNone
+
+addAnn :: (Data a) => GHC.Located a -> Annotation -> RefactGhc ()
+addAnn a ann = do
+  currAnns <- fetchAnnsFinal
+  let k = mkAnnKey a
+  setRefactAnns $ Map.insert k ann currAnns
+
 justToReturn :: (Data a) => a -> a
 justToReturn ast = SYB.everywhere (SYB.mkT worker) ast
   where worker :: GHC.OccName -> GHC.OccName
@@ -145,12 +159,9 @@ justToReturn ast = SYB.everywhere (SYB.mkT worker) ast
 mkMatch :: GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
 mkMatch varPat rhs = do
   lMatch@(GHC.L l m) <- locate (GHC.Match Nothing [varPat] Nothing rhs)
-  currAnns <- fetchAnnsFinal
-  let key = mkAnnKey lMatch
-      keywordId = G GHC.AnnRarrow
-      dp = [(keywordId, DP (0,1))]
+  let dp = [(G GHC.AnnRarrow, DP (0,1))]
       newAnn = annNone {annsDP = dp, annEntryDelta = DP (0,-1)}
-  setRefactAnns $ Map.insert key newAnn currAnns
+  addAnn lMatch newAnn
   return lMatch
 
 lookupAllAnns :: Anns -> [GHC.Located a] -> Anns
@@ -209,7 +220,7 @@ containsNothingToNothing funNm pos a = do
       isMatch m@(GHC.L _ (GHC.Match _ _ _ _)) = [m]
       dropI i lst = let (xs,ys) = splitAt i lst in xs ++ (tail ys)
 
-
+-- Removes the given match from the given binding
 removeMatch :: SimpPos -> GHC.HsBind GHC.RdrName -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc ()
 removeMatch pos newBind old@(GHC.L l oldMatch) = do
   parsed <- getRefactParsed
@@ -220,6 +231,7 @@ removeMatch pos newBind old@(GHC.L l oldMatch) = do
       newAnns = Map.delete oldKey currAnns
   setRefactAnns newAnns
   (liftT getAnnsT) >>= putRefactParsed newParsed
+  _ <- removeAnns old
   return ()
     where replaceBind :: GHC.Located GHC.RdrName -> GHC.HsBind GHC.RdrName -> RefactGhc (GHC.HsBind GHC.RdrName)
           replaceBind rdrNm (bnd@(GHC.FunBind name _ _ _ _ _) :: GHC.HsBind GHC.RdrName)
@@ -248,7 +260,8 @@ getAllAnns anns = generic `SYB.ext2Q` located
                   v <- Map.lookup k anns
                   let rst = getAllAnns anns b
                   return $ Map.singleton k v `Map.union` rst
-     
+
+-- This creates an empty annotation for every located item where an annotation does not already exist in the given AST chunk
 synthesizeAnns :: (Data a) => a -> RefactGhc a
 synthesizeAnns = generic `SYB.ext2M` located
   where generic :: Data a => a -> RefactGhc a
@@ -275,3 +288,20 @@ synthesizeAnns = generic `SYB.ext2M` located
             return b
           Nothing ->
             return b
+
+-- This removes all the annotations associated with the given AST chunk.
+removeAnns :: (Data a) => a -> RefactGhc a
+removeAnns = generic `SYB.ext2M` located
+  where generic :: Data a => a -> RefactGhc a
+        generic a = do
+          _ <- gmapM synthesizeAnns a
+          return a
+        located :: (Data b, Data loc) => GHC.GenLocated loc b -> RefactGhc (GHC.GenLocated loc b)
+        located b@(GHC.L ss a) = case cast ss of
+          Just (s :: GHC.SrcSpan) -> do
+            anns <- fetchAnnsFinal
+            let k = mkAnnKey (GHC.L s a)    
+            setRefactAnns $ Map.delete k anns               
+            return b
+          Nothing -> return b
+            
