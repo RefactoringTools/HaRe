@@ -124,7 +124,6 @@ module Language.Haskell.Refact.API
     ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
     ,hsFreeAndDeclaredRdr
     ,hsFreeAndDeclaredPNs
-    ,hsFreeAndDeclaredGhc
     ,getDeclaredTypes
     ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
 
