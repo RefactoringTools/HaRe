@@ -1030,20 +1030,23 @@ spec = do
     it "returns visible vars if e does occur in t #1" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
-      let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      (showGhcQual tl1) `shouldBe` "ll GHC.Num.+ z"
+      let Just tl1  = locToExp (28,4) (28,12) parsed :: (Maybe (GHC.LHsExpr GHC.RdrName))
+      (showGhcQual tl1) `shouldBe` "ll + z"
 
       let Just tup = getName "DupDef.Dd1.l" renamed
-      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
-      (showGhcQual decl) `shouldBe` "DupDef.Dd1.l z = let ll = 34 in ll GHC.Num.+ z"
 
       let
         comp = do
-         r <- hsVisiblePNs tl1 decl
-         return (r)
-      ((res),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+         decls <- liftT $ hsDecls parsed
+         let [decl] = definingDeclsRdrNames nm [tup] decls False False
+         r <- hsVisiblePNsRdr nm tl1 decl
+         return (r,decl)
+      ((res,d),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
+      (showGhcQual d) `shouldBe` "l z = let ll = 34 in ll + z"
       (showGhcQual res ) `shouldBe` "[z, ll]"
       -- (showGhcQual res2 ) `shouldBe` "[z, ll]"
 
@@ -1051,17 +1054,18 @@ spec = do
 
     it "returns visible vars if e does occur in t #2" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
-      let Just tl1  = locToExp (28,4) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      (showGhcQual tl1) `shouldBe` "ll GHC.Num.+ z"
+      let Just tl1  = locToExp (28,4) (28,12) parsed :: (Maybe (GHC.LHsExpr GHC.RdrName))
+      (showGhcQual tl1) `shouldBe` "ll + z"
 
-      let Just rhs  = locToExp (26,1) (28,12) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-      (showGhcQual rhs) `shouldBe` "let ll = 34 in ll GHC.Num.+ z"
+      let Just rhs  = locToExp (26,1) (28,12) parsed :: (Maybe (GHC.LHsExpr GHC.RdrName))
+      (showGhcQual rhs) `shouldBe` "let ll = 34 in ll + z"
 
       let
         comp = do
-          r <- hsVisiblePNs tl1 rhs
+          r <- hsVisiblePNsRdr nm tl1 rhs
           return r
       ((res),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1190,7 +1194,7 @@ spec = do
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
-      (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
+      (show _fds) `shouldBe` "(FN [GHC.Num.+, IdIn5.x, y, z],DN [])"
       (show fds)  `shouldBe` "DN [GHC.Num.+, IdIn5.x, y, z]"
 
     -- -----------------------------------
@@ -1213,107 +1217,12 @@ spec = do
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
-      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], GHC.Base.++],"++
-                              "DN [Renaming.D1.sumSquares, Renaming.D1.fringe, Renaming.D1.Tree, a,\n"++
-                              " Renaming.D1.Leaf, Renaming.D1.Branch, Renaming.D1.SameOrNot,\n"++
-                              " Renaming.D1.isSame, Renaming.D1.isNotSame])"
-      (show fds) `shouldBe` "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch]"
+      (show _fds) `shouldBe` "(FN [GHC.Base.++, GHC.Classes.==, GHC.Classes./=, :, GHC.Num.+,\n"++
+                             " GHC.Real.^, []],"++
+                             "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch, a,\n"++
+                             " Renaming.D1.fringe, Renaming.D1.SameOrNot, GHC.Types.Int,\n"++
+                             " Renaming.D1.isSame, Renaming.D1.isNotSame, Renaming.D1.sumSquares])"
 
-
-  -- ---------------------------------------------------------------------
-
-  describe "hsVisibleDs" $ do
-    it "finds function arguments visible in RHS 1" $ do
-      t <- ct $ parsedFileGhc "./Visible/Simple.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      -- (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
-
-      let Just e  = locToExp (5,11) (5,19) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
-      (showGhcQual e) `shouldBe` "a GHC.Num.+ b"
-
-      let Just n = getName "Visible.Simple.params" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      let binds = hsValBinds [decl]
-
-      let
-        comp = do
-          fds' <- hsVisibleDs e $  head $ hsBinds binds
-          return (fds')
-      -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
-      ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-
-      (show fds) `shouldBe` "DN [a, b, GHC.Num.+]"
-
-    -- -----------------------------------
-
-    it "finds function arguments visible in RHS 2" $ do
-      t <- ct $ parsedFileGhc "./Visible/Simple.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-
-      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
-      (showGhcQual e) `shouldBe` "x"
-
-      let Just n = getName "Visible.Simple.param2" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      let binds = hsValBinds [decl]
-
-      let
-        comp = do
-          fds' <- hsVisibleDs e $  head $ hsBinds binds
-          return (fds')
-      ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-
-      (show fds) `shouldBe` "DN [x]"
-
-
-    -- -----------------------------------
-
-    it "finds visible vars inside a function" $ do
-      t <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-
-      let Just rhs  = locToExp (14,6) (15,14) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
-      (showGhcQual rhs) `shouldBe` "IdIn5.x GHC.Num.+ y GHC.Num.+ z"
-
-      let Just e = getName "IdIn5.x" renamed
-
-      let
-        comp = do
-          nm <- getRefactNameMap
-          fds' <- hsVisibleDs e rhs
-          -- ffds <- hsFreeAndDeclaredGhc rhs
-          let ffds = hsFreeAndDeclaredRdr nm rhs
-          return (fds',ffds)
-      ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-
-      (show _fds) `shouldBe` "(FN [IdIn5.x, GHC.Num.+, y, z],DN [])"
-      (show fds) `shouldBe` "DN [GHC.Num.+, y, z]"
-
-    -- -----------------------------------
-
-    it "finds visible vars inside a data declaration" $ do
-      t <- ct $ parsedFileGhc "./Renaming/D1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-          nm = initRdrNameMap t
-
-      let Just n = locToNameRdrPure nm (6, 6) parsed
-      (showGhcQual n) `shouldBe` "Renaming.D1.Tree"
-
-      let
-        comp = do
-          fds' <- hsVisibleDs n renamed
-          -- ffds <- hsFreeAndDeclaredGhc renamed
-          let ffds = hsFreeAndDeclaredRdr nm parsed
-          return (fds',ffds)
-      ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-
-      (show _fds) `shouldBe` "(FN [:, GHC.Num.+, GHC.Real.^, [], GHC.Base.++],"++
-                             "DN [Renaming.D1.sumSquares, Renaming.D1.fringe, Renaming.D1.Tree, a,\n "++
-                                 "Renaming.D1.Leaf, Renaming.D1.Branch, Renaming.D1.SameOrNot,\n "++
-                                 "Renaming.D1.isSame, Renaming.D1.isNotSame])"
       (show fds) `shouldBe` "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch]"
 
 
