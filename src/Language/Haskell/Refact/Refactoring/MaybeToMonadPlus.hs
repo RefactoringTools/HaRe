@@ -208,8 +208,9 @@ containsNothingToNothing funNm pos a = do
     [] -> return False
     [(i,_)] -> do
       let newMatches = dropI i matches
-          oldMatch = matches !! i
-          newMG = (GHC.fun_matches a) {GHC.mg_alts = newMatches}
+          oldMatch = matches !! i          
+      moveMatchesUp newMatches
+      let newMG = (GHC.fun_matches a) {GHC.mg_alts = newMatches}
           newBind = a{GHC.fun_matches = newMG}
       removeMatch pos newBind oldMatch
       return True
@@ -219,6 +220,21 @@ containsNothingToNothing funNm pos a = do
       isMatch :: (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> [(GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))]
       isMatch m@(GHC.L _ (GHC.Match _ _ _ _)) = [m]
       dropI i lst = let (xs,ys) = splitAt i lst in xs ++ (tail ys)
+
+moveMatchesUp :: (Data a) => [GHC.LMatch GHC.RdrName a] -> RefactGhc ()
+moveMatchesUp = mapM_ moveMatchLine
+  where moveMatchLine :: (Data a) => GHC.LMatch GHC.RdrName a -> RefactGhc ()
+        moveMatchLine m = do
+          currAnns <- fetchAnnsFinal
+          let k = mkAnnKey m
+              mAnn = Map.lookup k currAnns
+          case mAnn of
+            Nothing -> return ()
+            Just ann -> do
+              let (DP (row,col)) = annEntryDelta ann
+              setRefactAnns $ Map.insert k (ann {annEntryDelta = DP (row-1,col)}) currAnns
+              return ()
+          return ()
 
 -- Removes the given match from the given binding
 removeMatch :: SimpPos -> GHC.HsBind GHC.RdrName -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc ()
