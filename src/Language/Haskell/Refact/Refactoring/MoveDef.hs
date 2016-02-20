@@ -1257,7 +1257,7 @@ doDemoting' t pn = do
 
                          logm $ "MoveDef:declaredPns=" ++ (showGhc declaredPns) -- ++AZ++
 
-                         dl <- mapM (flip declaredNamesInTargetPlace ds) declaredPns
+                         dl <- mapM (flip (declaredNamesInTargetPlace nm) ds) declaredPns
                          logm $ "mapM declaredNamesInTargetPlace done"
                          --make sure free variable in 'f' do not clash with variables in 'dl',
                          --otherwise do renaming.
@@ -1375,11 +1375,10 @@ doDemoting' t pn = do
           ---------------------------------------------------------------------
 
           declaredNamesInTargetPlace :: (SYB.Data t)
-                            => GHC.Name -> t
-                            -- -> RefactGhc [GHC.Name]
+                            => NameMap -> GHC.Name -> t
                             -> RefactGhc [GHC.Name]
 
-          declaredNamesInTargetPlace pn' t' = do
+          declaredNamesInTargetPlace nm pn' t' = do
              logm $ "declaredNamesInTargetPlace:pn=" ++ (showGhc pn')
              res <- applyTU (stop_tdTU (failTU
                                            `adhocTU` inMatch
@@ -1390,15 +1389,16 @@ doDemoting' t pn = do
                  inMatch ((GHC.Match _ _pats _ rhs) :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
                     | findPN pn' rhs = do
                      logm $ "declaredNamesInTargetPlace:inMatch"
-                     fds <- hsFDsFromInside rhs
-                     return $ snd fds
+                     -- fds <- hsFDsFromInside rhs
+                     let (_,DN ds) = hsFDsFromInsideRdr nm rhs
+                     return ds
                  inMatch _ = return mzero
 
                  inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
                     |findPN pn' rhs = do
                      logm $ "declaredNamesInTargetPlace:inPat"
-                     fds <- hsFDsFromInside pat
-                     return $ snd fds
+                     let (_,DN ds) = hsFDsFromInsideRdr nm pat
+                     return ds
                  inPat _=  return mzero
 
 -- ---------------------------------------------------------------------

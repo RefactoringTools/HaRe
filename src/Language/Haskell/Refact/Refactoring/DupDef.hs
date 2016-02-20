@@ -211,7 +211,7 @@ reallyDoDuplicating pn newName _inscopes = do
                     --d: names that might clash with the new name
 
                 logm $ "doDuplicating'':(f,d)=" ++ show (f,d)
-                dv <- hsVisiblePNsRdr nm ln declsp --dv: names may shadow new name
+                dv <- hsVisiblePNsRdr nm n declsp --dv: names may shadow new name
                 let vars        = nub (f `union` d `union` map showGhc dv)
 
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow

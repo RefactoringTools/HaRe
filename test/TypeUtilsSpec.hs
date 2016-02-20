@@ -212,10 +212,10 @@ spec = do
     it "returns [] if not found" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
-      let Just n = locToNameRdrPure nameMap (16,6) parsed
+      let nm = initRdrNameMap t
+      let Just n = locToNameRdrPure nm (16,6) parsed
       let decls = GHC.hsmodDecls $ GHC.unLoc parsed
-      let res = definingDeclsRdrNames nameMap [n] decls False False
+      let res = definingDeclsRdrNames nm [n] decls False False
       showGhcQual res `shouldBe` "[]"
 
     -- ---------------------------------
@@ -223,11 +223,11 @@ spec = do
     it "finds declarations at the top level" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (3,3) parsed
+      let Just n = locToNameRdrPure nm (3,3) parsed
       let decls = GHC.hsmodDecls $ GHC.unLoc parsed
-      let res = definingDeclsRdrNames nameMap [n] decls False False
+      let res = definingDeclsRdrNames nm [n] decls False False
       showGhcQual res `shouldBe` "[toplevel x = c * x]"
 
     -- ---------------------------------
@@ -235,11 +235,11 @@ spec = do
     it "finds declarations not at the top level 1" $ do
       t <- ct $ parsedFileGhc "./LiftToToplevel/WhereIn6.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (13,29) parsed
+      let Just n = locToNameRdrPure nm (13,29) parsed
       let decls = GHC.hsmodDecls $ GHC.unLoc parsed
-      let res = definingDeclsRdrNames nameMap [n] decls False True
+      let res = definingDeclsRdrNames nm [n] decls False True
       showGhcQual n `shouldBe` "pow"
       showGhcQual res `shouldBe` "[pow = 2]"
 
@@ -248,11 +248,11 @@ spec = do
     it "finds declarations not at the top level 2" $ do
       t <- ct $ parsedFileGhc "./LiftToToplevel/LetIn1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (11,22) parsed
+      let Just n = locToNameRdrPure nm (11,22) parsed
       let decls = GHC.hsmodDecls $ GHC.unLoc parsed
-      let res = definingDeclsRdrNames nameMap [n] decls False True
+      let res = definingDeclsRdrNames nm [n] decls False True
       showGhcQual n `shouldBe` "sq"
       showGhcQual res `shouldBe` "[sq 0 = 0\n sq z = z ^ pow]"
 
@@ -261,11 +261,11 @@ spec = do
     it "finds in a patbind" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (14,1) parsed
+      let Just n = locToNameRdrPure nm (14,1) parsed
       let decls = GHC.hsmodDecls $ GHC.unLoc parsed
-      let res = definingDeclsRdrNames nameMap [n] decls False False
+      let res = definingDeclsRdrNames nm [n] decls False False
       showGhcQual res `shouldBe` "[tup@(h, t)\n   = head $ zip [1 .. 10] [3 .. ff]\n   where\n       ff :: Int\n       ff = 15]"
 
     -- ---------------------------------
@@ -345,11 +345,11 @@ spec = do
     it "returns [] if not found" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (21,1) parsed
+      let Just n = locToNameRdrPure nm (21,1) parsed
       showGhcQual n `shouldBe` "DupDef.Dd1.ff"
-      let res = definingSigsRdrNames nameMap [n] parsed
+      let res = definingSigsRdrNames nm [n] parsed
       showGhcQual res `shouldBe` "[]"
 
     -- ---------------------------------
@@ -357,11 +357,11 @@ spec = do
     it "finds signatures at the top level" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (4,1) parsed
+      let Just n = locToNameRdrPure nm (4,1) parsed
       showGhcQual n `shouldBe` "DupDef.Dd1.toplevel"
-      let res = definingSigsRdrNames nameMap [n] parsed
+      let res = definingSigsRdrNames nm [n] parsed
       showGhcQual res `shouldBe` "[toplevel :: Integer -> Integer]"
 
     -- ---------------------------------
@@ -369,11 +369,11 @@ spec = do
     it "returns only the single signature where there are others too" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (7,1) parsed
+      let Just n = locToNameRdrPure nm (7,1) parsed
       showGhcQual n `shouldBe` "DupDef.Dd1.c"
-      let res = definingSigsRdrNames nameMap [n] parsed
+      let res = definingSigsRdrNames nm [n] parsed
       showGhcQual res `shouldBe`  "[c :: Integer]"
 
     -- ---------------------------------
@@ -381,11 +381,11 @@ spec = do
     it "finds signatures at lower levels" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-      let nameMap = initRdrNameMap t
+      let nm = initRdrNameMap t
 
-      let Just n = locToNameRdrPure nameMap (16,5) parsed
+      let Just n = locToNameRdrPure nm (16,5) parsed
       showGhcQual n `shouldBe` "ff"
-      let res = definingSigsRdrNames nameMap [n] parsed
+      let res = definingSigsRdrNames nm [n] parsed
       showGhcQual res `shouldBe` "[ff :: Int]"
 
     -- ---------------------------------
@@ -1042,7 +1042,7 @@ spec = do
         comp = do
          decls <- liftT $ hsDecls parsed
          let [decl] = definingDeclsRdrNames nm [tup] decls False False
-         r <- hsVisiblePNsRdr nm tl1 decl
+         r <- hsVisiblePNsRdr nm (rdrName2NamePure nm tl1) decl
          return (r,decl)
       ((res,d),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1065,7 +1065,7 @@ spec = do
 
       let
         comp = do
-          r <- hsVisiblePNsRdr nm tl1 rhs
+          r <- hsVisiblePNsRdr nm (rdrName2NamePure nm tl1) rhs
           return r
       ((res),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -1134,10 +1134,10 @@ spec = do
 
       let
         comp = do
-          nameMap <- getRefactNameMap
+          nm <- getRefactNameMap
           declsp <- liftT $ hsDecls parsed
-          let [decl] = definingDeclsRdrNames nameMap [n] declsp False False
-          fds' <- hsVisibleDsRdr nameMap e decl
+          let [decl] = definingDeclsRdrNames nm [n] declsp False False
+          fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm e) decl
           return (fds')
       -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -1159,10 +1159,10 @@ spec = do
 
       let
         comp = do
-          nameMap <- getRefactNameMap
+          nm <- getRefactNameMap
           declsp <- liftT $ hsDecls parsed
-          let [decl] = definingDeclsRdrNames nameMap [n] declsp False False
-          fds' <- hsVisibleDsRdr nameMap e decl
+          let [decl] = definingDeclsRdrNames nm [n] declsp False False
+          fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm e) decl
           return (fds')
       -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -1186,10 +1186,10 @@ spec = do
 
       let
         comp = do
-          nameMap <- getRefactNameMap
-          fds' <- hsVisibleDsRdr nameMap e rhs
+          nm <- getRefactNameMap
+          fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm e) rhs
           -- ffds <- hsFreeAndDeclaredGhc rhsr
-          let ffds = hsFreeAndDeclaredRdr nameMap rhs
+          let ffds = hsFreeAndDeclaredRdr nm rhs
           return (fds',ffds)
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -1209,10 +1209,10 @@ spec = do
 
       let
         comp = do
-          nameMap <- getRefactNameMap
-          fds' <- hsVisibleDsRdr nameMap ln parsed
+          nm <- getRefactNameMap
+          fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm ln) parsed
           -- ffds <- hsFreeAndDeclaredGhc renamed
-          let ffds = hsFreeAndDeclaredRdr nameMap parsed
+          let ffds = hsFreeAndDeclaredRdr nm parsed
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
@@ -1238,9 +1238,9 @@ spec = do
       let
         comp = do
           logDataWithAnns "parsed" parsed
-          nameMap <- getRefactNameMap
-          fds' <- hsVisibleDsRdr nameMap ln parsed
-          let ffds = hsFreeAndDeclaredRdr nameMap parsed
+          nm <- getRefactNameMap
+          fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm ln) parsed
+          let ffds = hsFreeAndDeclaredRdr nm parsed
           return (fds',ffds)
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
@@ -2308,12 +2308,12 @@ spec = do
       let
         comp = do
          parsed <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (4, 1) parsed
+         let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
@@ -2335,12 +2335,12 @@ spec = do
       let
         comp = do
          parsed <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (4, 1) parsed
+         let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
@@ -2362,12 +2362,12 @@ spec = do
         comp = do
 
          parsed <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (4, 1) parsed
+         let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
@@ -2387,12 +2387,12 @@ spec = do
         comp = do
 
          parsed <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (4, 1) parsed
+         let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
@@ -2413,12 +2413,12 @@ spec = do
         comp = do
 
          parsed <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (4, 1) parsed
+         let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
@@ -2438,18 +2438,18 @@ spec = do
       let
         comp = do
          parsed  <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (10, 1) parsed
+         let Just tl = locToNameRdrPure nm (10, 1) parsed
          decls <- liftT (hsDecls parsed)
-         let [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+         let [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
-         let Just sq = locToNameRdrPure nameMap (14, 1) parsed
-         let Just af = locToNameRdrPure nameMap (18, 1) parsed
+         let Just sq = locToNameRdrPure nm (14, 1) parsed
+         let Just af = locToNameRdrPure nm (18, 1) parsed
 
-         let [sqSig]  = definingSigsRdrNames  nameMap [sq] parsed
-             [sqDecl] = definingDeclsRdrNames nameMap [sq] decls False False
-             [afDecl] = definingDeclsRdrNames nameMap [af] decls False False
+         let [sqSig]  = definingSigsRdrNames  nm [sq] parsed
+             [sqDecl] = definingDeclsRdrNames nm [sq] decls False False
+             [afDecl] = definingDeclsRdrNames nm [af] decls False False
 
          let  sqSigDecl = wrapSig sqSig
          liftT (balanceComments tlDecl sqSigDecl)
@@ -2473,16 +2473,16 @@ spec = do
       let
         comp = do
          parsed  <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (3, 1) parsed
+         let Just tl = locToNameRdrPure nm (3, 1) parsed
          decls <- liftT (hsDecls parsed)
          let -- decls = hsBinds parsed
-             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
-         let Just y = locToNameRdrPure nameMap (6, 1) parsed
+         let Just y = locToNameRdrPure nm (6, 1) parsed
 
-         let [yDecl] = definingDeclsRdrNames nameMap [y] decls False False
+         let [yDecl] = definingDeclsRdrNames nm [y] decls False False
 
          newDecl <- addDecl tlDecl Nothing ([yDecl],Nothing)
 
@@ -2498,12 +2498,12 @@ spec = do
         comp = do
 
          parsed <- getRefactParsed
-         nameMap <- getRefactNameMap
+         nm <- getRefactNameMap
 
-         let Just tl = locToNameRdrPure nameMap (3, 1) parsed
+         let Just tl = locToNameRdrPure nm (3, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nameMap [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 

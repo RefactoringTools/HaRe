@@ -53,11 +53,10 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,usedWithoutQualR,isUsedInRhs
 
     -- ** Getting
-    ,findNameInRdr
-    ,findPNT,findPN,findAllNameOccurences
-    ,findPNs, findNamesRdr, findEntity, findEntity'
-    ,findIdForName
-    ,getTypeForName
+    , findAllNameOccurences
+    , findEntity'
+    , findIdForName
+    , getTypeForName
 
     ,defines, definesP,definesTypeSig,definesTypeSigRdr
     ,sameBind,sameBindRdr
@@ -2645,59 +2644,6 @@ findAllNameOccurences  name t
           | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
         workerExpr _ = []
 #endif
-
--- ---------------------------------------------------------------------
-
--- | Return True if the identifier occurs in the given syntax phrase.
-findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
-findPNT (GHC.L _ pn) = findPN pn
-
--- | Return True if the identifier occurs in the given syntax phrase.
-{-# DEPRECATED findPN "Can't use Renamed in GHC 8" #-}
-findPN::(SYB.Data t)=> GHC.Name -> t -> Bool
-findPN pn
-   = isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
-     where
-        worker (n::GHC.Name)
-           | GHC.nameUnique pn == GHC.nameUnique n = Just True
-        worker _ = Nothing
-
--- | Return True if any of the specified PNames ocuur in the given syntax phrase.
-{-# DEPRECATED findPNs "Can't use Renamed in GHC 8" #-}
-findPNs::(SYB.Data t)=> [GHC.Name] -> t -> Bool
-findPNs pns
-   = isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
-     where
-        uns = map GHC.nameUnique pns
-
-        worker (n::GHC.Name)
-           | elem (GHC.nameUnique n) uns = Just True
-        worker _ = Nothing
-
--- ---------------------------------------------------------------------
-
--- | Return True if the specified Name ocuurs in the given syntax phrase.
-findNameInRdr :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
-findNameInRdr nm pn t = findNamesRdr nm [pn] t
-
--- ---------------------------------------------------------------------
-
--- | Return True if any of the specified PNames ocuur in the given syntax phrase.
-findNamesRdr :: (SYB.Data t) => NameMap -> [GHC.Name] -> t -> Bool
-findNamesRdr nm pns t =
-  isJust $ SYB.something (inName) t
-    where
-      -- r = (SYB.everythingStaged SYB.Parser mappend mempty (inName) t)
-
-      checker :: GHC.Located GHC.RdrName -> Maybe Bool
-      checker ln
-         | elem (GHC.nameUnique (rdrName2NamePure nm ln)) uns = Just True
-      checker _ = Nothing
-
-      inName :: (SYB.Typeable a) => a -> Maybe Bool
-      inName = nameSybQuery checker
-
-      uns = map GHC.nameUnique pns
 
 -- ---------------------------------------------------------------------
 
