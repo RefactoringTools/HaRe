@@ -520,7 +520,7 @@ rmOneParameter settings opts fileName (row,col) = do
 compRmOneParameter :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
 compRmOneParameter fileName (row, col) = do
   parseSourceFileGhc fileName
-  logParsedSource "compRm entry"
+  -- logParsedSource "compRm entry"
   -- pn is the function names.
   -- nth is the nth paramter of pn is to be removed,index starts from 0.
   mp <- getParam (row,col)
@@ -653,7 +653,7 @@ doRmParam pn nTh = do
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
              rmFormalArg pn' nTh' updateToks checking t = do
                logm $ "rmFormalArg:(pn,nTh,updateToks,checking)=" ++ showGhc (pn',nTh',updateToks,checking)
-               logDataWithAnns "rmFormalArg:t=" t
+               -- logDataWithAnns "rmFormalArg:t=" t
                nm <- getRefactNameMap
                applyTP (stop_tdTP (failTP `adhocTP` (rmInMatch nm))) t
 

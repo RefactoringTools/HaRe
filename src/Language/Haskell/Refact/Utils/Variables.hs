@@ -2215,6 +2215,8 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` lsig
           `SYB.extQ` lstmts
           `SYB.extQ` lstmt
+          `SYB.extQ` lpats
+          `SYB.extQ` lpat
           ) t
 
     -- err2 = error $ "hsVisibleDsRdr:err2:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
@@ -2530,6 +2532,86 @@ hsVisibleDsRdr nm e t = do
     lstmt (GHC.L _ (GHC.RecStmt stmts _ _ _ _ _ _ _ _ _)) = hsVisibleDsRdr nm e stmts
 #endif
     -- lstmt _ = return (DN [])
+
+    -- -----------------------
+
+    lpats :: [GHC.LPat GHC.RdrName] -> RefactGhc DeclaredNames
+    lpats ps
+      | findNameInRdr nm e ps = do
+        fds <- mapM (hsVisibleDsRdr nm e) ps
+        return $ mconcat fds
+    lpats _ = return (DN [])
+
+    -- -----------------------
+
+    lpat :: GHC.LPat GHC.RdrName -> RefactGhc DeclaredNames
+    lpat (GHC.L _ (GHC.WildPat _)) = return (DN [])
+#if __GLASGOW_HASKELL__ <= 710
+    lpat (GHC.L l (GHC.VarPat n))
+#else
+    lpat (GHC.L l (GHC.VarPat (GHC.L _ n)))
+#endif
+      = return (DN [rdrName2NamePure nm (GHC.L l n)])
+    lpat (GHC.L _ (GHC.AsPat ln p)) = do
+      (DN dp) <- lpat p
+      return (DN (rdrName2NamePure nm ln:dp))
+
+    lpat (GHC.L _ (GHC.ParPat p)) = lpat p
+    lpat (GHC.L _ (GHC.BangPat p)) = lpat p
+    lpat (GHC.L _ (GHC.ListPat ps _ _)) = do
+      fds <- mapM lpat ps
+      return $ mconcat fds
+    lpat (GHC.L _ (GHC.TuplePat ps _ _)) = do
+      fds <- mapM lpat ps
+      return $ mconcat fds
+    lpat (GHC.L _ (GHC.PArrPat ps _)) = do
+      fds <- mapM lpat ps
+      return $ mconcat fds
+    lpat (GHC.L _ (GHC.ConPatIn n det)) = do
+      -- logm $ "hsFreeAndDeclaredGhc.lpat.ConPatIn:details=" ++ (SYB.showData SYB.Renamer 0 det)
+      (DN d) <- details det
+      return $ (FN [rdrName2NamePure nm n],DN d) <> (FN [],DN f)
+    -- lpat (GHC.ConPatOut )
+    lpat (GHC.L _ (GHC.ViewPat e p _)) = do
+      fde <- hsFreeAndDeclaredRdr' nm e
+      fdp <- lpat p
+      return $ fde <> fdp
+    -- lpat (GHC.QuasiQuotePat _)
+    lpat (GHC.L _ (GHC.LitPat _)) = return emptyFD
+#if __GLASGOW_HASKELL__ <= 710
+    lpat (GHC.L _ (GHC.NPat _ _ _)) = return emptyFD
+    lpat (GHC.L _ (GHC.NPlusKPat n _ _ _)) = return (FN [],DN [rdrName2NamePure nm n])
+#else
+    lpat (GHC.L _ (GHC.NPat _ _ _ _)) = return emptyFD
+    lpat (GHC.L _ (GHC.NPlusKPat (GHC.L _ n) _ _ _ _ _)) = return (FN [],DN [n])
+#endif
+    lpat (GHC.L _ _p@(GHC.SigPatIn p b)) = do
+      fdp <- lpat p
+      (FN fb,DN _db) <- hsFreeAndDeclaredRdr' nm b
+      -- error $ "lpat.SigPatIn:(b,fb,db)" ++ showGhc (b,fb,db)
+      return $ fdp <> (FN fb,DN [])
+    lpat (GHC.L _ (GHC.SigPatOut p _)) = lpat p
+    lpat (GHC.L l (GHC.CoPat _ p _)) = lpat (GHC.L l p)
+
+    -- ---------------------------
+
+    details :: GHC.HsConPatDetails GHC.RdrName -> RefactGhc DeclaredNames
+    details (GHC.PrefixCon  args) = do
+      -- logm $ "hsFreeAndDeclaredGhc.details:args=" ++ (showGhc args)
+      fds <- mapM lpat args
+      return $ mconcat fds
+    details (GHC.RecCon recf) =
+      recfields recf
+    details (GHC.InfixCon arg1 arg2) = do
+      fds <- mapM lpat [arg1,arg2]
+      return $ mconcat fds
+
+    -- Note: this one applies to HsRecFields in LPats
+    recfields :: (GHC.HsRecFields GHC.RdrName (GHC.LPat GHC.RdrName)) -> RefactGhc DeclaredNames
+    recfields (GHC.HsRecFields fields _) = do
+      let args = map (\(GHC.L _ (GHC.HsRecField _ arg _)) -> arg) fields
+      fds <- mapM lpat args
+      return $ mconcat fds
 
     -- -----------------------
 
