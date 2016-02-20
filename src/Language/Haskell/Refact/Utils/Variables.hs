@@ -29,7 +29,6 @@ module Language.Haskell.Refact.Utils.Variables
   , getFvs, getFreeVars, getDeclaredVars
   , hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames, hsVisibleNamesRdr
   , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
-  , hsFDsFromInside, hsFDNamesFromInside
   , hsVisibleDs, hsVisibleDsRdr
   , rdrName2Name, rdrName2NamePure
   , eqRdrNamePure
@@ -101,6 +100,7 @@ class (SYB.Data a, SYB.Typeable a) => FindEntity a where
 
 -- ---------------------------------------------------------------------
 
+{-# DEPRECATED FindEntity "Can't use Renamed in GHC 8" #-}
 instance FindEntity GHC.Name where
 
   findEntity n t = fromMaybe False res
@@ -252,6 +252,7 @@ isInstanceName _n = error "undefined isInstanceName"
 -- ---------------------------------------------------------------------
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 
+{-# DEPRECATED hsPNs "Can't use Renamed in GHC 8" #-}
 -- TODO:AZ pretty sure this is not doing what we want
 hsPNs::(SYB.Data t)=> t -> [PName]
 hsPNs t = (nub.ghead "hsPNs") res
@@ -273,6 +274,7 @@ hsTypeVbls =ghead "hsTypeVbls".(applyTU (stop_tdTU (failTU `adhocTU` pnt)))
 
 -------------------------------------------------------------------------------
 -- ++AZ++ see if we can get away with one only..
+{-# DEPRECATED isDeclaredIn "Can't use Renamed in GHC 8" #-}
 isDeclaredIn :: (HsValBinds t GHC.Name) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
 
@@ -367,7 +369,7 @@ hsFreeAndDeclaredRdr' nm t = do
 
           -- pat --
           pat :: GHC.LPat GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
-          pat (GHC.L l (GHC.WildPat _)) = mzero
+          pat (GHC.L _ (GHC.WildPat _)) = mzero
 #if __GLASGOW_HASKELL__ <= 710
           pat (GHC.L l (GHC.VarPat n))
 #else
@@ -466,9 +468,9 @@ hsFreeAndDeclaredRdr' nm t = do
                 return (FN (pf \\ [n]) ,DN [n])
 
           -- patBind --
-          binds (GHC.PatBind pat prhs _ _ds _) =
+          binds (GHC.PatBind pat' prhs _ _ds _) =
             do
-              (FN pf,DN pd) <- hsFreeAndDeclaredRdr' nm pat
+              (FN pf,DN pd) <- hsFreeAndDeclaredRdr' nm pat'
               (FN rf,DN rd) <- hsFreeAndDeclaredRdr' nm prhs
               return (FN $ pf `union` (rf \\ pd),DN $ pd ++ rd)
 
@@ -482,13 +484,13 @@ hsFreeAndDeclaredRdr' nm t = do
 
           -- stmts --
 #if __GLASGOW_HASKELL__ <= 710
-          stmts ((GHC.BindStmt pat expre _bindOp _failOp) :: GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+          stmts ((GHC.BindStmt pat' expre _bindOp _failOp) :: GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
 #else
-          stmts ((GHC.BindStmt pat expre _bindOp _failOp _) :: GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+          stmts ((GHC.BindStmt pat' expre _bindOp _failOp _) :: GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
 #endif
             -- TODO ++AZ++ : Not sure it is meaningful to pull
             --               anything out of bindOp/failOp
-            (FN pf,DN pd)  <- hsFreeAndDeclaredRdr' nm pat
+            (FN pf,DN pd)  <- hsFreeAndDeclaredRdr' nm pat'
             (FN ef,_ed) <- hsFreeAndDeclaredRdr' nm expre
             let sf1 = []
             return (FN $ pf `union` ef `union` (sf1\\pd),DN []) -- pd) -- Check this
@@ -598,6 +600,7 @@ hsFreeAndDeclaredPNsOld t = res
     (f,d) = fromMaybe ([],[]) fd
     res = (f \\ d, d)
 
+{-# DEPRECATED hsFreeAndDeclaredPNs' "Can't use Renamed in GHC 8" #-}
 hsFreeAndDeclaredPNs':: (SYB.Data t) => t -> Maybe ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs' t = do
       (f,d) <- hsFreeAndDeclared'
@@ -750,6 +753,9 @@ hsFreeAndDeclaredNameStrings t = do
   return ((nub.map showGhc) f1, (nub.map showGhc) d1)
 
 
+-- | Return the free and declared Names in the given syntax fragment. The syntax
+-- fragment MUST be parameterised by RdrName, else the empty list will be
+-- returned.
 hsFreeAndDeclaredPNs :: (SYB.Data t) => t -> RefactGhc ([GHC.Name],[GHC.Name])
 hsFreeAndDeclaredPNs t = do
   -- (FN f,DN d) <- hsFreeAndDeclaredGhc t
@@ -1613,6 +1619,7 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths _at
 
 -- | Return the list of identifiers (in PName format) defined by a
 -- function\/pattern binding.
+{-# DEPRECATED definedPNs "Can't use Renamed in GHC 8" #-}
 definedPNs :: GHC.LHsBind GHC.Name -> [GHC.Name]
 #if __GLASGOW_HASKELL__ <= 710
 definedPNs (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)) = [pname]
@@ -1709,6 +1716,7 @@ definingDeclsRdrNames' nameMap pns ds = defining ds
 -- |Find those declarations(function\/pattern binding) which define
 -- the specified GHC.Names. incTypeSig indicates whether the
 -- corresponding type signature will be included.
+{-# DEPRECATED definingDeclsNames "Can't use Renamed in GHC 8" #-}
 definingDeclsNames::
             [GHC.Name]   -- ^ The specified identifiers.
             ->[GHC.LHsBind GHC.Name] -- ^ A collection of declarations.
@@ -1738,6 +1746,7 @@ definingDeclsNames pns ds _incTypeSig recursive = concatMap defining ds
 -- |Find those declarations(function\/pattern binding) which define
 -- the specified GHC.Names. incTypeSig indicates whether the
 -- corresponding type signature will be included.
+{-# DEPRECATED definingDeclsNames' "Can't use Renamed in GHC 8" #-}
 definingDeclsNames':: (SYB.Data t)
             => [GHC.Name]   -- ^ The specified identifiers.
             -> t            -- ^ A collection of declarations.
@@ -1763,6 +1772,7 @@ definingDeclsNames' pns t = defining t
 -- ---------------------------------------------------------------------
 
 -- |Find those type signatures for the specified GHC.Names.
+{-# DEPRECATED definingSigsNames "Can't use Renamed in GHC 8" #-}
 definingSigsNames :: (SYB.Data t) =>
             [GHC.Name] -- ^ The specified identifiers.
             ->t        -- ^ A collection of declarations.
@@ -1826,6 +1836,7 @@ definingSigsRdrNames nameMap pns ds = def ds
 -- ---------------------------------------------------------------------
 
 -- |Find those declarations which define the specified GHC.Names.
+{-# DEPRECATED definingTyClDeclsNames "Can't use Renamed in GHC 8" #-}
 definingTyClDeclsNames:: (SYB.Data t)
             => [GHC.Name]   -- ^ The specified identifiers.
             -> t -- ^ A collection of declarations.
@@ -1861,6 +1872,7 @@ definingTyClDeclsNames pns t = defining t
 
 -- | Return True if the function\/pattern binding defines the
 -- specified identifier.
+{-# DEPRECATED defines "Can't use Renamed in GHC 8" #-}
 defines:: GHC.Name -> GHC.LHsBind GHC.Name -> Bool
 #if __GLASGOW_HASKELL__ <= 710
 defines n (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
@@ -1893,7 +1905,7 @@ definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.
 definesDeclRdr _ _ _ = False
 
 
-definesP::PName -> HsDeclP ->Bool
+definesP::PName -> GHC.LHsDecl GHC.RdrName ->Bool
 #if __GLASGOW_HASKELL__ <= 710
 definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
 #else
@@ -1908,6 +1920,7 @@ definesP _ _= False
 
 -- | Return True if the declaration defines the type signature of the
 -- specified identifier.
+{-# DEPRECATED definesTypeSig "Can't use Renamed in GHC 8" #-}
 definesTypeSig :: GHC.Name -> GHC.LSig GHC.Name -> Bool
 #if __GLASGOW_HASKELL__ <= 710
 definesTypeSig pn (GHC.L _ (GHC.TypeSig names _typ _))
@@ -1937,6 +1950,7 @@ definesSigDRdr _ _ _ = False
 -- ---------------------------------------------------------------------
 
 -- |Find all Located Names in the given Syntax phrase.
+{-# DEPRECATED allNames "Can't use Renamed in GHC 8" #-}
 allNames::(SYB.Data t)
        =>t                      -- ^ The syntax phrase
        ->[GHC.Located GHC.Name] -- ^ The result
@@ -1969,6 +1983,7 @@ allNames t
 -- ---------------------------------------------------------------------
 
 -- |Get all the names in the given syntax element
+{-# DEPRECATED hsNamess "Can't use Renamed in GHC 8" #-}
 hsNamess :: (SYB.Data t) => t -> [GHC.Name]
 hsNamess t = nub $ concat res
   where
@@ -2017,6 +2032,7 @@ getDeclaredVarsRdr nm bs = concatMap vars bs
       vars (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) = (hsNamess p)
       vars _ = []
 
+{-# DEPRECATED getDeclaredVars "Can't use Renamed in GHC 8" #-}
 getDeclaredVars :: [GHC.LHsBind GHC.Name] -> [GHC.Name]
 getDeclaredVars bs = concatMap vars bs
   where
@@ -2031,6 +2047,7 @@ getDeclaredVars bs = concatMap vars bs
 
 -- ---------------------------------------------------------------------
 -- |Experiment with GHC fvs stuff
+{-# DEPRECATED getFvs "Can't use Renamed in GHC 8" #-}
 getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
 getFvs bs = concatMap binds bs
   where
@@ -2043,6 +2060,7 @@ getFvs bs = concatMap binds bs
       binds (GHC.L _ (GHC.PatBind p _rhs _ty fvs _))            = [((hsNamess p),fvs)]
       binds _ = []
 
+{-# DEPRECATED getFreeVars "Can't use Renamed in GHC 8" #-}
 getFreeVars :: [GHC.LHsBind GHC.Name] -> [GHC.Name]
 getFreeVars bs = concatMap binds bs
   where
@@ -2069,6 +2087,7 @@ hsVisiblePNs e t = do
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
+{-# DEPRECATED hsVisibleNames "Can't use Renamed in GHC 8" #-}
 hsVisibleNames:: (FindEntity t1,HsValBinds t2 GHC.Name,GHC.Outputable t1)
   => t1 -> t2 -> RefactGhc [String]
 hsVisibleNames e t = do
@@ -2076,13 +2095,13 @@ hsVisibleNames e t = do
     return ((nub . map showGhc) d)
 
 --------------------------------------------------------------------------------
--- | Same as `hsVisiblePNs' except that the returned identifiers are
+-- | Same as `hsVisiblePNsRdr' except that the returned identifiers are
 -- in String format.
 hsVisibleNamesRdr:: (FindEntity t1,SYB.Data t2,GHC.Outputable t1)
   => t1 -> t2 -> RefactGhc [String]
 hsVisibleNamesRdr e t = do
     nm <- getRefactNameMap
-    d <- hsVisiblePNsRdr nm e t
+    (DN d) <- hsVisibleDsRdr nm e t
     return ((nub . map showGhc) d)
 
 ------------------------------------------------------------------------
@@ -2090,6 +2109,7 @@ hsVisibleNamesRdr e t = do
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
+{-# DEPRECATED hsVisiblePNsRdr "Rather use hsVisibleDsRdr" #-}
 hsVisiblePNsRdr :: (FindEntity e,SYB.Data t,GHC.Outputable e)
              => NameMap -> e -> t -> RefactGhc [GHC.Name]
 hsVisiblePNsRdr nm e t = do
@@ -2097,6 +2117,367 @@ hsVisiblePNsRdr nm e t = do
   return d
 
 ------------------------------------------------------------------------
+
+-- | Given a 'Name' n and a syntax phrase t, if n occurs in t, then return those
+-- variables which are declared in t and accessible to n, otherwise
+-- return [].
+hsVisibleDsRdr :: (SYB.Data t)
+             => NameMap -> GHC.Name -> t -> RefactGhc DeclaredNames
+hsVisibleDsRdr nm n t = do
+  -- logm $ "hsVisibleDsRdr:(e,t)=" ++ (SYB.showData SYB.Renamer 0 (e,t))
+  (DN d) <- res
+  return (DN (nub d))
+  where
+    -- TODO: this is effectively a recursive descent approach, where
+    --       each syntax element processor knows exactly what it needs
+    --       in terms of sub-elements. Hence as an optimisation,
+    --       consider calling the relevent element directly, instead
+    --       of looping back into the main function.
+    res = (const err -- (DN [])
+          `SYB.extQ` parsed
+          `SYB.extQ` valbinds
+          `SYB.extQ` lhsdecls
+          `SYB.extQ` lhsdecl
+          `SYB.extQ` lhsbindslr
+          `SYB.extQ` hsbinds
+          `SYB.extQ` hsbind
+          `SYB.extQ` hslocalbinds
+          `SYB.extQ` lmatch
+          `SYB.extQ` grhss
+          `SYB.extQ` lgrhs
+          `SYB.extQ` lexpr
+          `SYB.extQ` tyclgroups
+          `SYB.extQ` tyclgroup
+          `SYB.extQ` tycldeclss
+          `SYB.extQ` tycldecls
+          `SYB.extQ` tycldecl
+          `SYB.extQ` instdecls
+          `SYB.extQ` instdecl
+          `SYB.extQ` lhstype
+          `SYB.extQ` lsigs
+          `SYB.extQ` lsig
+          `SYB.extQ` lstmts
+          `SYB.extQ` lstmt
+          ) t
+
+    -- err2 = error $ "hsVisibleDsRdr:err2:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
+
+    parsed :: GHC.ParsedSource -> RefactGhc DeclaredNames
+    parsed p
+      | findEntity e p = do
+         -- dfds <- mapM (hsVisibleDsRdr nm e) $ GHC.hsmodDecls $ GHC.unLoc p
+         logm $ "hsVisibleDsRdr parsedSource:decls starting"
+         dfds <- mapM (declFun ( hsVisibleDsRdr nm e) ) $ GHC.hsmodDecls $ GHC.unLoc p
+         logm $ "hsVisibleDsRdr parsedSource:decls done"
+         return $ mconcat dfds
+    parsed _ = return (DN [])
+
+    valbinds :: (GHC.HsValBindsLR GHC.RdrName GHC.RdrName) -> RefactGhc DeclaredNames
+    valbinds vb@(GHC.ValBindsIn bindsBag sigs)
+      | findEntity e vb = do
+          fdsb <- mapM (hsVisibleDsRdr nm e) $ hsBinds bindsBag
+          fdss <- mapM (hsVisibleDsRdr nm e) sigs
+          return $ mconcat fdss <> mconcat fdsb
+    valbinds vb@(GHC.ValBindsOut _binds _sigs)
+      | findEntity e vb = do
+          logm $ "hsVisibleDsRdr valbinds:ValBindsOut:impossible for RdrName"
+          return (DN [])
+
+    valbinds _ = do
+      logm $ "hsVisibleDsRdr nm.valbinds:not matched"
+      return (DN [])
+
+    lhsdecls :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc DeclaredNames
+    lhsdecls ds
+      | findEntity e ds = do
+         dfds <- mapM (declFun ( hsVisibleDsRdr nm e) ) ds
+         return $ mconcat dfds
+    lhsdecls _ = return (DN [])
+
+    lhsdecl :: GHC.LHsDecl GHC.RdrName -> RefactGhc DeclaredNames
+    lhsdecl (GHC.L l dd) = do
+        logm $ "hsVisibleDsRdr.lhsdecl"
+        case dd of
+            GHC.TyClD d       -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.InstD d       -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.DerivD d      -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.ValD d        -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.SigD d        -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.DefD d        -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.ForD d        -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.WarningD d    -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.AnnD d        -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.RuleD d       -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.VectD d       -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.SpliceD d     -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.DocD d        -> hsVisibleDsRdr nm e (GHC.L l d)
+            GHC.RoleAnnotD d  -> hsVisibleDsRdr nm e (GHC.L l d)
+#if __GLASGOW_HASKELL__ < 711
+            GHC.QuasiQuoteD d -> hsVisibleDsRdr nm e (GHC.L l d)
+#endif
+
+    lhsbindslr :: GHC.LHsBindsLR GHC.RdrName GHC.RdrName -> RefactGhc DeclaredNames
+    lhsbindslr bs = do
+      fds <- mapM (hsVisibleDsRdr nm e) $ GHC.bagToList bs
+      return $ mconcat fds
+
+    hsbinds :: [GHC.LHsBind GHC.RdrName] -> RefactGhc DeclaredNames
+    hsbinds ds
+      | findEntity e ds = do
+        fds <- mapM (hsVisibleDsRdr nm e) ds
+        return $ mconcat fds
+    hsbinds _ = return (DN [])
+
+    hsbind :: (GHC.LHsBind GHC.RdrName) -> RefactGhc DeclaredNames
+#if __GLASGOW_HASKELL__ <= 710
+    hsbind ((GHC.L _ (GHC.FunBind _n _ (GHC.MG matches _ _ _) _ _ _)))
+#else
+    hsbind ((GHC.L _ (GHC.FunBind _n (GHC.MG (GHC.L _ matches) _ _ _) _ _ _)))
+#endif
+      | findEntity e matches = do
+          fds <- mapM (hsVisibleDsRdr nm e) matches
+          logm $ "hsVisibleDsRdr.hsbind:fds=" ++ show fds
+          return $ mconcat fds
+    hsbind _ = do
+      logm $ "hsVisibleDsRdr.hsbind:miss"
+      return (DN [])
+
+    hslocalbinds :: (GHC.HsLocalBinds GHC.RdrName) -> RefactGhc DeclaredNames
+    hslocalbinds (GHC.HsValBinds binds)
+      | findEntity e binds = hsVisibleDsRdr nm e binds
+    hslocalbinds (GHC.HsIPBinds binds)
+      | findEntity e binds = hsVisibleDsRdr nm e binds
+    hslocalbinds (GHC.EmptyLocalBinds) = return (DN [])
+    hslocalbinds _ = return (DN [])
+
+    lmatch :: (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
+    lmatch (GHC.L _ (GHC.Match _fn pats _mtyp rhs))
+      | findEntity e pats = do
+           logm $ "hsVisibleDsRdr nm.lmatch:in pats="
+           return (DN []) -- TODO: extend this
+      | findEntity e rhs = do
+           logm $ "hsVisibleDsRdr nm.lmatch:doing rhs"
+           let (pf,pd) = hsFreeAndDeclaredRdr nm pats
+           logm $ "hsVisibleDsRdr nm.lmatch:(pf,pd)=" ++ (show (pf,pd))
+           (    rd) <- hsVisibleDsRdr nm e rhs
+           return (pd <> rd)
+    lmatch _ =return  (DN [])
+
+    grhss :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
+    grhss (GHC.GRHSs guardedRhss lstmts')
+      | findEntity e guardedRhss = do
+          logm "hsVisibleDsRdr nm.grhss:about to do grhss"
+          fds <- mapM (hsVisibleDsRdr nm e) guardedRhss
+          logm "hsVisibleDsRdr nm.grhss:grhss done"
+          return $ mconcat fds
+      | findEntity e lstmts' = do
+          logm "hsVisibleDsRdr nm.grhss:about to do lstmts"
+          hsVisibleDsRdr nm e lstmts'
+    grhss _ = return (DN [])
+
+    lgrhs :: GHC.LGRHS GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc DeclaredNames
+    lgrhs (GHC.L _ (GHC.GRHS guards ex))
+      | findEntity e guards = logm "hsVisibleDsRdr nm.lgrhs.guards" >> hsVisibleDsRdr nm e guards
+      | findEntity e ex     = logm "hsVisibleDsRdr nm.lgrhs.ex"     >> hsVisibleDsRdr nm e ex
+    lgrhs _ = return (DN [])
+
+
+    lexpr :: GHC.LHsExpr GHC.RdrName -> RefactGhc DeclaredNames
+#if __GLASGOW_HASKELL__ <= 710
+    lexpr (GHC.L l (GHC.HsVar n))
+#else
+    lexpr (GHC.L l (GHC.HsVar (GHC.L _ n)))
+#endif
+      | findEntity e n  = do
+        logm $ "hsVisibleDsRdr.lexpr.HsVar entity found"
+        return (DN [rdrName2NamePure nm (GHC.L l n)])
+    lexpr (GHC.L _ (GHC.HsLet lbinds expr))
+      | findEntity e lbinds || findEntity e expr  = do
+        logm $ "hsVisibleDsRdr.lexpr.HsLet entity found"
+        let (_,lds) = hsFreeAndDeclaredRdr nm lbinds
+        let (_,eds) = hsFreeAndDeclaredRdr nm expr
+        return $ lds <> eds
+
+    lexpr expr
+      | findEntity e expr = do
+        logm $ "hsVisibleDsRdr nm.lexpr.(e,expr):" ++ (showGhc (e,expr))
+        let (FN efs,_)         = hsFreeAndDeclaredRdr nm expr
+        let (FN _eefs,DN eeds) = hsFreeAndDeclaredRdr nm e
+        logm $ "hsVisibleDsRdr nm.lexpr done"
+        -- return (DN e1fs <> DN eofs <> DN e2fs)
+        return (DN (efs \\ eeds))
+
+    lexpr x = do
+      logm $ "hsVisibleDsRdr.lexpr:miss for:" ++ SYB.showData SYB.Parser 0 x
+      return (DN [])
+
+    -- ---------------------------------
+
+    tyclgroups :: [GHC.TyClGroup GHC.RdrName] -> RefactGhc DeclaredNames
+    tyclgroups tgrps
+      | findEntity e tgrps = do
+        fds <- mapM (hsVisibleDsRdr nm e) tgrps
+        return $ mconcat fds
+    tyclgroups _ = return (DN [])
+
+    tyclgroup :: GHC.TyClGroup GHC.RdrName -> RefactGhc DeclaredNames
+    tyclgroup (GHC.TyClGroup tyclds _roles)
+      | findEntity e tyclds = do
+        fds <- mapM (hsVisibleDsRdr nm e) tyclds
+        return $ mconcat fds
+    tyclgroup _ = return (DN [])
+
+    tycldeclss :: [[GHC.LTyClDecl GHC.RdrName]] -> RefactGhc DeclaredNames
+    tycldeclss tcds
+      | findEntity e tcds = do
+        fds <- mapM (hsVisibleDsRdr nm e) tcds
+        return $ mconcat fds
+    tycldeclss _ = return (DN [])
+
+    tycldecls :: [GHC.LTyClDecl GHC.RdrName] -> RefactGhc DeclaredNames
+    tycldecls tcds
+      | findEntity e tcds = do
+        logm $ "hsVisibleDsRdr.tycldecls"
+        fds <- mapM (hsVisibleDsRdr nm e) tcds
+        logm $ "hsVisibleDsRdr.tycldecls done"
+        return $ mconcat fds
+    tycldecls _ = return (DN [])
+
+    tycldecl :: GHC.LTyClDecl GHC.RdrName -> RefactGhc DeclaredNames
+    tycldecl tcd
+      | findEntity e tcd = do
+        logm $ "hsVisibleDsRdr.tycldecl"
+        let (_,ds) = hsFreeAndDeclaredRdr nm tcd
+        logm $ "hsVisibleDsRdr.tycldecl done"
+        return ds
+    tycldecl _ = return (DN [])
+
+    -- ---------------------------------
+
+    instdecls :: [GHC.LInstDecl GHC.RdrName] -> RefactGhc DeclaredNames
+    instdecls ds
+      | findEntity e ds = do
+        fds <- mapM (hsVisibleDsRdr nm e) ds
+        return $ mconcat fds
+    instdecls _ = return (DN [])
+
+    instdecl :: GHC.LInstDecl GHC.RdrName -> RefactGhc DeclaredNames
+    instdecl (GHC.L _ (GHC.ClsInstD (GHC.ClsInstDecl polytyp binds sigs tyfaminsts dfaminsts _)))
+      | findEntity e polytyp    = hsVisibleDsRdr nm e polytyp
+      | findEntity e binds      = hsVisibleDsRdr nm e binds
+      | findEntity e sigs       = hsVisibleDsRdr nm e sigs
+      | findEntity e tyfaminsts = hsVisibleDsRdr nm e tyfaminsts
+      | findEntity e dfaminsts  = hsVisibleDsRdr nm e dfaminsts
+      | otherwise = return (DN [])
+    instdecl (GHC.L _ (GHC.DataFamInstD (GHC.DataFamInstDecl _ln pats defn _)))
+      | findEntity e pats = hsVisibleDsRdr nm e pats
+      | findEntity e defn = hsVisibleDsRdr nm e defn
+      | otherwise = return (DN [])
+    instdecl (GHC.L _ (GHC.TyFamInstD (GHC.TyFamInstDecl eqn _)))
+      | findEntity e eqn = hsVisibleDsRdr nm e eqn
+      | otherwise = return (DN [])
+
+    lhstype :: GHC.LHsType GHC.RdrName -> RefactGhc DeclaredNames
+#if __GLASGOW_HASKELL__ <= 710
+    lhstype tv@(GHC.L l (GHC.HsTyVar n))
+#else
+    lhstype tv@(GHC.L l (GHC.HsTyVar (GHC.L _ n)))
+#endif
+      | findEntity e tv = return (DN [rdrName2NamePure nm (GHC.L l n)])
+      | otherwise       = return (DN [])
+    lhstype (GHC.L _ (GHC.HsForAllTy {}))
+        = return (DN [])
+    lhstype (GHC.L _ (GHC.HsFunTy{})) = return (DN [])
+    lhstype ty = do
+      logm $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
+      return (DN [])
+
+    -- -----------------------
+
+    lsigs :: [GHC.LSig GHC.RdrName] -> RefactGhc DeclaredNames
+    lsigs ss = do
+      fds <- mapM (hsVisibleDsRdr nm e) ss
+      return $ mconcat fds
+
+    -- -----------------------
+
+    lsig :: GHC.LSig GHC.RdrName -> RefactGhc DeclaredNames
+#if __GLASGOW_HASKELL__ <= 710
+    lsig (GHC.L _ (GHC.TypeSig _ns typ _))
+#else
+    lsig (GHC.L _ (GHC.TypeSig _ns typ))
+#endif
+      | findEntity e typ = hsVisibleDsRdr nm e typ
+#if __GLASGOW_HASKELL__ <= 710
+    lsig (GHC.L _ (GHC.GenericSig _n typ))
+#else
+    lsig (GHC.L _ (GHC.ClassOpSig _ _n (GHC.HsIB _ typ)))
+#endif
+      | findEntity e typ = hsVisibleDsRdr nm e typ
+    lsig (GHC.L _ (GHC.IdSig _)) = return (DN [])
+    lsig (GHC.L _ (GHC.InlineSig _ _)) = return (DN [])
+    lsig (GHC.L _ (GHC.SpecSig _n typ _))
+      | findEntity e typ = hsVisibleDsRdr nm e typ
+    lsig (GHC.L _ (GHC.SpecInstSig _ _)) = return (DN [])
+
+    lsig _ = return (DN [])
+
+    -- -----------------------
+
+    lstmts :: [GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> RefactGhc DeclaredNames
+    lstmts ds
+      | findEntity e ds = do
+        fds <- mapM (hsVisibleDsRdr nm e) ds
+        return $ mconcat fds
+    lstmts _ = return (DN [])
+
+    -- -----------------------
+
+    lstmt :: GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc DeclaredNames
+#if __GLASGOW_HASKELL__ <= 710
+    lstmt (GHC.L _ (GHC.LastStmt ex _)) = hsVisibleDsRdr nm e ex
+#else
+    lstmt (GHC.L _ (GHC.LastStmt ex _ _)) = hsVisibleDsRdr nm e ex
+#endif
+#if __GLASGOW_HASKELL__ <= 710
+    lstmt (GHC.L _ (GHC.BindStmt pa ex _ _)) = do
+#else
+    lstmt (GHC.L _ (GHC.BindStmt pa ex _ _ _)) = do
+#endif
+      fdp <- hsVisibleDsRdr nm e pa
+      fde <- hsVisibleDsRdr nm e ex
+      return (fdp <> fde)
+    lstmt (GHC.L _ (GHC.BodyStmt ex _ _ _)) = hsVisibleDsRdr nm e ex
+
+    lstmt (GHC.L _ (GHC.LetStmt bs)) = hsVisibleDsRdr nm e bs
+#if __GLASGOW_HASKELL__ <= 710
+    lstmt (GHC.L _ (GHC.ParStmt ps _ _)) = hsVisibleDsRdr nm e ps
+#else
+    lstmt (GHC.L _ (GHC.ParStmt ps _ _ _)) = hsVisibleDsRdr nm e ps
+#endif
+#if __GLASGOW_HASKELL__ <= 710
+    lstmt (GHC.L _ (GHC.TransStmt _ stmts _ using mby _ _ _)) = do
+#else
+    lstmt (GHC.L _ (GHC.TransStmt _ stmts _ using mby _ _ _ _)) = do
+#endif
+      fds <- hsVisibleDsRdr nm e stmts
+      fdu <- hsVisibleDsRdr nm e using
+      fdb <- case mby of
+        Nothing -> return (DN [])
+        Just ex -> hsVisibleDsRdr nm e ex
+      return $ fds <> fdu <> fdb
+#if __GLASGOW_HASKELL__ <= 710
+    lstmt (GHC.L _ (GHC.RecStmt stmts _ _ _ _ _ _ _ _)) = hsVisibleDsRdr nm e stmts
+#else
+    lstmt (GHC.L _ (GHC.RecStmt stmts _ _ _ _ _ _ _ _ _)) = hsVisibleDsRdr nm e stmts
+#endif
+    -- lstmt _ = return (DN [])
+
+    -- -----------------------
+
+    err = error $ "hsVisibleDsRdr nm:no match for:" ++ (SYB.showData SYB.Parser 0 t)
+
+{-
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
@@ -2244,15 +2625,15 @@ hsVisibleDsRdr nm e t = do
     lmatch _ =return  (DN [])
 
     grhss :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
-    grhss (GHC.GRHSs guardedRhss lstmts)
+    grhss (GHC.GRHSs guardedRhss lstmts')
       | findEntity e guardedRhss = do
           logm "hsVisibleDsRdr nm.grhss:about to do grhss"
           fds <- mapM (hsVisibleDsRdr nm e) guardedRhss
           logm "hsVisibleDsRdr nm.grhss:grhss done"
           return $ mconcat fds
-      | findEntity e lstmts = do
+      | findEntity e lstmts' = do
           logm "hsVisibleDsRdr nm.grhss:about to do lstmts"
-          hsVisibleDsRdr nm e lstmts
+          hsVisibleDsRdr nm e lstmts'
     grhss _ = return (DN [])
 
     lgrhs :: GHC.LGRHS GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc DeclaredNames
@@ -2458,11 +2839,14 @@ hsVisibleDsRdr nm e t = do
     err = error $ "hsVisibleDsRdr nm:no match for:" ++ (SYB.showData SYB.Parser 0 t)
 
 
+-}
+
 ------------------------------------------------------------------------
 
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
+{-# DEPRECATED hsVisibleDs "Can't use Renamed in GHC 8" #-}
 hsVisibleDs :: (FindEntity e, GHC.Outputable e
                ,SYB.Data t,HsValBinds t GHC.Name)
              => e -> t -> RefactGhc DeclaredNames
@@ -2746,8 +3130,8 @@ hsVisibleDs e t = do
 -- the declared variables that are visible from outside of t, but also
 -- those declared variables that are visible to the main expression
 -- inside t.
--- NOTE: Expects to be given RenamedSource
-hsFDsFromInsideRdr:: (SYB.Data t)
+-- NOTE: Expects to be given ParsedSource
+hsFDsFromInsideRdr :: (SYB.Data t)
                   => NameMap ->  t -> (FreeNames,DeclaredNames)
 hsFDsFromInsideRdr nm t = hsFDsFromInsideRdr' t
    where
@@ -2844,14 +3228,14 @@ hsFDsFromInsideRdr nm t = hsFDsFromInsideRdr' t
 
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |`hsFDsFromInside` is different from `hsFreeAndDeclaredPNs` in
 -- that: given an syntax phrase t, `hsFDsFromInside` returns not only
 -- the declared variables that are visible from outside of t, but also
 -- those declared variables that are visible to the main expression
 -- inside t.
 -- NOTE: Expects to be given RenamedSource
-hsFDsFromInside:: (SYB.Data t) => t-> RefactGhc ([GHC.Name],[GHC.Name])
+hsFDsFromInside :: (SYB.Data t) => t-> RefactGhc ([GHC.Name],[GHC.Name])
 hsFDsFromInside t = do
    r <- hsFDsFromInside' t
    return r
@@ -2943,9 +3327,9 @@ hsFDsFromInside t = do
        hsFreeAndDeclaredPNs binds
 
      stmts _ = mzero
+-}
 
-
-
+{-
 -- | The same as `hsFDsFromInside` except that the returned variables
 -- are in the String format
 hsFDNamesFromInside::(SYB.Data t) => t -> RefactGhc ([String],[String])
@@ -2953,6 +3337,7 @@ hsFDNamesFromInside t = do
   (f,d) <- hsFDsFromInside t
   return
     ((nub.map showGhc) f, (nub.map showGhc) d)
+-}
 
 -- | The same as `hsFDsFromInside` except that the returned variables
 -- are in the String format

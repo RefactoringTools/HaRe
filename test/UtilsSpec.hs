@@ -583,10 +583,11 @@ spec = do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
       fileName <- canonicalizePath "./test/testdata/FreeAndDeclared/DeclareS.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let
         comp = do
           parseSourceFileGhc fileName
-          r <- hsFreeAndDeclaredPNs renamed
+          r <- hsFreeAndDeclaredPNs parsed
           return r
       ((res),_s) <- cdAndDo "./test/testdata/FreeAndDeclared" $
                      runRefactGhc comp initialState testOptions

@@ -293,6 +293,7 @@ hsQualifier pnt@(PNT pname _ _ ) inScopeRel
 -- ---------------------------------------------------------------------
 
 -- TODO: get rid of this
+{-# DEPRECATED defaultName "Can't use Renamed in GHC 8" #-}
 defaultName :: GHC.Name
 defaultName = n
   where
@@ -409,6 +410,7 @@ isExplicitlyExported pn (_g,_imps,exps,_docs)
 
 
 -- | Check if the proposed new name will conflict with an existing export
+{-# DEPRECATED causeNameClashInExports "Can't use Renamed in GHC 8" #-}
 causeNameClashInExports::  GHC.Name          -- ^ The original name
                         -> GHC.Name          -- ^ The new name
                         -> GHC.ModuleName    -- ^ The identity of the module
@@ -448,9 +450,8 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
 
 -- ---------------------------------------------------------------------
 
--- | Given a RenamedSource LPAT, return the equivalent
--- ParsedSource part.
--- NOTE: returns pristine ParsedSource, since HaRe does not change it
+-- | Given a RenamedSource LPAT, return the equivalent ParsedSource part.
+{-# DEPRECATED getParsedForRenamedLPat "Can't use Renamed in GHC 8" #-}
 getParsedForRenamedLPat :: GHC.ParsedSource -> GHC.LPat GHC.Name -> GHC.LPat GHC.RdrName
 getParsedForRenamedLPat parsed lpatParam@(GHC.L l _pat) = r
   where
@@ -469,9 +470,9 @@ getParsedForRenamedLPat parsed lpatParam@(GHC.L l _pat) = r
 
 -- ---------------------------------------------------------------------
 
--- | Given a RenamedSource Located name, return the equivalent
--- ParsedSource part.
--- NOTE: returns pristine ParsedSource, since HaRe does not change it
+-- | Given a RenamedSource Located name, return the equivalent ParsedSource
+-- part.
+{-# DEPRECATED getParsedForRenamedLocated "Can't use Renamed in GHC 8" #-}
 getParsedForRenamedLocated :: ({- SYB.Typeable a, SYB.Data a, -} SYB.Typeable b {- , SYB.Data b -})
   => GHC.Located a -> RefactGhc (GHC.Located b)
 getParsedForRenamedLocated (GHC.L l _n) = do
@@ -495,7 +496,7 @@ getParsedForRenamedLocated (GHC.L l _n) = do
 
 -- | Given a RenamedSource Located name, return the equivalent
 -- ParsedSource part.
--- NOTE: returns pristine ParsedSource, since HaRe does not change it
+{-# DEPRECATED getParsedForRenamedName "Can't use Renamed in GHC 8" #-}
 getParsedForRenamedName :: GHC.ParsedSource -> GHC.Located GHC.Name -> GHC.Located GHC.RdrName
 getParsedForRenamedName parsed n@(GHC.L l _n) = r
   where
@@ -625,6 +626,7 @@ isNonLibraryName n = case (GHC.nameSrcSpan n) of
 
 
 -- |Return True if a PName is a function\/pattern name defined in t.
+{-# DEPRECATED isFunOrPatName "Can't use Renamed in GHC 8" #-}
 isFunOrPatName::(SYB.Data t) => GHC.Name -> t -> Bool
 isFunOrPatName pn
    =isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
@@ -653,7 +655,7 @@ isTypeSigDecl (GHC.L _ (GHC.SigD (GHC.TypeSig{}))) = True
 isTypeSigDecl _ = False
 
 -- | Return True if a declaration is a function definition.
-isFunBindP::HsDeclP -> Bool
+isFunBindP :: GHC.LHsDecl GHC.RdrName -> Bool
 isFunBindP (GHC.L _ (GHC.ValD (GHC.FunBind{}))) = True
 isFunBindP _ =False
 
@@ -662,11 +664,11 @@ isFunBindR (GHC.L _l (GHC.FunBind{})) = True
 isFunBindR _ =False
 
 -- | Returns True if a declaration is a pattern binding.
-isPatBindP::HsDeclP->Bool
+isPatBindP :: GHC.LHsDecl GHC.RdrName -> Bool
 isPatBindP (GHC.L _ (GHC.ValD (GHC.PatBind _ _ _ _ _))) = True
 isPatBindP _=False
 
-isPatBindR::GHC.LHsBind t -> Bool
+isPatBindR :: GHC.LHsBind t -> Bool
 isPatBindR (GHC.L _ (GHC.PatBind _ _ _ _ _)) = True
 isPatBindR _=False
 
@@ -730,6 +732,7 @@ findEntity' a b = res
 sameBindRdr :: NameMap -> GHC.LHsDecl GHC.RdrName -> GHC.LHsDecl GHC.RdrName -> Bool
 sameBindRdr nm b1 b2 = (definedNamesRdr nm b1) == (definedNamesRdr nm b2)
 
+{-# DEPRECATED sameBind "Can't use Renamed in GHC 8" #-}
 sameBind :: GHC.LHsBind GHC.Name -> GHC.LHsBind GHC.Name -> Bool
 sameBind b1 b2 = (definedPNs b1) == (definedPNs b2)
 
@@ -1228,7 +1231,6 @@ data ImportType = Hide     -- ^ Used for addHiding
 addItemsToImport ::
      GHC.ModuleName        -- ^ The imported module name
   -> Maybe GHC.Name       -- ^ The condition identifier.
-  -- -> [GHC.RdrName]         -- ^ The items to be added
   -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName] -- ^ The items to be added
   -> GHC.ParsedSource      -- ^ The current module
   -> RefactGhc GHC.ParsedSource -- ^ The result
@@ -2592,6 +2594,7 @@ useLoc (GHC.L l _) = GHC.srcSpanStart l
 
 -- | Return True if the identifier is used in the RHS if a
 -- function\/pattern binding.
+{-# DEPRECATED isUsedInRhs "Can't use Renamed in GHC 8" #-}
 isUsedInRhs::(SYB.Data t) => (GHC.Located GHC.Name) -> t -> Bool
 isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
   where
@@ -2616,6 +2619,7 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
 
 -- ---------------------------------------------------------------------
 -- | Find all occurrences with location of the given name
+{-# DEPRECATED findAllNameOccurences "Can't use Renamed in GHC 8" #-}
 findAllNameOccurences :: (SYB.Data t) => GHC.Name -> t -> [(GHC.Located GHC.Name)]
 findAllNameOccurences  name t
   = res
@@ -2649,6 +2653,7 @@ findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
 findPNT (GHC.L _ pn) = findPN pn
 
 -- | Return True if the identifier occurs in the given syntax phrase.
+{-# DEPRECATED findPN "Can't use Renamed in GHC 8" #-}
 findPN::(SYB.Data t)=> GHC.Name -> t -> Bool
 findPN pn
    = isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
@@ -2658,6 +2663,7 @@ findPN pn
         worker _ = Nothing
 
 -- | Return True if any of the specified PNames ocuur in the given syntax phrase.
+{-# DEPRECATED findPNs "Can't use Renamed in GHC 8" #-}
 findPNs::(SYB.Data t)=> [GHC.Name] -> t -> Bool
 findPNs pns
    = isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
@@ -2751,15 +2757,18 @@ locToExp beginPos endPos t = res
 --------------------------------------------------------------------------------
 
 
+{-# DEPRECATED ghcToPN "Can't use Renamed in GHC 8" #-}
 ghcToPN :: GHC.RdrName -> PName
 ghcToPN rdr = PN rdr
 
+{-# DEPRECATED lghcToPN "Can't use Renamed in GHC 8" #-}
 lghcToPN :: GHC.Located GHC.RdrName -> PName
 lghcToPN (GHC.L _ rdr) = PN rdr
 
 
 -- | If an expression consists of only one identifier then return this
 -- identifier in the GHC.Name format, otherwise return the default Name
+{-# DEPRECATED expToName "Can't use Renamed in GHC 8" #-}
 expToName:: GHC.LHsExpr GHC.Name -> GHC.Name -- TODO: Use a Maybe, rather than defaultName
 #if __GLASGOW_HASKELL__ <= 710
 expToName (GHC.L _ (GHC.HsVar pnt)) = pnt
@@ -2796,6 +2805,7 @@ patToNameRdr _ _ = Nothing
 
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing
+{-# DEPRECATED patToPNT "Can't use Renamed in GHC 8" #-}
 patToPNT :: GHC.LPat GHC.Name -> Maybe GHC.Name
 #if __GLASGOW_HASKELL__ <= 710
 patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
@@ -2805,6 +2815,7 @@ patToPNT (GHC.L _ (GHC.VarPat (GHC.L _ n))) = Just n
 patToPNT _ = Nothing
 
 -- | Compose a pattern from a pName.
+{-# DEPRECATED pNtoPat "Can't use Renamed in GHC 8" #-}
 pNtoPat :: name -> GHC.Pat name
 #if __GLASGOW_HASKELL__ <= 710
 pNtoPat pname = GHC.VarPat pname

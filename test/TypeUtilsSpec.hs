@@ -989,7 +989,7 @@ spec = do
 
   describe "hsFDsFromInsideRdr" $ do
     it "does something useful" $ do
-      pending -- "Complete this"
+      pendingWith "need to convert to using Parsed source" -- "Complete this"
 
   describe "hsFDsFromInside" $ do
     it "does something useful" $ do
@@ -1224,6 +1224,31 @@ spec = do
                              " Renaming.D1.isSame, Renaming.D1.isNotSame, Renaming.D1.sumSquares])"
 
       (show fds) `shouldBe` "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch]"
+
+    -- -----------------------------------
+
+    it "Rdr:finds visible vars inIdIn5" $ do
+      t <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+
+      let Just ln = locToRdrName (10, 1) parsed
+      (showGhcQual ln) `shouldBe` "x"
+      (SYB.showData SYB.Parser 0 ln) `shouldBe` "\n(L {Renaming/IdIn5.hs:10:1} \n (Unqual {OccName: x}))"
+
+      let
+        comp = do
+          logDataWithAnns "parsed" parsed
+          nameMap <- getRefactNameMap
+          fds' <- hsVisibleDsRdr nameMap ln parsed
+          let ffds = hsFreeAndDeclaredRdr nameMap parsed
+          return (fds',ffds)
+      -- ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+
+      (show _fds) `shouldBe` "(FN [GHC.Num.+],"++
+                              "DN [IdIn5.x, IdIn5.foo, IdIn5.bar, IdIn5.main])"
+
+      (show fds) `shouldBe` "DN [y,z]"
 
 
   -- ---------------------------------------------------------------------

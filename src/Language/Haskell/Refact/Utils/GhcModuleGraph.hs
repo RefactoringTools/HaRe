@@ -11,7 +11,6 @@ module Language.Haskell.Refact.Utils.GhcModuleGraph
 import Digraph
 import FastString
 import GHC
-import BasicTypes
 import HscTypes
 import Panic
 

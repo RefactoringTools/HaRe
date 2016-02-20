@@ -130,7 +130,6 @@ module Language.Haskell.Refact.API
     ,hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
     ,hsVisibleNamesRdr
     ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
-    ,hsFDsFromInside, hsFDNamesFromInside
     ,hsVisibleDs
     ,rdrName2Name, rdrName2NamePure
 
