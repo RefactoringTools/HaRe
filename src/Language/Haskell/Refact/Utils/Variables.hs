@@ -43,7 +43,6 @@ module Language.Haskell.Refact.Utils.Variables
   , sameOccurrence
   , definedPNsRdr,definedNamesRdr
   , definingDeclsRdrNames,definingDeclsRdrNames',definingSigsRdrNames
-  , definingSigsNames
   , definingTyClDeclsNames
   , defines
   , definesRdr,definesDeclRdr
@@ -1755,90 +1754,6 @@ definingDeclsRdrNames' nameMap pns ds = defining ds
       definesBind (GHC.L l b) = defines' (GHC.L l (GHC.ValD b))
 
 -- ---------------------------------------------------------------------
-{-
--- |Find those declarations(function\/pattern binding) which define
--- the specified GHC.Names. incTypeSig indicates whether the
--- corresponding type signature will be included.
-{-# DEPRECATED definingDeclsNames "Can't use Renamed in GHC 8" #-}
-definingDeclsNames::
-            [GHC.Name]   -- ^ The specified identifiers.
-            ->[GHC.LHsBind GHC.Name] -- ^ A collection of declarations.
-            ->Bool       -- ^ True means to include the type signature.
-            ->Bool       -- ^ True means to look at the local declarations as well.
-            ->[GHC.LHsBind GHC.Name]  -- ^ The result.
-definingDeclsNames pns ds _incTypeSig recursive = concatMap defining ds
-  where
-   defining decl
-     = if recursive
-        then SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
-        else defines' decl
-     where
-      defines' :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
-#if __GLASGOW_HASKELL__ <= 710
-      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
-#else
-      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _))
-#endif
-        |isJust (find (==(pname)) pns) = [decl']
-
-      defines' decl'@(GHC.L _l (GHC.PatBind p _rhs _ty _fvs _))
-        |(hsNamess p) `intersect` pns /= [] = [decl']
-
-      defines' _ = []
-
--- |Find those declarations(function\/pattern binding) which define
--- the specified GHC.Names. incTypeSig indicates whether the
--- corresponding type signature will be included.
-{-# DEPRECATED definingDeclsNames' "Can't use Renamed in GHC 8" #-}
-definingDeclsNames':: (SYB.Data t)
-            => [GHC.Name]   -- ^ The specified identifiers.
-            -> t            -- ^ A collection of declarations.
-            ->[GHC.LHsBind GHC.Name]  -- ^ The result.
-definingDeclsNames' pns t = defining t
-  where
-   defining decl
-     = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` defines') decl
-     where
-      defines' :: (GHC.LHsBind GHC.Name) -> [GHC.LHsBind GHC.Name]
-#if __GLASGOW_HASKELL__ <= 710
-      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _))
-#else
-      defines' decl'@(GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _))
-#endif
-        |isJust (find (==(pname)) pns) = [decl']
-
-      defines' decl'@(GHC.L _l (GHC.PatBind p _rhs _ty _fvs _))
-        |(hsNamess p) `intersect` pns /= [] = [decl']
-
-      defines' _ = []
--}
--- ---------------------------------------------------------------------
-
--- |Find those type signatures for the specified GHC.Names.
-{-# DEPRECATED definingSigsNames "Can't use Renamed in GHC 8" #-}
-definingSigsNames :: (SYB.Data t) =>
-            [GHC.Name] -- ^ The specified identifiers.
-            ->t        -- ^ A collection of declarations.
-            ->[GHC.LSig GHC.Name]  -- ^ The result.
-definingSigsNames pns ds = def ds
-  where
-   def decl
-     = SYB.everythingStaged SYB.Renamer (++) [] ([]  `SYB.mkQ` inSig) decl
-     where
-      inSig :: (GHC.LSig GHC.Name) -> [GHC.LSig GHC.Name]
-#if __GLASGOW_HASKELL__ <= 710
-      inSig (GHC.L l (GHC.TypeSig ns t p))
-       | defines' ns /= [] = [(GHC.L l (GHC.TypeSig (defines' ns) t p))]
-#else
-      inSig (GHC.L l (GHC.TypeSig ns t))
-       | defines' ns /= [] = [(GHC.L l (GHC.TypeSig (defines' ns) t))]
-#endif
-      inSig _ = []
-
-      defines' (p::[GHC.Located GHC.Name])
-        = filter (\(GHC.L _ n) -> n `elem` pns) p
-
--- ---------------------------------------------------------------------
 
 -- |Find those type signatures for the specified GHC.Names.
 definingSigsRdrNames :: (SYB.Data t) =>
@@ -1879,37 +1794,47 @@ definingSigsRdrNames nameMap pns ds = def ds
 -- ---------------------------------------------------------------------
 
 -- |Find those declarations which define the specified GHC.Names.
-{-# DEPRECATED definingTyClDeclsNames "Can't use Renamed in GHC 8" #-}
 definingTyClDeclsNames:: (SYB.Data t)
-            => [GHC.Name]   -- ^ The specified identifiers.
+            => NameMap
+            -> [GHC.Name]   -- ^ The specified identifiers.
             -> t -- ^ A collection of declarations.
-            ->[GHC.LTyClDecl GHC.Name]  -- ^ The result.
-definingTyClDeclsNames pns t = defining t
+            ->[GHC.LTyClDecl GHC.RdrName]  -- ^ The result.
+definingTyClDeclsNames nm pns t = defining t
   where
    defining decl
-     = SYB.everythingStaged SYB.Renamer (++) []
-                   ([]  `SYB.mkQ` defines') decl
+     = SYB.everythingStaged SYB.Parser (++) []
+                   ([]  `SYB.mkQ` defines'
+                        `SYB.extQ` definesDecl) decl
      where
-      defines' :: (GHC.LTyClDecl GHC.Name) -> [GHC.LTyClDecl GHC.Name]
+      defines' :: (GHC.LTyClDecl GHC.RdrName) -> [GHC.LTyClDecl GHC.RdrName]
 #if __GLASGOW_HASKELL__ <= 710
-      defines' decl'@(GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ (GHC.L _ pname) _ _)))
+      defines' decl'@(GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ pname _ _)))
 #else
-      defines' decl'@(GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ (GHC.L _ pname) _ _ _)))
+      defines' decl'@(GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ pname _ _ _)))
 #endif
-        |isJust (find (==(pname)) pns) = [decl']
+        -- | isJust (find (==(pname)) pns) = [decl']
+        | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
-      defines' decl'@(GHC.L _ (GHC.SynDecl (GHC.L _ pname) _ _ _))
-        |isJust (find (==(pname)) pns) = [decl']
+      defines' decl'@(GHC.L _ (GHC.SynDecl pname _ _ _))
+        -- | isJust (find (==(pname)) pns) = [decl']
+        | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
-      defines' decl'@(GHC.L _ (GHC.DataDecl (GHC.L _ pname) _ _ _))
-        |isJust (find (==(pname)) pns) = [decl']
+      defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _))
+        -- | isJust (find (==(pname)) pns) = [decl']
+        | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
-      defines' decl'@(GHC.L _ (GHC.ClassDecl _ (GHC.L _ pname) _ _ _ _ _ _ _ _))
-        |isJust (find (==(pname)) pns) = [decl']
+      defines' decl'@(GHC.L _ (GHC.ClassDecl _ pname _ _ _ _ _ _ _ _))
+        -- | isJust (find (==(pname)) pns) = [decl']
+        | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
+
+      definesDecl (GHC.L l (GHC.TyClD d)) = defines' (GHC.L l d)
+      definesDecl _ = []
+
+      uns = map (\n -> GHC.nameUnique n) pns
 
 -- ---------------------------------------------------------------------
 

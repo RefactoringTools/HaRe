@@ -401,89 +401,14 @@ spec = do
 
   -- -------------------------------------------------------------------
 
-  describe "definingSigsNames" $ do
-    it "returns [] if not found" $ do
-      t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-          nm = initRdrNameMap t
-
-      let Just n = locToNameRdrPure nm (21,1) parsed
-      showGhcQual n `shouldBe` "DupDef.Dd1.ff"
-      let res = definingSigsNames [n] renamed
-      showGhcQual res `shouldBe` "[]"
-
-    -- ---------------------------------
-
-    it "finds signatures at the top level" $ do
-      t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-          nm = initRdrNameMap t
-
-      let Just n = locToNameRdrPure nm (4,1) parsed
-      showGhcQual n `shouldBe` "DupDef.Dd1.toplevel"
-      let res = definingSigsNames [n] renamed
-      showGhcQual res `shouldBe` "[DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
-
-    -- ---------------------------------
-
-    it "returns only the single signature where there are others too" $ do
-      t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-          nm = initRdrNameMap t
-
-      let Just n = locToNameRdrPure nm (7,1) parsed
-      showGhcQual n `shouldBe` "DupDef.Dd1.c"
-      let res = definingSigsNames [n] renamed
-      showGhcQual res `shouldBe`  "[DupDef.Dd1.c :: GHC.Integer.Type.Integer]"
-
-    -- ---------------------------------
-
-    it "finds signatures at lower levels" $ do
-      t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-          nm = initRdrNameMap t
-
-      let Just n = locToNameRdrPure nm (16,5) parsed
-      showGhcQual n `shouldBe` "ff"
-      let res = definingSigsNames [n] renamed
-      showGhcQual res `shouldBe` "[ff :: GHC.Types.Int]"
-
-    -- ---------------------------------
-
-    it "finds multiple signatures" $ do
-      t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-          nm = initRdrNameMap t
-
-      let Just n1 = locToNameRdrPure nm (21,1) parsed
-      showGhcQual n1 `shouldBe` "DupDef.Dd1.ff"
-
-      let Just n2 = locToNameRdrPure nm (16,5) parsed
-      showGhcQual n2 `shouldBe` "ff"
-
-      let Just n3 = locToNameRdrPure nm (4,1) parsed
-      showGhcQual n3 `shouldBe` "DupDef.Dd1.toplevel"
-
-      let res = definingSigsNames [n1,n2,n3] renamed
-      showGhcQual res `shouldBe` "[ff :: GHC.Types.Int,\n DupDef.Dd1.toplevel ::\n   GHC.Integer.Type.Integer -> GHC.Integer.Type.Integer]"
-
-
-  -- -------------------------------------------------------------------
-
   describe "definingTyClDeclsNames" $ do
     it "returns [] if not found" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/TyClDecls.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n = locToNameRdrPure nm (10,29) parsed
-      let res = definingTyClDeclsNames [n] renamed
+      let res = definingTyClDeclsNames nm [n] parsed
       showGhcQual res `shouldBe` "[]"
 
     -- ---------------------------------
@@ -495,65 +420,58 @@ spec = do
 
     it "finds family declarations" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/TyClDecls.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
+      -- putStrLn $ "parsed:" ++ SYB.showData SYB.Parser 0 parsed
 
       let Just n = locToNameRdrPure nm (7,14) parsed
-      let res = definingTyClDeclsNames [n] renamed
-      showGhcQual res `shouldBe` "[data family TypeUtils.TyClDEcls.XList a]"
+      let res = definingTyClDeclsNames nm [n] parsed
+      showGhcQual res `shouldBe` "[data family XList a]"
 
     -- ---------------------------------
 
     it "finds data declarations" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/TyClDecls.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n = locToNameRdrPure nm (12,6) parsed
-      let res = definingTyClDeclsNames [n] renamed
-      (unspace $ showGhcQual res) `shouldBe` "[data TypeUtils.TyClDEcls.Foo\n = TypeUtils.TyClDEcls.Foo GHC.Types.Int]"
+      let res = definingTyClDeclsNames nm [n] parsed
+      (unspace $ showGhcQual res) `shouldBe` "[data Foo = Foo Int]"
 
     -- ---------------------------------
 
     it "finds type declarations" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/TyClDecls.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n = locToNameRdrPure nm (14,6) parsed
-      let res = definingTyClDeclsNames [n] renamed
-      showGhcQual res `shouldBe` "[type TypeUtils.TyClDEcls.Foo2 = GHC.Base.String]"
+      let res = definingTyClDeclsNames nm [n] parsed
+      showGhcQual res `shouldBe` "[type Foo2 = String]"
 
     -- ---------------------------------
 
     it "finds class declarations" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/TyClDecls.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n = locToNameRdrPure nm (16,7) parsed
-      let res = definingTyClDeclsNames [n] renamed
-      showGhcQual res `shouldBe` "[class TypeUtils.TyClDEcls.Bar a where\n   TypeUtils.TyClDEcls.bar :: a -> GHC.Types.Bool]"
+      let res = definingTyClDeclsNames nm [n] parsed
+      showGhcQual res `shouldBe` "[class Bar a where\n   bar :: a -> Bool]"
 
     -- ---------------------------------
 
     it "finds multiple declarations" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/TyClDecls.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n1 = locToNameRdrPure nm (14,6) parsed
       let Just n2 = locToNameRdrPure nm (16,7) parsed
-      let res = definingTyClDeclsNames [n1,n2] renamed
-      showGhcQual res `shouldBe`
-            "[type TypeUtils.TyClDEcls.Foo2 = GHC.Base.String,\n"++
-            " class TypeUtils.TyClDEcls.Bar a where\n"++
-            "   TypeUtils.TyClDEcls.bar :: a -> GHC.Types.Bool]"
+      let res = definingTyClDeclsNames nm [n1,n2] parsed
+      showGhcQual res `shouldBe` "[type Foo2 = String,\n class Bar a where\n   bar :: a -> Bool]"
 
 
   -- -------------------------------------------------------------------

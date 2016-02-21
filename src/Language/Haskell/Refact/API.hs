@@ -181,7 +181,6 @@ module Language.Haskell.Refact.API
     , patToPNT ,pNtoPat
     , definedPNsRdr,definedNamesRdr
     , definingDeclsRdrNames, definingDeclsRdrNames', definingSigsRdrNames
-    , definingSigsNames
     , definingTyClDeclsNames
 
     -- *** Others
