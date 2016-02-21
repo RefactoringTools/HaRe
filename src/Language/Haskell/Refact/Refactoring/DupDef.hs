@@ -256,9 +256,10 @@ refactorInClientMod oldPN serverModName newPName targetModule
    where
      needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
      needToBeHided name exps parsed = do
+         nm <- getRefactNameMap
          let usedUnqual = usedWithoutQualR name parsed
          logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhc (usedUnqual))) -- ++AZ++ debug
-         return $ usedUnqual || causeNameClashInExports oldPN name serverModName exps
+         return $ usedUnqual || causeNameClashInExports nm oldPN name serverModName parsed
 
 doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]
               -> RefactGhc ()

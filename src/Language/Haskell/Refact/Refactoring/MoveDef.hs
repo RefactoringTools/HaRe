@@ -137,9 +137,11 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
+  parsed  <- getRefactParsed
+  nm      <- getRefactNameMap
   targetModule <- getRefactTargetModule
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
-  if isLocalFunOrPatName n renamed
+  if isLocalFunOrPatName nm n parsed
       then do
               (refactoredMod,declPns) <- applyRefac liftToMod RSAlreadyLoaded
 
@@ -321,8 +323,10 @@ liftOneLevel' :: GHC.ModuleName
 
 liftOneLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
+  parsed  <- getRefactParsed
+  nm      <- getRefactNameMap
   targetModule <- getRefactTargetModule
-  if isLocalFunOrPatName n renamed
+  if isLocalFunOrPatName nm n parsed
         then do
                 (refactoredMod,(b,pns)) <- applyRefac doLiftOneLevel RSAlreadyLoaded
                 logm $ "liftOneLevel':main refactoring done:(p,pns)=" ++ showGhc (b,pns)
@@ -1070,11 +1074,13 @@ demote' ::
   -> RefactGhc [ApplyRefacResult]
 demote' modName (GHC.L _ pn) = do
   renamed <- getRefactRenamed
+  parsed  <- getRefactParsed
+  nm      <- getRefactNameMap
   targetModule <- getRefactTargetModule
-  if isFunOrPatName pn renamed
+  if isFunOrPatName nm pn parsed
     then do
        isTl <- isTopLevelPN pn
-       if isTl && isExplicitlyExported pn renamed
+       if isTl && isExplicitlyExported nm pn parsed
           then error "This definition can not be demoted, as it is explicitly exported by the current module!"
           else do
                   (refactoredMod,declaredPns) <- applyRefac (doDemoting pn) RSAlreadyLoaded
@@ -1678,8 +1684,8 @@ replaceExpWithUpdToks  decls subst = do
   everywhereMStaged' SYB.Parser (SYB.mkM worker) decls
 
 -- | return True if pn is a local function/pattern name
-isLocalFunOrPatName :: SYB.Data t => GHC.Name -> t -> Bool
-isLocalFunOrPatName pn scope
- = isLocalPN pn && isFunOrPatName pn scope
+isLocalFunOrPatName :: SYB.Data t => NameMap -> GHC.Name -> t -> Bool
+isLocalFunOrPatName nm pn scope
+ = isLocalPN pn && isFunOrPatName nm pn scope
 
 -- EOF

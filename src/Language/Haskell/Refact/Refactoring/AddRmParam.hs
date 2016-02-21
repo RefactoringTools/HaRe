@@ -54,7 +54,7 @@ compAddOneParameter fileName paramName (row, col) = do
         parseSourceFileGhc fileName
         renamed <- getRefactRenamed
         parsed  <- getRefactParsed
-        nm <- getRefactNameMap
+        nm      <- getRefactNameMap
         logParsedSource "compAdd entry"
         targetModule <- getRefactTargetModule
         logm $ "AddRmParam.compAdd:got targetModule"
@@ -64,7 +64,7 @@ compAddOneParameter fileName paramName (row, col) = do
             do
               logm $ "AddRmParam.compAdd:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
               -- make sure this name is defined in this module
-              if isFunOrPatName pn renamed
+              if isFunOrPatName nm pn parsed
                then do
                   exported <- isExported pn
                   if exported
@@ -119,7 +119,7 @@ doAddingParam pn newParam defaultArg isExported' = do
                     ds <- liftT $ hsDecls modu
                     modu' <- doAdding modu ds
                     renamed <- getRefactRenamed
-                    if isExported' && isExplicitlyExported pn renamed
+                    if isExported' && isExplicitlyExported nm pn modu
                       then addItemsToExport modu' (Just pn) False (Left [GHC.unLoc (fromJust defaultArg)])
                       else return modu'
                 else mzero

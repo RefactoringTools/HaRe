@@ -172,7 +172,7 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
         --the same name has been declared in this module.
         error $ mconcat ["Name '", newName, "' already exists in this module\n"]
 
-    when (exportChecking && causeNameClashInExports oldPN newNameGhc modName renamed) $
+    when (exportChecking && causeNameClashInExports nm oldPN newNameGhc modName parsed) $
         error "The new name will cause conflicting exports, please select another new name!"
     when (exportChecking && causeAmbiguity) . -- causeAmbiguityInExports oldPN  newNameGhc {- inscps -} renamed
         error $ mconcat ["The new name will cause ambiguity in the exports of module '"
@@ -230,14 +230,14 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
     case newNames of
         []        -> return []
         -- [oldName] | findPN oldName renamed -> doRenameInClientMod oldName modName renamed
-        [oldName] | findNameInRdr nm oldName parsed -> doRenameInClientMod oldName modName renamed
+        [oldName] | findNameInRdr nm oldName parsed -> doRenameInClientMod nm oldName modName parsed
                   | otherwise -> do
                       logm "renameInClientMod: name not present in module, returning"
                       return []
         ns -> error $ "HaRe: renameInClientMod: could not find name to replace, got:" ++ showGhcQual ns
 
   where
-    doRenameInClientMod oldNameGhc modName renamed = do
+    doRenameInClientMod nm oldNameGhc modName parsed = do
         -- There are two different tests we need to do here
         -- 1. Does the new name clash with some existing name in the
         --    client mod, in which case it must be qualified
@@ -254,7 +254,7 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
                                                 RSAlreadyLoaded
                 return [refactoredMod]
             else do
-                when (causeNameClashInExports oldPN newNameGhc modName renamed) .
+                when (causeNameClashInExports nm oldPN newNameGhc modName parsed) .
                     error $ mconcat [ "The new name will cause conflicting exports in module"
                                     , show newName, ", please select another name!"]
                 -- (refactoredMod,_) <- applyRefac (refactRenameComplex oldPN newName newNameGhc) RSAlreadyLoaded

@@ -718,7 +718,7 @@ isPatBindR _=False
 
 -- | Return True if a declaration is a pattern binding which only
 -- defines a variable value.
-isSimplePatDecl :: (GHC.DataId t) => GHC.LHsDecl t-> Bool
+isSimplePatDecl :: (GHC.DataId t) => GHC.LHsDecl t -> Bool
 isSimplePatDecl decl = case decl of
      (GHC.L _l (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) -> hsPNs p /= []
      _ -> False
