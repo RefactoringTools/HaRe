@@ -3,8 +3,6 @@ module Language.Haskell.Refact.Refactoring.Renaming
   , compRename
   ) where
 
-import qualified Data.Generics.Schemes as SYB
-import qualified Data.Generics.Aliases as SYB
 import qualified GHC.SYB.Utils         as SYB
 
 import qualified GHC
@@ -125,20 +123,13 @@ doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.Name -> GHC.Module
 --------Rename a value variable name--------------------------------
 doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
     logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ showGhc (pn,rdrNameStr,newNameStr)
-    renamed <- getRefactRenamed
-    void $ SYB.everywhereM (SYB.mkM renameInMod) renamed
+    renameTopLevelVarName oldn newNameStr newNameGhc modName True True
     logm "doRenaming done"
     isExported oldn
-  where
-    -- 1. The name is declared in a module(top level name)
-    renameInMod :: GHC.RenamedSource -> RefactGhc GHC.RenamedSource
-    renameInMod ren = do
-        logm "renameInMod"
-        renameTopLevelVarName oldn newNameStr newNameGhc modName ren True True
 
-renameTopLevelVarName :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName -> GHC.RenamedSource
-                      -> Bool -> Bool -> RefactGhc GHC.RenamedSource
-renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exportChecking = do
+renameTopLevelVarName :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName
+                      -> Bool -> Bool -> RefactGhc ()
+renameTopLevelVarName oldPN newName newNameGhc modName existChecking exportChecking = do
     logm $ "renameTopLevelVarName:(existChecking, exportChecking)=" ++ show (existChecking, exportChecking)
     causeAmbiguity <- causeAmbiguityInExports oldPN newNameGhc
     parsed <- getRefactParsed
@@ -195,7 +186,6 @@ renameTopLevelVarName oldPN newName newNameGhc modName renamed existChecking exp
     parsed' <- renamePN oldPN newNameGhc (exportChecking && isInScopeUnqual) parsed
     putRefactParsed parsed' mempty
     logm "renameTopLevelVarName done:should have qualified"
-    getRefactRenamed
 
 ------------------------------------------------------------------------
 
@@ -206,7 +196,6 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
     logm $ "renameInClientMod:(newNameGhc module)=" ++ showGhc (GHC.nameModule newNameGhc) -- ++AZ++
     getTargetGhc targetModule
 
-    renamed <- getRefactRenamed
     modName <- getRefactModuleName
     parsed  <- getRefactParsed
     nm      <- getRefactNameMap
@@ -289,7 +278,7 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
         logm $ "renameInClientMod.worker:(oldPN',newName',newNameGhc')=" ++
                showGhc (oldPN', newName', newNameGhc')
         isInScopeUnqualNew <- isInScopeAndUnqualifiedGhc newName' Nothing
-        vs <- hsVisibleNames oldPN' =<< getRefactRenamed  -- Does this check names other than variable names?
+        vs <- hsVisibleNamesRdr oldPN' =<< getRefactParsed  -- Does this check names other than variable names?
         logm $ "renameInClientMod.worker:(vs,oldPN',isInScopeUnqualNew)=" ++
                showGhc (vs, oldPN', isInScopeUnqualNew)
 

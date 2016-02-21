@@ -164,7 +164,6 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          step4. test whether there are any names need to be renamed.
        -}
        liftToMod = do
-         renamed <- getRefactRenamed
          parsed' <- getRefactParsed
          parsed  <- liftT $ balanceAllComments parsed'
          nm      <- getRefactNameMap
@@ -200,8 +199,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
 
              let defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
-             parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
-             parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] liftedDecls'
+             parsed1 <- liftT $ replaceDecls parsed (before++parent'++after)
+             parsed2 <- moveDecl1 parsed1 (Just defName) [GHC.unLoc pn] liftedDecls'
                                                             declaredPns mLiftedSigs'
              putRefactParsed parsed2 emptyAnns
 
@@ -223,7 +222,6 @@ compLiftOneLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftOneLevel fileName (row,col) = do
       parseSourceFileGhc fileName
-      renamed <- getRefactRenamed
       parsed  <- getRefactParsed
       nm <- getRefactNameMap
 
@@ -569,7 +567,6 @@ compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]
 compDemote fileName (row,col) = do
       parseSourceFileGhc fileName
-      renamed <- getRefactRenamed
       parsed  <- getRefactParsed
       nm <- getRefactNameMap
 
@@ -636,12 +633,13 @@ pnsNeedRenaming dest parent _liftedDecls pns
             let (FN f,DN d) = hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
                                                          --d: declaread variables names that may clash with pn
             logm $ "MoveDef.pnsNeedRenaming':(f,d)=" ++ showGhc (f,d)
-            vs <- hsVisiblePNsRdr nm pn parent  --vs: declarad variables that may shadow pn
+            DN vs <- hsVisibleDsRdr nm pn parent  --vs: declarad variables that may shadow pn
             logm $ "MoveDef.pnsNeedRenaming':vs=" ++ showGhc vs
             let vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn) Nothing
             logm $ "MoveDef.pnsNeedRenaming:(f,d,vs,vars,isInScope)=" ++ (showGhc (f,d,vs,vars,isInScope))
-            if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
+            -- if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
+            if elem (pNtoName pn) vars  || isInScope && findNameInRdr nm pn dest
                then return [pn]
                else return []
      pNtoName = showGhc
@@ -800,7 +798,7 @@ namesNeedToBeHided clientModule modNames pns = do
 -- |When liftOneLevel is complete, identify whether any new declarations have
 -- been put at the top level
 liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
-liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
+liftedToTopLevel (GHC.L _ pn) parsed = do
   logm $ "liftedToTopLevel entered:pn=" ++ showGhc pn
   nm <- getRefactNameMap
   decls <- liftT $ hsDecls parsed
@@ -1114,10 +1112,11 @@ demotingInClientMod pns targetModule = do
 doDemotingInClientMod :: [GHC.Name] -> GHC.Module -> RefactGhc ()
 doDemotingInClientMod pns modName = do
   logm $ "doDemotingInClientMod:(pns,modName)=" ++ showGhc (pns,modName)
-  renamed@(_g,imps,exps,_docs) <- getRefactRenamed
-  if any (\pn->findPN pn (hsBinds renamed) || findPN pn (exps)) pns
+  (GHC.L _ p) <- getRefactParsed
+  nm <- getRefactNameMap
+  if any (\pn -> findNameInRdr nm pn (GHC.hsmodDecls p) || findNameInRdr nm pn (GHC.hsmodExports p)) pns
      then error $ "This definition can not be demoted, as it is used in the client module '"++(showGhc modName)++"'!"
-     else if any (\pn->findPN pn imps) pns
+     else if any (\pn->findNameInRdr nm pn (GHC.hsmodImports p)) pns
              -- TODO: reinstate this
              then do -- (mod',((ts',m),_))<-runStateT (rmItemsFromImport mod pns) ((ts,unmodified),(-1000,0))
                      return ()

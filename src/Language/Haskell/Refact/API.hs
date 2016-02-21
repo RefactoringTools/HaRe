@@ -128,11 +128,11 @@ module Language.Haskell.Refact.API
     , getFvs, getFreeVars -- These two should replace hsFreeAndDeclaredPNs
     , getDeclaredVars, getDeclaredVarsRdr
 
-    ,hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
-    ,hsVisibleNamesRdr
-    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
-    ,hsVisibleDs
-    ,rdrName2Name, rdrName2NamePure
+    , hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
+    , hsVisibleNamesRdr
+    , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
+    , hsVisibleDs, hsVisibleDsRdr
+    , rdrName2Name, rdrName2NamePure
 
     -- *** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT

@@ -1625,7 +1625,7 @@ findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
 findPNT (GHC.L _ pn) = findPN pn
 
 -- | Return True if the identifier occurs in the given syntax phrase.
-{-# DEPRECATED findPN "Can't use Renamed in GHC 8" #-}
+{-# DEPRECATED findPN "Can't use Renamed in GHC 8, rather use findNameInRdr" #-}
 findPN::(SYB.Data t)=> GHC.Name -> t -> Bool
 findPN pn
    = isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)

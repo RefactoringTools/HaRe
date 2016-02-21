@@ -32,7 +32,6 @@ comp :: String -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 comp fileName (row, col) = do
        parseSourceFileGhc fileName
-       renamed <- getRefactRenamed
        parsed  <- getRefactParsed
        nm      <- getRefactNameMap
 
