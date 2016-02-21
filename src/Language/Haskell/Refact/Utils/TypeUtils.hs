@@ -137,9 +137,6 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 
 -- Modules from GHC
--- import qualified Outputable    as GHC
-import qualified Bag           as GHC
--- import qualified Exception     as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
@@ -786,38 +783,32 @@ class (SYB.Data t) => UsedByRhs t where
 
     -- | Return True if any of the GHC.Name's appear in the given
     -- syntax element
-    usedByRhs :: t -> [GHC.Name] -> Bool
     usedByRhsRdr :: NameMap -> t -> [GHC.Name] -> Bool
 
 instance UsedByRhs GHC.RenamedSource where
 
    -- Not a meaningful question at this level
-   usedByRhs _renamed _pns = False
+   -- usedByRhs _renamed _pns = False
    usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsModule GHC.RdrName) where
 
    -- Not a meaningful question at this level
    usedByRhsRdr _ _parsed _pns = False
-   usedByRhs _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance (UsedByRhs a) => UsedByRhs (GHC.Located a) where
   usedByRhsRdr nm (GHC.L _ d) pns = usedByRhsRdr nm d pns
-  -- usedByRhs _ _ = assert False undefined
-  usedByRhs _ la = error $ "usedByRhs:Located a=" ++ SYB.showData SYB.Parser 0 la
 
 -- -------------------------------------
 
 instance UsedByRhs [GHC.LHsDecl GHC.RdrName] where
-  usedByRhs _ _ = assert False undefined
   usedByRhsRdr nm ds pns = or $ map (\d -> usedByRhsRdr nm d pns) ds
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.HsDecl GHC.RdrName) where
-  usedByRhs _ _ = assert False undefined
   usedByRhsRdr nm de pns =
    case de of
       GHC.TyClD d       -> f d
@@ -844,78 +835,59 @@ instance UsedByRhs (GHC.HsDecl GHC.RdrName) where
 
 instance UsedByRhs (GHC.TyClDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.InstDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.DerivDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.ForeignDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.WarnDecls GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.AnnDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.RoleAnnotDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 #if __GLASGOW_HASKELL__ <= 710
 instance UsedByRhs (GHC.HsQuasiQuote GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 #endif
 
 instance UsedByRhs (GHC.DefaultDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.SpliceDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.VectDecl GHC.RdrName) where
   usedByRhsRdr = assert False undefined
-  usedByRhs _ _ = assert False undefined
 
 instance UsedByRhs (GHC.RuleDecls GHC.RdrName) where
-  usedByRhs _ _ = assert False undefined
   usedByRhsRdr = assert False undefined
 
 instance UsedByRhs GHC.DocDecl where
-  usedByRhs _ _ = assert False undefined
   usedByRhsRdr = assert False undefined
 
 instance UsedByRhs (GHC.Sig GHC.RdrName) where
   usedByRhsRdr _ _ _ = False
-  usedByRhs _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.LHsBinds GHC.Name) where
-  usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) $ GHC.bagToList binds
   usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsValBinds GHC.Name) where
-  usedByRhs (GHC.ValBindsIn binds _sigs) pns  = usedByRhs (GHC.bagToList binds) pns
-  usedByRhs (GHC.ValBindsOut binds _sigs) pns = or $ map (\(_,b) -> usedByRhs b pns) binds
   usedByRhsRdr _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
-  usedByRhs (GHC.Match _ _ _ (GHC.GRHSs rhs _)) pns -- = usedByRhs (hsValBinds rhs) pns
-                                                 = findPNs pns rhs
   usedByRhsRdr _ _ = assert False undefined
 
 
@@ -923,30 +895,17 @@ instance UsedByRhs (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
   usedByRhsRdr nm (GHC.Match _ _ _ (GHC.GRHSs rhs _)) pns
     = findNamesRdr nm pns rhs
 
-  usedByRhs _ _ = assert False undefined
-
 -- -------------------------------------
 
 instance UsedByRhs [GHC.LHsBind GHC.Name] where
-  usedByRhs binds pns = or $ map (\b -> usedByRhs b pns) binds
   usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsBind GHC.Name) where
-#if __GLASGOW_HASKELL__ <= 710
-  usedByRhs (GHC.FunBind _ _ matches _ _ _) pns = findPNs pns matches
-#else
-  usedByRhs (GHC.FunBind _ matches _ _ _)   pns = findPNs pns matches
-#endif
-  usedByRhs (GHC.PatBind _ rhs _ _ _)       pns = findPNs pns rhs
-  usedByRhs (GHC.VarBind _ rhs _)           pns = findPNs pns rhs
-  usedByRhs (GHC.AbsBinds _ _ _ _ _)       _pns = False
-  usedByRhs (GHC.PatSynBind _)             _pns = error "To implement: usedByRhs PaySynBind"
   usedByRhsRdr _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.HsBind GHC.RdrName) where
-  usedByRhs _ _ = assert False undefined
 #if __GLASGOW_HASKELL__ <= 710
   usedByRhsRdr nm  (GHC.FunBind _ _ matches _ _ _)        pns = findNamesRdr nm pns matches
 #else
@@ -960,26 +919,20 @@ instance UsedByRhs (GHC.HsBind GHC.RdrName) where
 -- -------------------------------------
 
 instance UsedByRhs (GHC.HsExpr GHC.Name) where
-  usedByRhs (GHC.HsLet _lb e) pns = findPNs pns e
-  usedByRhs e                _pns = error $ "undefined usedByRhs:" ++ (showGhc e)
   usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsExpr GHC.RdrName) where
   usedByRhsRdr nm (GHC.HsLet _lb e) pns = findNamesRdr nm pns e
   usedByRhsRdr _ e                 _pns = error $ "undefined usedByRhsRdr:" ++ (showGhc e)
-  usedByRhs _ _ = assert False undefined
 
 -- -------------------------------------
 
 instance UsedByRhs (GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) where
-  usedByRhs (GHC.LetStmt lb) pns = findPNs pns lb
-  usedByRhs s               _pns = error $ "undefined usedByRhs:" ++ (showGhc s)
   usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
   usedByRhsRdr nm (GHC.LetStmt lb) pns = findNamesRdr nm pns lb
   usedByRhsRdr _ s               _pns = error $ "undefined usedByRhsRdr:" ++ (showGhc s)
-  usedByRhs _ _ = assert False undefined
 
 --------------------------------------------------------------------------------
 

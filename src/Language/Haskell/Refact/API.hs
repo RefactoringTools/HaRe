@@ -119,13 +119,14 @@ module Language.Haskell.Refact.API
     , hsNamess, hsNamessRdr
     , hsBinds
     , HsValBinds(..)
-    ,isDeclaredIn,isDeclaredInRdr
-    ,FreeNames(..),DeclaredNames(..)
-    ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
-    ,hsFreeAndDeclaredRdr
-    ,hsFreeAndDeclaredPNs
-    ,getDeclaredTypes
-    ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
+    , isDeclaredIn,isDeclaredInRdr
+    , FreeNames(..),DeclaredNames(..)
+    , hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
+    , hsFreeAndDeclaredRdr
+    , hsFreeAndDeclaredPNs
+    , getDeclaredTypes
+    , getFvs, getFreeVars -- These two should replace hsFreeAndDeclaredPNs
+    , getDeclaredVars, getDeclaredVarsRdr
 
     ,hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
     ,hsVisibleNamesRdr

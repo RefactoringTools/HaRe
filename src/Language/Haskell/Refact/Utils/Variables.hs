@@ -26,7 +26,7 @@ module Language.Haskell.Refact.Utils.Variables
   -- , hsFreeAndDeclaredGhc
   , getDeclaredTypes
   , getDeclaredTypesRdr
-  , getFvs, getFreeVars, getDeclaredVars
+  , getFvs, getFreeVars, getDeclaredVars, getDeclaredVarsRdr
   , hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames, hsVisibleNamesRdr
   , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
   , hsVisibleDs, hsVisibleDsRdr
@@ -68,7 +68,6 @@ import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
-import Language.Haskell.Refact.Utils.TypeSyn
 import Language.Haskell.Refact.Utils.Types
 
 import Language.Haskell.GHC.ExactPrint.Types

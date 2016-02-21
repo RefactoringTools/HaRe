@@ -90,7 +90,6 @@ compLiftToTopLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftToTopLevel fileName (row,col) = do
       parseSourceFileGhc fileName
-      renamed <- getRefactRenamed
       parsed  <- getRefactParsed
       nm <- getRefactNameMap
 
@@ -168,6 +167,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          renamed <- getRefactRenamed
          parsed' <- getRefactParsed
          parsed  <- liftT $ balanceAllComments parsed'
+         nm      <- getRefactNameMap
          logDataWithAnns "parsed after balanceAllComments" parsed
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
@@ -191,7 +191,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          pns <- pnsNeedRenaming parsed parent liftedDecls declaredPns
          logm $ "liftToMod:(pns needing renaming)=" ++ (showGhc pns)
 
-         let dd = getDeclaredVars $ hsBinds renamed
+         decls <- liftT $ hsDecls parsed'
+         let dd = getDeclaredVarsRdr nm decls
          logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
          if pns == []
