@@ -58,8 +58,8 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , findIdForName
     , getTypeForName
 
-    ,defines, definesP,definesTypeSig,definesTypeSigRdr
-    ,sameBind,sameBindRdr
+    ,defines, definesTypeSig,definesTypeSigRdr
+    ,sameBindRdr
     ,UsedByRhs(..)
 
     -- ** Modules and files
@@ -718,16 +718,16 @@ isPatBindR _=False
 
 -- | Return True if a declaration is a pattern binding which only
 -- defines a variable value.
-isSimplePatDecl :: (GHC.DataId t) => GHC.LHsDecl t -> Bool
+isSimplePatDecl :: GHC.LHsDecl GHC.RdrName -> Bool
 isSimplePatDecl decl = case decl of
-     (GHC.L _l (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) -> hsPNs p /= []
+     (GHC.L _l (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) -> hsNamessRdr p /= []
      _ -> False
 
 -- | Return True if a declaration is a pattern binding which only
 -- defines a variable value.
 isSimplePatBind :: (GHC.DataId t) => GHC.LHsBind t-> Bool
 isSimplePatBind decl = case decl of
-     (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> hsPNs p /= []
+     (GHC.L _l (GHC.PatBind p _rhs _ty _fvs _)) -> hsNamessRdr p /= []
      _ -> False
 
 -- | Return True if a declaration is a pattern binding but not a simple one.
@@ -774,11 +774,11 @@ findEntity' a b = res
 
 sameBindRdr :: NameMap -> GHC.LHsDecl GHC.RdrName -> GHC.LHsDecl GHC.RdrName -> Bool
 sameBindRdr nm b1 b2 = (definedNamesRdr nm b1) == (definedNamesRdr nm b2)
-
+{-
 {-# DEPRECATED sameBind "Can't use Renamed in GHC 8" #-}
 sameBind :: GHC.LHsBind GHC.Name -> GHC.LHsBind GHC.Name -> Bool
 sameBind b1 b2 = (definedPNs b1) == (definedPNs b2)
-
+-}
 -- ---------------------------------------------------------------------
 
 -- TODO: is this the same is isUsedInRhs?

@@ -52,7 +52,6 @@ compAddOneParameter fileName paramName (row, col) = do
     then
       do
         parseSourceFileGhc fileName
-        renamed <- getRefactRenamed
         parsed  <- getRefactParsed
         nm      <- getRefactNameMap
         logParsedSource "compAdd entry"
@@ -118,7 +117,6 @@ doAddingParam pn newParam defaultArg isExported' = do
                     logm $ "doAddingParam.inMod doing it"
                     ds <- liftT $ hsDecls modu
                     modu' <- doAdding modu ds
-                    renamed <- getRefactRenamed
                     if isExported' && isExplicitlyExported nm pn modu
                       then addItemsToExport modu' (Just pn) False (Left [GHC.unLoc (fromJust defaultArg)])
                       else return modu'
@@ -667,7 +665,6 @@ doRmParam pn nTh = do
                    | rdrName2NamePure nm fun == pn' =
                        let  pat = pats!!nTh'     --get the nth formal parameter
                             pats' = take nTh' pats ++ drop (nTh' + 1) pats
-                            -- pNames = hsPNs pat  --get all the names in this pat. (the pat may be just be a variable)
                             pNames = map (rdrName2NamePure nm) $ hsNamessRdr pat  --get all the names in this pat. (the pat may be just be a variable)
                        in if checking && not ( all (==False) ((map (flip (findNameInRdr nm) rhs) pNames)) && --not used in rhs
                                                all (==False) ((map (flip (findNameInRdr nm) decls) pNames))) --not used in the where clause

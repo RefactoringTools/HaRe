@@ -48,11 +48,10 @@ module Language.Haskell.Refact.Utils.Variables
   , defines
   , definesRdr,definesDeclRdr
   , definesTypeSig,definesTypeSigRdr,definesSigDRdr
-  , definesP
   , allNames
 
   , hsTypeVbls
-  , hsPNs, hsNamess, hsNamessRdr
+  , hsNamess, hsNamessRdr
   , findLRdrName
   , locToNameRdr, locToNameRdrPure
   , locToRdrName
@@ -254,6 +253,7 @@ isInstanceName _n = error "undefined isInstanceName"
 
 
 -- ---------------------------------------------------------------------
+{-
 -- | Collect the identifiers (in PName format) in a given syntax phrase.
 
 {-# DEPRECATED hsPNs "Can't use Renamed in GHC 8" #-}
@@ -264,7 +264,7 @@ hsPNs t = (nub.ghead "hsPNs") res
      res = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inPnt) t
 
      inPnt (pname :: GHC.RdrName) = return [(PN pname)]
-
+-}
 -- ---------------------------------------------------------------------
 -- | Collect those type variables that are declared in a given syntax phrase t. In
 -- the returned result, the first list is always be empty.
@@ -1959,7 +1959,7 @@ definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
 definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
 definesDeclRdr _ _ _ = False
 
-
+{-
 definesP::PName -> GHC.LHsDecl GHC.RdrName ->Bool
 #if __GLASGOW_HASKELL__ <= 710
 definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)))
@@ -1968,8 +1968,9 @@ definesP pn (GHC.L _ (GHC.ValD (GHC.FunBind (GHC.L _ pname) _ _ _ _)))
 #endif
  = PN pname == pn
 definesP pn (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _)))
- = elem pn (hsPNs p)
+ = elem pn (hsNamessRdr p)
 definesP _ _= False
+-}
 
 -- ---------------------------------------------------------------------
 

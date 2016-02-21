@@ -116,7 +116,7 @@ module Language.Haskell.Refact.API
     , isClassName
     , isInstanceName
     , hsTypeVbls
-    , hsPNs, hsNamess, hsNamessRdr
+    , hsNamess, hsNamessRdr
     , hsBinds
     , HsValBinds(..)
     ,isDeclaredIn,isDeclaredInRdr
@@ -146,8 +146,8 @@ module Language.Haskell.Refact.API
     , findIdForName
     , getTypeForName
     , definesTypeSig,definesTypeSigRdr,definesSigDRdr
-    ,sameBind,sameBindRdr
-    ,UsedByRhs(..)
+    , sameBindRdr
+    , UsedByRhs(..)
 
     -- *** Modules and files
     , isMainModule
