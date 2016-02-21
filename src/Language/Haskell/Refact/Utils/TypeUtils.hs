@@ -53,7 +53,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,usedWithoutQualR,isUsedInRhs
 
     -- ** Getting
-    , findAllNameOccurences
     , findEntity'
     , findIdForName
     , getTypeForName
@@ -107,7 +106,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
     -- * Debug stuff
-    , getParsedForRenamedLPat
     , getParsedForRenamedName
     , getParsedForRenamedLocated
     , rdrNameFromName
@@ -488,26 +486,6 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
 
 -- ---------------------------------------------------------------------
 
--- | Given a RenamedSource LPAT, return the equivalent ParsedSource part.
-{-# DEPRECATED getParsedForRenamedLPat "Can't use Renamed in GHC 8" #-}
-getParsedForRenamedLPat :: GHC.ParsedSource -> GHC.LPat GHC.Name -> GHC.LPat GHC.RdrName
-getParsedForRenamedLPat parsed lpatParam@(GHC.L l _pat) = r
-  where
-    mres = res parsed
-    r = case mres of
-      Just rr -> rr
-      Nothing -> error $ "HaRe error: could not find Parsed LPat for"
-                 ++ (SYB.showData SYB.Renamer 0 lpatParam)
-
-    res t = SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` lpat) t
-
-    lpat :: (GHC.LPat GHC.RdrName) -> (Maybe (GHC.LPat GHC.RdrName))
-    lpat p@(GHC.L lp _)
-       | lp == l = Just p
-    lpat _ = Nothing
-
--- ---------------------------------------------------------------------
-
 -- | Given a RenamedSource Located name, return the equivalent ParsedSource
 -- part.
 {-# DEPRECATED getParsedForRenamedLocated "Can't use Renamed in GHC 8" #-}
@@ -771,11 +749,7 @@ findEntity' a b = res
 
 sameBindRdr :: NameMap -> GHC.LHsDecl GHC.RdrName -> GHC.LHsDecl GHC.RdrName -> Bool
 sameBindRdr nm b1 b2 = (definedNamesRdr nm b1) == (definedNamesRdr nm b2)
-{-
-{-# DEPRECATED sameBind "Can't use Renamed in GHC 8" #-}
-sameBind :: GHC.LHsBind GHC.Name -> GHC.LHsBind GHC.Name -> Bool
-sameBind b1 b2 = (definedPNs b1) == (definedPNs b2)
--}
+
 -- ---------------------------------------------------------------------
 
 -- TODO: is this the same is isUsedInRhs?
@@ -784,12 +758,6 @@ class (SYB.Data t) => UsedByRhs t where
     -- | Return True if any of the GHC.Name's appear in the given
     -- syntax element
     usedByRhsRdr :: NameMap -> t -> [GHC.Name] -> Bool
-
-instance UsedByRhs GHC.RenamedSource where
-
-   -- Not a meaningful question at this level
-   -- usedByRhs _renamed _pns = False
-   usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.HsModule GHC.RdrName) where
 
@@ -879,29 +847,9 @@ instance UsedByRhs (GHC.Sig GHC.RdrName) where
 
 -- -------------------------------------
 
-instance UsedByRhs (GHC.LHsBinds GHC.Name) where
-  usedByRhsRdr _ _ = assert False undefined
-
-instance UsedByRhs (GHC.HsValBinds GHC.Name) where
-  usedByRhsRdr _ _ = assert False undefined
-
--- -------------------------------------
-
-instance UsedByRhs (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
-  usedByRhsRdr _ _ = assert False undefined
-
-
 instance UsedByRhs (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
   usedByRhsRdr nm (GHC.Match _ _ _ (GHC.GRHSs rhs _)) pns
     = findNamesRdr nm pns rhs
-
--- -------------------------------------
-
-instance UsedByRhs [GHC.LHsBind GHC.Name] where
-  usedByRhsRdr _ _ = assert False undefined
-
-instance UsedByRhs (GHC.HsBind GHC.Name) where
-  usedByRhsRdr _ _ = assert False undefined
 
 -- -------------------------------------
 
@@ -918,17 +866,11 @@ instance UsedByRhs (GHC.HsBind GHC.RdrName) where
 
 -- -------------------------------------
 
-instance UsedByRhs (GHC.HsExpr GHC.Name) where
-  usedByRhsRdr _ _ = assert False undefined
-
 instance UsedByRhs (GHC.HsExpr GHC.RdrName) where
   usedByRhsRdr nm (GHC.HsLet _lb e) pns = findNamesRdr nm pns e
   usedByRhsRdr _ e                 _pns = error $ "undefined usedByRhsRdr:" ++ (showGhc e)
 
 -- -------------------------------------
-
-instance UsedByRhs (GHC.Stmt GHC.Name (GHC.LHsExpr GHC.Name)) where
-  usedByRhsRdr _ _ = assert False undefined
 
 instance UsedByRhs (GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) where
   usedByRhsRdr nm (GHC.LetStmt lb) pns = findNamesRdr nm pns lb
@@ -2614,6 +2556,7 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
       inDecl _ = Nothing
 
 -- ---------------------------------------------------------------------
+{-
 -- | Find all occurrences with location of the given name
 {-# DEPRECATED findAllNameOccurences "Can't use Renamed in GHC 8" #-}
 findAllNameOccurences :: (SYB.Data t) => GHC.Name -> t -> [(GHC.Located GHC.Name)]
@@ -2641,7 +2584,7 @@ findAllNameOccurences  name t
           | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
         workerExpr _ = []
 #endif
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Return the type checked `GHC.Id` corresponding to the given

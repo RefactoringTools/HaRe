@@ -28,7 +28,6 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
-import qualified Data.Map as Map
 import Data.List
 
 main :: IO ()
@@ -39,7 +38,7 @@ spec :: Spec
 spec = do
 
   -- -------------------------------------------------------------------
-
+{-
   describe "findAllNameOccurences" $ do
    it "finds all occurrences of the given name in a syntax phrase" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/S.hs"
@@ -54,7 +53,7 @@ spec = do
       (showGhcQual res) `shouldBe` "[x, x]"
       -- NOTE: does not get the x's in line 8
       (showGhcQual $ map startEndLocGhc res) `shouldBe` "[((4, 5), (4, 6)), ((4, 17), (4, 18))]"
-
+-}
   -- -------------------------------------------------------------------
 
   describe "locToName" $ do
@@ -156,32 +155,6 @@ spec = do
       showGhcQual n `shouldBe` "sumSquares"
       getLocatedStart res `shouldBe` (24,1)
       showGhcQual l `shouldBe` "LocToName.hs:24:1-10"
-
-  -- -------------------------------------------------------------------
-
-  describe "allNames" $ do
-    it "lists all Names" $ do
-      t <- ct $ parsedFileGhc "./TypeUtils/S.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let res = allNames renamed
-      let res' = map (\(GHC.L l n) -> (showGhcQual $ GHC.nameUnique n,showGhcQual (l, GHC.getSrcSpan n, n))) res
-
-      let res'' = foldl' (\m (k,a) -> Map.insertWith (++) k a m) Map.empty res'
-
-      (sort $ Map.elems res'') `shouldBe`
-             ["(TypeUtils/S.hs:10:12, TypeUtils/S.hs:10:8, n)(TypeUtils/S.hs:10:8, TypeUtils/S.hs:10:8, n)"
-             ,"(TypeUtils/S.hs:10:14, <no location info>, GHC.Num.+)"
-             ,"(TypeUtils/S.hs:10:5-6, TypeUtils/S.hs:10:5-6, zz)(TypeUtils/S.hs:10:5-6, TypeUtils/S.hs:10:5-6, zz)(TypeUtils/S.hs:8:13-14, TypeUtils/S.hs:10:5-6, zz)"
-             ,"(TypeUtils/S.hs:4:1-3, TypeUtils/S.hs:4:1-3, TypeUtils.S.foo)(TypeUtils/S.hs:4:1-3, TypeUtils/S.hs:4:1-3, TypeUtils.S.foo)"
-             ,"(TypeUtils/S.hs:4:13-15, <no location info>, GHC.Real.odd)"
-             ,"(TypeUtils/S.hs:4:17, TypeUtils/S.hs:4:5, x)(TypeUtils/S.hs:4:5, TypeUtils/S.hs:4:5, x)"
-             ,"(TypeUtils/S.hs:6:10, TypeUtils/S.hs:6:10, TypeUtils.S.A)"
-             ,"(TypeUtils/S.hs:6:14, TypeUtils/S.hs:6:14-21, TypeUtils.S.B)"
-             ,"(TypeUtils/S.hs:6:25, TypeUtils/S.hs:6:25, TypeUtils.S.C)"
-             ,"(TypeUtils/S.hs:6:6, TypeUtils/S.hs:6:1-25, TypeUtils.S.D)"
-             ,"(TypeUtils/S.hs:8:1-7, TypeUtils/S.hs:8:1-7, TypeUtils.S.subdecl)(TypeUtils/S.hs:8:1-7, TypeUtils/S.hs:8:1-7, TypeUtils.S.subdecl)"
-             ,"(TypeUtils/S.hs:8:16, TypeUtils/S.hs:8:9, x)(TypeUtils/S.hs:8:9, TypeUtils/S.hs:8:9, x)"
-             ]
 
   -- -------------------------------------------------------------------
 
@@ -289,7 +262,7 @@ spec = do
       pending -- "Convert to definingDeclsNames"
 
   -- -------------------------------------------------------------------
-
+{-
   describe "definingDeclsNames" $ do
     it "returns [] if not found" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
@@ -338,7 +311,7 @@ spec = do
       showGhcQual res `shouldBe` "[]"
       -}
       pending -- "Convert to definingDeclsNames"
-
+-}
   -- -------------------------------------------------------------------
 
   describe "definingSigsRdrNames" $ do
@@ -589,19 +562,24 @@ spec = do
     it "Returns False if not a function definition" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
+      let decls = getHsDecls parsed
       let Just tup = getName "DupDef.Dd1.tup" renamed
-      let [decl] = definingDeclsNames [tup] (hsBinds renamed) False False
-      isFunBindR decl  `shouldBe` False
+      let [GHC.L l (GHC.ValD decl)] = definingDeclsRdrNames nm [tup] decls False False
+      isFunBindR (GHC.L l decl)  `shouldBe` False
 
     it "Returns True if a function definition" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let (GHC.L _l (GHC.HsModule _name _exps _imps _ds _ _)) = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
       let Just toplevel = getName "DupDef.Dd1.toplevel" renamed
-      let [decl] = definingDeclsNames [toplevel] (hsBinds renamed) False False
-      isFunBindR decl  `shouldBe` True
+      let [GHC.L l (GHC.ValD decl)] = definingDeclsRdrNames nm [toplevel] (getHsDecls parsed) False False
+      isFunBindR (GHC.L l decl)  `shouldBe` True
 
   -- -------------------------------------------------------------------
 
@@ -623,7 +601,6 @@ spec = do
       t  <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       t2 <- ct $ parsedFileGhc "./DupDef/Dd2.hs"
       let renamed  = fromJust $ GHC.tm_renamed_source t
-      let renamed2 = fromJust $ GHC.tm_renamed_source t2
       let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
           nm2 = initRdrNameMap t2
 
@@ -1410,61 +1387,6 @@ spec = do
 
   -- ---------------------------------------------
 
-  describe "getParsedForRenamedLPat" $ do
-    it "gets the ParsedSource version of a RenamedSource LPat" $ do
-      t <- ct $ parsedFileGhc "./Visible/Simple.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
-
-      let Just e  = locToExp (9,15) (9,17) renamed :: (Maybe (GHC.LHsExpr GHC.Name))
-      (showGhcQual e) `shouldBe` "x"
-
-      let Just n = getName "Visible.Simple.param2" renamed
-      let [decl] = definingDeclsNames [n] (hsBinds renamed) False False
-
-      let binds = hsValBinds [decl]
-#if __GLASGOW_HASKELL__ <= 710
-      let (GHC.L _ (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _)) = head $ hsBinds binds
-#else
-      let (GHC.L _ (GHC.FunBind _ (GHC.MG (GHC.L _ matches) _ _ _) _ _ _)) = head $ hsBinds binds
-#endif
-      let [(GHC.L _ (GHC.Match _ pats _ _))] = matches
-      let pat@(GHC.L lp _) = head pats
-
-      let pat' = getParsedForRenamedLPat parsed pat
-
-      let (GHC.L lp' _) = pat'
-      lp `shouldBe` lp'
-
-      (SYB.showData SYB.Renamer 0 pat') `shouldBe`
-           "\n"++
-           "(L {Visible/Simple.hs:9:8-12} \n"++
-           " (ParPat \n"++
-           "  (L {Visible/Simple.hs:9:9-11} \n"++
-           "   (ConPatIn \n"++
-           "    (L {Visible/Simple.hs:9:9} \n"++
-           "     (Unqual {OccName: B})) \n"++
-           "    (PrefixCon \n"++
-           "     [\n"++
-           "      (L {Visible/Simple.hs:9:11} \n"++
-           "       (VarPat \n"++
-           "        (Unqual {OccName: x})))])))))"
-
-      (SYB.showData SYB.Renamer 0 pat) `shouldBe`
-           "\n"++
-           "(L {Visible/Simple.hs:9:8-12} \n"++
-           " (ParPat \n"++
-           "  (L {Visible/Simple.hs:9:9-11} \n"++
-           "   (ConPatIn \n"++
-           "    (L {Visible/Simple.hs:9:9} {Name: B}) \n"++
-           "    (PrefixCon \n"++
-           "     [\n"++
-           "      (L {Visible/Simple.hs:9:11} \n"++
-           "       (VarPat {Name: x}))])))))"
-
-
-  -- ---------------------------------------------
-
   describe "isLocalPN" $ do
     it "returns True if the name is local to the module" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
@@ -1514,38 +1436,36 @@ spec = do
 
   -- ---------------------------------------------
 
-  describe "definedPNs" $ do
+  describe "definedPNsRdr" $ do
     it "gets the PNs defined in a declaration" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just pn = locToNameRdrPure nm (3, 1) parsed
       (showGhcQual pn) `shouldBe` "DupDef.Dd1.toplevel"
 
-      let origDecls = hsBinds renamed
-      let demotedDecls'= definingDeclsNames [pn] origDecls True False
-      let declaredPns = nub $ concatMap definedPNs demotedDecls'
+      let origDecls = getHsDecls parsed
+      let demotedDecls'= definingDeclsRdrNames nm [pn] origDecls True False
+      let declaredPns = nub $ concatMap definedPNsRdr demotedDecls'
 
-      (showGhcQual declaredPns) `shouldBe` "[DupDef.Dd1.toplevel]"
+      (showGhcQual declaredPns) `shouldBe` "[toplevel]"
 
     -- ---------------------------------
 
     it "gets the PNs defined in an as-match" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just pn = locToNameRdrPure nm (14, 1) parsed
       (showGhcQual pn) `shouldBe` "DupDef.Dd1.tup"
 
-      let origDecls = hsBinds renamed
-      let demotedDecls'= definingDeclsNames [pn] origDecls True False
-      let declaredPns = nub $ concatMap definedPNs demotedDecls'
+      let origDecls = getHsDecls parsed
+      let demotedDecls'= definingDeclsRdrNames nm [pn] origDecls True False
+      let declaredPns = nub $ concatMap definedPNsRdr demotedDecls'
 
-      (showGhcQual declaredPns) `shouldBe` "[DupDef.Dd1.tup, DupDef.Dd1.h, DupDef.Dd1.t]"
+      (showGhcQual declaredPns) `shouldBe` "[tup, h, t]"
 
 
   -- ---------------------------------------------
@@ -3126,6 +3046,8 @@ spec = do
 
   describe "findEntity" $ do
     it "returns true if a (Located) Name is part of a HsBind 1" $ do
+      pendingWith "this may go away"
+      {-
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
@@ -3150,10 +3072,13 @@ spec = do
       (showGhcQual _l) `shouldBe` "DupDef.Dd1.toplevel"
       ("1" ++ show r) `shouldBe` "1True"
       ("2" ++ show r2) `shouldBe` "2True"
+      -}
 
     -- ---------------------------------
 
     it "returns true if a (Located) Name is part of a HsBind 2" $ do
+      pendingWith "this may go away"
+      {-
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
@@ -3180,11 +3105,13 @@ spec = do
       (showGhcQual _l) `shouldBe` "ss"
       ("1" ++ show r) `shouldBe` "1True"
       ("2" ++ show r2) `shouldBe` "2True"
-
+      -}
 
     -- -----------------------------------------------------------------
 
     it "returns false if a syntax phrase is not part of another" $ do
+      pendingWith "this may go away"
+      {-
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
@@ -3206,6 +3133,7 @@ spec = do
       ((r,d),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       (showGhcQual d) `shouldBe` "[DupDef.Dd1.toplevel x = DupDef.Dd1.c GHC.Num.* x]"
       ("1" ++ show r) `shouldBe` "1False"
+      -}
 
     -- -----------------------------------------------------------------
 

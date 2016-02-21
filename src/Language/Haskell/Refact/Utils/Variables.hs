@@ -17,7 +17,7 @@ module Language.Haskell.Refact.Utils.Variables
     isFieldName
   , isClassName
   , isInstanceName
-  , isDeclaredIn,isDeclaredInRdr
+  , isDeclaredInRdr
   , FreeNames(..),DeclaredNames(..)
   , hsFreeAndDeclaredPNsOld
   , hsFreeAndDeclaredRdr
@@ -41,14 +41,13 @@ module Language.Haskell.Refact.Utils.Variables
   , findPNT,findPN
   , findPNs
   , sameOccurrence
-  , definedPNs, definedPNsRdr,definedNamesRdr
+  , definedPNsRdr,definedNamesRdr
   , definingDeclsRdrNames,definingDeclsRdrNames',definingSigsRdrNames
-  , definingDeclsNames, definingDeclsNames', definingSigsNames
+  , definingSigsNames
   , definingTyClDeclsNames
   , defines
   , definesRdr,definesDeclRdr
   , definesTypeSig,definesTypeSigRdr,definesSigDRdr
-  , allNames
 
   , hsTypeVbls
   , hsNamess, hsNamessRdr
@@ -276,10 +275,13 @@ hsTypeVbls =ghead "hsTypeVbls".(applyTU (stop_tdTU (failTU `adhocTU` pnt)))
 
 
 -------------------------------------------------------------------------------
+
+{-
 -- ++AZ++ see if we can get away with one only..
 {-# DEPRECATED isDeclaredIn "Can't use Renamed in GHC 8" #-}
 isDeclaredIn :: (HsValBinds t GHC.Name) => GHC.Name -> t -> Bool
 isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
+-}
 
 isDeclaredInRdr :: NameMap -> GHC.Name -> [GHC.LHsDecl GHC.RdrName] -> Bool
 isDeclaredInRdr nm name decls = nonEmptyList $ definingDeclsRdrNames nm [name] decls False True
@@ -1673,21 +1675,6 @@ findNamesRdr nm pns t =
 
 -- ---------------------------------------------------------------------
 
--- | Return the list of identifiers (in PName format) defined by a
--- function\/pattern binding.
-{-# DEPRECATED definedPNs "Can't use Renamed in GHC 8" #-}
-definedPNs :: GHC.LHsBind GHC.Name -> [GHC.Name]
-#if __GLASGOW_HASKELL__ <= 710
-definedPNs (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _ _)) = [pname]
-#else
-definedPNs (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _)) = [pname]
-#endif
-definedPNs (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))         = (hsNamess p)
-definedPNs (GHC.L _ (GHC.VarBind pname _rhs _))              = [pname]
-
--- AbsBinds and ValBinds will never occur in ParsedSource
-definedPNs  _ = []
-
 definedPNsRdr :: GHC.LHsDecl GHC.RdrName -> [GHC.Located GHC.RdrName]
 #if __GLASGOW_HASKELL__ <= 710
 definedPNsRdr (GHC.L _ (GHC.ValD (GHC.FunBind pname _ _ _ _ _)))   = [pname]
@@ -1768,7 +1755,7 @@ definingDeclsRdrNames' nameMap pns ds = defining ds
       definesBind (GHC.L l b) = defines' (GHC.L l (GHC.ValD b))
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Find those declarations(function\/pattern binding) which define
 -- the specified GHC.Names. incTypeSig indicates whether the
 -- corresponding type signature will be included.
@@ -1824,7 +1811,7 @@ definingDeclsNames' pns t = defining t
         |(hsNamess p) `intersect` pns /= [] = [decl']
 
       defines' _ = []
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Find those type signatures for the specified GHC.Names.
@@ -2001,39 +1988,6 @@ definesTypeSigRdr _ _  x = error $ "definesTypeSigRdr : got " ++ SYB.showData SY
 definesSigDRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
 definesSigDRdr nameMap nin (GHC.L _ (GHC.SigD d)) = definesTypeSigRdr nameMap nin d
 definesSigDRdr _ _ _ = False
-
--- ---------------------------------------------------------------------
-
--- |Find all Located Names in the given Syntax phrase.
-{-# DEPRECATED allNames "Can't use Renamed in GHC 8" #-}
-allNames::(SYB.Data t)
-       =>t                      -- ^ The syntax phrase
-       ->[GHC.Located GHC.Name] -- ^ The result
-allNames t
-  -- ++AZ++:TODO: use nameSybQuery
-  = res
-       where
-        res = SYB.everythingStaged SYB.Parser (++) []
-            ([] `SYB.mkQ` worker
-#if __GLASGOW_HASKELL__ <= 710
-             `SYB.extQ` workerBind `SYB.extQ` workerExpr
-#endif
-               ) t
-
-        worker (pnt :: (GHC.Located GHC.Name))
-          = [pnt]
-        -- worker _ = []
-
-#if __GLASGOW_HASKELL__ <= 710
-        workerBind (GHC.L l (GHC.VarPat name) :: (GHC.Located (GHC.Pat GHC.Name)))
-          = [(GHC.L l name)]
-        workerBind _ = []
-
-        workerExpr ((GHC.L l (GHC.HsVar name)) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          = [(GHC.L l name)]
-        workerExpr _ = []
-#endif
-
 
 -- ---------------------------------------------------------------------
 

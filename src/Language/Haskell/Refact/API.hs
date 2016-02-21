@@ -119,7 +119,7 @@ module Language.Haskell.Refact.API
     , hsNamess, hsNamessRdr
     , hsBinds
     , HsValBinds(..)
-    , isDeclaredIn,isDeclaredInRdr
+    , isDeclaredInRdr
     , FreeNames(..),DeclaredNames(..)
     , hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
     , hsFreeAndDeclaredRdr
@@ -141,7 +141,7 @@ module Language.Haskell.Refact.API
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
     ,usedWithoutQualR,isUsedInRhs
     ,findNameInRdr
-    ,findPNT,findPN,findAllNameOccurences
+    ,findPNT,findPN
     ,findPNs, findNamesRdr, findEntity, findEntity'
     ,sameOccurrence
     , findIdForName
@@ -175,15 +175,14 @@ module Language.Haskell.Refact.API
     ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
 
     -- *** Identifiers, expressions, patterns and declarations
-    ,ghcToPN,lghcToPN, expToName, expToNameRdr
-    ,patToNameRdr
-    ,nameToString
-    ,patToPNT ,pNtoPat
-    , definedPNs, definedPNsRdr,definedNamesRdr
+    , ghcToPN,lghcToPN, expToName, expToNameRdr
+    , patToNameRdr
+    , nameToString
+    , patToPNT ,pNtoPat
+    , definedPNsRdr,definedNamesRdr
     , definingDeclsRdrNames, definingDeclsRdrNames', definingSigsRdrNames
-    , definingDeclsNames, definingDeclsNames', definingSigsNames
+    , definingSigsNames
     , definingTyClDeclsNames
-    , allNames
 
     -- *** Others
     , divideDecls
@@ -199,7 +198,6 @@ module Language.Haskell.Refact.API
     -- ** Miscellous
 
     -- ** Debug stuff
-    , getParsedForRenamedLPat
     , getParsedForRenamedName
     , getParsedForRenamedLocated
     , stripLeadingSpaces
@@ -209,7 +207,6 @@ module Language.Haskell.Refact.API
     , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
-    , onelayerStaged
     , listifyStaged
 
     -- ** Scrap Your Zipper versions

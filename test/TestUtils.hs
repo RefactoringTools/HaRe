@@ -32,6 +32,7 @@ module TestUtils
        , parseDeclToAnnotated
        , ss2span
        , PosToken
+       , getHsDecls
        ) where
 
 
@@ -385,5 +386,13 @@ parseDeclToAnnotated df fp src = (ast,anns)
 ss2span :: GHC.SrcSpan -> (Pos,Pos)
 ss2span ss = (ss2pos ss,ss2posEnd ss)
 
+-- ---------------------------------------------------------------------
+
+-- | call ghc-excactprint hsDecls in a Transform context
+getHsDecls :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName]
+getHsDecls t = decls
+  where
+    -- runTransform :: Anns -> Transform a -> (a, (Anns, Int), [String])
+    (decls,_,_) = runTransform mempty (hsDecls t)
 -- ---------------------------------------------------------------------
 -- EOF

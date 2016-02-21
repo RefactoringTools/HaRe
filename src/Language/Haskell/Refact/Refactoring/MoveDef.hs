@@ -1276,14 +1276,6 @@ doDemoting' t pn = do
                             else  --duplicate demoted declarations to the right place.
                                  do
                                     duplicateDecls declaredPns removedDecl demotedSigs t'
-                                    {-
-                                    logm $ "MoveDef: about to duplicateDecls"
-                                    dds <- liftT $ hsDecls t'
-                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs dds
-                                    logm $ "MoveDef:duplicateDecls done"
-                                    t'' <- liftT $ replaceDecls t' ds''
-                                    return t''
-                                    -}
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        else error "This function can not be demoted as it is used in current level!\n"
@@ -1392,16 +1384,16 @@ doDemoting' t pn = do
              logm $ "declaredNamesInTargetPlace:res=" ++ (showGhc res)
              return res
                where
-                 inMatch ((GHC.Match _ _pats _ rhs) :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
-                    | findPN pn' rhs = do
+                 inMatch ((GHC.Match _ _pats _ rhs) :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+                    | findNameInRdr nm pn' rhs = do
                      logm $ "declaredNamesInTargetPlace:inMatch"
                      -- fds <- hsFDsFromInside rhs
                      let (_,DN ds) = hsFDsFromInsideRdr nm rhs
                      return ds
                  inMatch _ = return mzero
 
-                 inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
-                    |findPN pn' rhs = do
+                 inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.RdrName)
+                    |findNameInRdr nm pn' rhs = do
                      logm $ "declaredNamesInTargetPlace:inPat"
                      let (_,DN ds) = hsFDsFromInsideRdr nm pat
                      return ds
@@ -1654,7 +1646,8 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
                        -> RefactGhc [GHC.Name]
        getClashedNames nm oldNames newNames match'
          = do  let (_f,DN d) = hsFDsFromInsideRdr nm match'
-               ds' <- mapM (flip (hsVisiblePNsRdr nm) match') oldNames
+               ds'' <- mapM (flip (hsVisibleDsRdr nm) match') oldNames
+               let ds' = map (\(DN ds) -> ds) ds''
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
                                    ( nub (d `union` (nub.concat) ds')))

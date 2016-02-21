@@ -211,13 +211,13 @@ reallyDoDuplicating pn newName _inscopes = do
                     --d: names that might clash with the new name
 
                 logm $ "doDuplicating'':(f,d)=" ++ show (f,d)
-                dv <- hsVisiblePNsRdr nm n declsp --dv: names may shadow new name
+                DN dv <- hsVisibleDsRdr nm n declsp --dv: names may shadow new name
                 let vars        = nub (f `union` d `union` map showGhc dv)
 
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow
                 nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName Nothing
 
-                if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls)
+                if elem newName vars || (nameAlreadyInScope && findNameInRdr nm n duplicatedDecls)
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
                    else do
@@ -246,7 +246,7 @@ refactorInClientMod oldPN serverModName newPName targetModule
        let modNames = willBeUnQualImportedBy serverModName renamed
        logm ("refactorInClientMod: (modNames)=" ++ (showGhc (modNames))) -- ++AZ++ debug
 
-       mustHide <- needToBeHided newPName renamed parsed
+       mustHide <- needToBeHided newPName parsed
        logm ("refactorInClientMod: (mustHide)=" ++ (showGhc (mustHide))) -- ++AZ++ debug
        if isJust modNames && mustHide
         then do
@@ -254,8 +254,8 @@ refactorInClientMod oldPN serverModName newPName targetModule
                 return refactoredMod
         else return ((fileName,RefacUnmodifed),(emptyAnns,parsed))
    where
-     needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
-     needToBeHided name exps parsed = do
+     needToBeHided :: GHC.Name -> GHC.ParsedSource -> RefactGhc Bool
+     needToBeHided name parsed = do
          nm <- getRefactNameMap
          let usedUnqual = usedWithoutQualR name parsed
          logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhc (usedUnqual))) -- ++AZ++ debug

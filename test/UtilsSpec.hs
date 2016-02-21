@@ -582,7 +582,6 @@ spec = do
     it "loads a file from a sub directory" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
       fileName <- canonicalizePath "./test/testdata/FreeAndDeclared/DeclareS.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let
         comp = do
