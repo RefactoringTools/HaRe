@@ -399,15 +399,57 @@ isExported n = do
 -- ---------------------------------------------------------------------
 
 -- | Return True if an identifier is explicitly exported by the module.
+isExplicitlyExported:: NameMap
+                    -> GHC.Name           -- ^ The identifier
+                    -> GHC.ParsedSource -- ^ The AST of the module
+                    -> Bool              -- ^ The result
+isExplicitlyExported nm pn (GHC.L _ p)
+  = findNameInRdr nm pn  (GHC.hsmodExports p)
+
+{-
+-- | Return True if an identifier is explicitly exported by the module.
 isExplicitlyExported::GHC.Name           -- ^ The identifier
                      ->GHC.RenamedSource -- ^ The AST of the module
                      ->Bool              -- ^ The result
 isExplicitlyExported pn (_g,_imps,exps,_docs)
   = findEntity pn exps
+-}
 
 -- ---------------------------------------------------------------------
 
+-- | Check if the proposed new name will conflict with an existing export
+causeNameClashInExports::  NameMap
+                        -> GHC.Name          -- ^ The original name
+                        -> GHC.Name          -- ^ The new name
+                        -> GHC.ModuleName    -- ^ The identity of the module
+                        -> GHC.ParsedSource -- ^ The AST of the module
+                        -> Bool              -- ^ The result
 
+-- Note that in the abstract representation of exps, there is no qualified entities.
+causeNameClashInExports nm pn newName modName parsed@(GHC.L _ p)
+  = let exps = GHC.unLoc $ fromMaybe (GHC.noLoc []) (GHC.hsmodExports p)
+        varExps = concatMap nameFromExport $ filter isImpVar exps
+        nameFromExport (GHC.L _ (GHC.IEVar x)) = [rdrName2NamePure nm x]
+        -- TODO: make withoutQual part of the API
+        withoutQual n = showGhc $ GHC.localiseName n
+        modNames=nub (concatMap (\x -> if withoutQual x== withoutQual newName
+                                         then [GHC.moduleName $ GHC.nameModule x]
+                                         else []) varExps)
+        res = (isExplicitlyExported nm pn parsed) &&
+               ( any modIsUnQualifedImported modNames
+                 || elem modName modNames)
+    in res
+ where
+    isImpVar (GHC.L _ x) = case x of
+      GHC.IEVar _ -> True
+      _           -> False
+
+    modIsUnQualifedImported modName'
+     =let
+      in isJust $ find (\(GHC.L _ (GHC.ImportDecl _ (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h))
+                                -> modName1 == modName' && (not isQualified)) (GHC.hsmodImports p)
+
+{-
 -- | Check if the proposed new name will conflict with an existing export
 {-# DEPRECATED causeNameClashInExports "Can't use Renamed in GHC 8" #-}
 causeNameClashInExports::  GHC.Name          -- ^ The original name
@@ -438,7 +480,7 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
      =let
       in isJust $ find (\(GHC.L _ (GHC.ImportDecl _ (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h))
                                 -> modName1 == modName' && (not isQualified)) imps
-
+-}
 -- Original seems to be
 --   1. pick up any module names in the export list with same unQual
      --   part as the new name
@@ -623,16 +665,18 @@ isNonLibraryName n = case (GHC.nameSrcSpan n) of
   GHC.UnhelpfulSpan _ -> False
   _                   -> True
 
-
 -- |Return True if a PName is a function\/pattern name defined in t.
-{-# DEPRECATED isFunOrPatName "Can't use Renamed in GHC 8" #-}
-isFunOrPatName::(SYB.Data t) => GHC.Name -> t -> Bool
-isFunOrPatName pn
-   =isJust . SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker)
+isFunOrPatName :: (SYB.Data t) => NameMap -> GHC.Name -> t -> Bool
+isFunOrPatName nm pn
+   = isJust . SYB.something (Nothing `SYB.mkQ` worker `SYB.extQ` workerDecl)
      where
-        worker (decl::GHC.LHsBind GHC.Name)
-           | defines pn decl = Just True
+        worker (decl::GHC.LHsBind GHC.RdrName)
+           | definesRdr nm pn decl = Just True
         worker _ = Nothing
+
+        workerDecl (GHC.L l (GHC.ValD decl)::GHC.LHsDecl GHC.RdrName)
+           | definesRdr nm pn (GHC.L l decl) = Just True
+        workerDecl _ = Nothing
 
 -------------------------------------------------------------------------------
 -- |Return True if a PName is a qualified PName.

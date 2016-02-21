@@ -606,21 +606,29 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "isFunOrPatName" $ do
-    it "Return True if a PName is a function/pattern name defined in t" $ do
+    it "return True if a PName is a function/pattern name defined in t" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      let renamed  = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
+      -- putStrLn $ "parsed:\n" ++ SYB.showData SYB.Parser 0 parsed
       let Just tup = getName "DupDef.Dd1.tup" renamed
-      isFunOrPatName tup renamed  `shouldBe` True
+      (showGhcQual tup) `shouldBe` "DupDef.Dd1.tup"
+      isFunOrPatName nm tup parsed  `shouldBe` True
 
-    it "Return False if a PName is a function/pattern name defined in t" $ do
+    -- ---------------------------------
+
+    it "return False if a PName is a function/pattern name defined in t" $ do
       t  <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       t2 <- ct $ parsedFileGhc "./DupDef/Dd2.hs"
       let renamed  = fromJust $ GHC.tm_renamed_source t
       let renamed2 = fromJust $ GHC.tm_renamed_source t2
+      let parsed2 = GHC.pm_parsed_source $ GHC.tm_parsed_module t2
+          nm2 = initRdrNameMap t2
 
       let Just tup = getName "DupDef.Dd1.tup" renamed
-      isFunOrPatName tup renamed2  `shouldBe` False
+      isFunOrPatName nm2 tup parsed2  `shouldBe` False
 
 
   -- -------------------------------------------------------------------
@@ -3455,7 +3463,6 @@ spec = do
 
       t <- ct $ parsedFileGhc "./Renaming/ConflictExport.hs"
       let nm = initRdrNameMap t
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let modu = GHC.ms_mod $ GHC.pm_mod_summary $ GHC.tm_parsed_module t
@@ -3475,13 +3482,12 @@ spec = do
 
       (showGhcQual $ GHC.localiseName newName) `shouldBe` "fringe"
 
-      let res = causeNameClashInExports myFringe newName modName renamed
+      let res = causeNameClashInExports nm myFringe newName modName parsed
       res `shouldBe` True
 
     it "Returns False if there is no clash" $ do
       t <- ct $ parsedFileGhc "./Renaming/ConflictExport.hs"
       let nm = initRdrNameMap t
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
       let modu = GHC.ms_mod $ GHC.pm_mod_summary $ GHC.tm_parsed_module t
@@ -3501,7 +3507,7 @@ spec = do
 
       (showGhcQual $ GHC.localiseName newName) `shouldBe` "fringeOk"
 
-      let res = causeNameClashInExports myFringe newName modName renamed
+      let res = causeNameClashInExports nm myFringe newName modName parsed
       res `shouldBe` False
 
   -- ---------------------------------------

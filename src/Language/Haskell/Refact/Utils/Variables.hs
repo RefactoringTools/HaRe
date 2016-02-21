@@ -1945,15 +1945,13 @@ defines _ _= False
 -- specified identifier.
 definesRdr :: NameMap -> GHC.Name -> GHC.LHsBind GHC.RdrName -> Bool
 #if __GLASGOW_HASKELL__ <= 710
-definesRdr nameMap nin (GHC.L _ (GHC.FunBind (GHC.L ln _pname) _ _ _ _ _)) =
+definesRdr nm  nin (GHC.L _ (GHC.FunBind ln _ _ _ _ _))
 #else
-definesRdr nameMap nin (GHC.L _ (GHC.FunBind (GHC.L ln _pname) _ _ _ _)) =
+definesRdr nm nin (GHC.L _ (GHC.FunBind ln _ _ _ _))
 #endif
-  case Map.lookup ln nameMap of
-    Nothing -> False
-    Just n ->  GHC.nameUnique n == GHC.nameUnique nin
-definesRdr nameMap n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _)) =
-  elem n (map (rdrName2NamePure nameMap) (hsNamessRdr p))
+  = GHC.nameUnique (rdrName2NamePure nm ln) == GHC.nameUnique nin
+definesRdr nm n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
+  = elem n (map (rdrName2NamePure nm) (hsNamessRdr p))
 definesRdr _ _ _= False
 
 -- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
