@@ -50,7 +50,6 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,isQualifiedPN, isFunOrPatName, isTypeSig, isTypeSigDecl
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,isSimplePatDecl
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
-    ,usedWithoutQualR,isUsedInRhs
 
     -- ** Getting
     , findEntity'
@@ -90,6 +89,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     ,nameToString
     ,patToNameRdr
     , pNtoPat
+    , usedWithoutQualR
 
     -- ** Others
     , divideDecls
@@ -270,17 +270,6 @@ hsQualifier pname = do
   let mods = map (GHC.moduleName . GHC.nameModule) names
   return mods
 
-{-
-hsQualifier::PNT                   -- ^ The identifier.
-            ->InScopes             -- ^ The in-scope relation.
-            ->[ModuleName]         -- ^ The result.
-hsQualifier pnt@(PNT pname _ _ ) inScopeRel
-  = let r = filter ( \ ( name, nameSpace, modName, qual) -> pNtoName pname == name
-                   && hasModName pname == Just modName && hasNameSpace pnt == nameSpace
-                   && isJust qual) $ inScopeInfo inScopeRel
-    in  map (\ (_,_,_,qual) -> fromJust qual ) r
--}
-
 -- ---------------------------------------------------------------------
 
 -- |Make a qualified 'GHC.RdrName'
@@ -388,15 +377,6 @@ isExplicitlyExported:: NameMap
 isExplicitlyExported nm pn (GHC.L _ p)
   = findNameInRdr nm pn  (GHC.hsmodExports p)
 
-{-
--- | Return True if an identifier is explicitly exported by the module.
-isExplicitlyExported::GHC.Name           -- ^ The identifier
-                     ->GHC.RenamedSource -- ^ The AST of the module
-                     ->Bool              -- ^ The result
-isExplicitlyExported pn (_g,_imps,exps,_docs)
-  = findEntity pn exps
--}
-
 -- ---------------------------------------------------------------------
 
 -- | Check if the proposed new name will conflict with an existing export
@@ -441,17 +421,39 @@ causeNameClashInExports nm pn newName modName parsed@(GHC.L _ p)
 
 ------------------------------------------------------------------------
 
+-- | Return True if the identifier is unqualifiedly used in the given syntax
+-- phrase. Check in a way that the test can be done in a client module, i.e. not
+-- using the nameUnique
+-- usedWithoutQualR :: GHC.Name -> GHC.ParsedSource -> Bool
+usedWithoutQualR ::  (SYB.Data t,UsedByRhs t) => NameMap -> GHC.Name -> t -> Bool
+usedWithoutQualR nm name t = isJust $ SYB.something (inName) t
+  where
+     inName :: (SYB.Typeable a) => a -> Maybe Bool
+     inName = nameSybQuery checkName
+
+     -- ----------------
+
+     checkName (ln@(GHC.L l pn)::GHC.Located GHC.RdrName)
+        -- Check the OccName match, for use in a client module refactoring
+        | ((GHC.rdrNameOcc pn) == (GHC.nameOccName name)) &&
+        -- . | GHC.nameUnique (rdrName2NamePure nm ln) == GHC.nameUnique name &&
+          -- usedByRhsRdr nm t [name] &&
+          GHC.isUnqual pn     = Just True
+     checkName _ = Nothing
+
+
+{-
 -- | Return True if the identifier is unqualifiedly used in the given
 -- syntax phrase.
 -- usedWithoutQualR :: GHC.Name -> GHC.ParsedSource -> Bool
-usedWithoutQualR ::  (SYB.Data t) => GHC.Name -> t -> Bool
-usedWithoutQualR name parsed = fromMaybe False res
+usedWithoutQualR ::  (SYB.Data t,UsedByRhs t) => NameMap -> GHC.Name -> t -> Bool
+usedWithoutQualR nm name t = fromMaybe False res
   where
      res = SYB.somethingStaged SYB.Parser Nothing
             (Nothing `SYB.mkQ` worker
             `SYB.extQ` workerBind
             `SYB.extQ` workerExpr
-            ) parsed
+            ) t
 
      worker  (pname :: GHC.Located GHC.RdrName) =
        checkName pname
@@ -476,10 +478,11 @@ usedWithoutQualR name parsed = fromMaybe False res
 
      checkName ((GHC.L l pn)::GHC.Located GHC.RdrName)
         | ((GHC.rdrNameOcc pn) == (GHC.nameOccName name)) &&
-          isUsedInRhs (GHC.L l name) parsed &&
+          -- isUsedInRhs (GHC.L l name) t &&
+          usedByRhsRdr nm t [name] &&
           GHC.isUnqual pn     = Just True
      checkName _ = Nothing
-
+-}
 
 -----------------------------------------------------------------------------
 
@@ -677,7 +680,23 @@ instance UsedByRhs (GHC.HsModule GHC.RdrName) where
 -- -------------------------------------
 
 instance (UsedByRhs a) => UsedByRhs (GHC.Located a) where
-  usedByRhsRdr nm (GHC.L _ d) pns = usedByRhsRdr nm d pns
+   usedByRhsRdr nm (GHC.L _ d) pns = usedByRhsRdr nm d pns
+
+-- -------------------------------------
+
+instance (UsedByRhs a) => UsedByRhs (Maybe a) where
+  usedByRhsRdr _  Nothing  _   = False
+  usedByRhsRdr nm (Just a) pns = usedByRhsRdr nm a pns
+
+-- -------------------------------------
+
+instance UsedByRhs [GHC.LIE GHC.RdrName] where
+    usedByRhsRdr nm ds pns = or $ map (\d -> usedByRhsRdr nm d pns) ds
+
+-- -------------------------------------
+
+instance UsedByRhs (GHC.IE GHC.RdrName) where
+   usedByRhsRdr _ _ _ = False
 
 -- -------------------------------------
 
@@ -1019,19 +1038,6 @@ rdrNameFromName useQual newName = do
     then return $ GHC.mkRdrQual mname (GHC.nameOccName newName)
     else return $ GHC.mkRdrUnqual     (GHC.nameOccName newName)
 
--- ---------------------------------------------------------------------
-{-
--- |Take a list of strings and return a list with the longest prefix
--- of spaces removed
-stripLeadingSpaces :: [String] -> [String]
-stripLeadingSpaces xs = map (drop n) xs
-  where
-    n = minimum $ map oneLen xs
-
-    oneLen x = length prefix
-      where
-        (prefix,_) = break (/=' ') x
--}
 -- ---------------------------------------------------------------------
 
 -- | add items to the hiding list of an import declaration which
@@ -2437,33 +2443,6 @@ defineLoc (GHC.L _ name) = GHC.nameSrcLoc name
 useLoc:: (GHC.Located GHC.Name) -> GHC.SrcLoc
 -- useLoc (GHC.L l _) = getGhcLoc l
 useLoc (GHC.L l _) = GHC.srcSpanStart l
-
--- ---------------------------------------------------------------------
-
--- | Return True if the identifier is used in the RHS if a
--- function\/pattern binding.
-{-# DEPRECATED isUsedInRhs "Can't use Renamed in GHC 8" #-}
-isUsedInRhs::(SYB.Data t) => (GHC.Located GHC.Name) -> t -> Bool
-isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
-  where
-    notInLhs = fromMaybe False $ SYB.somethingStaged SYB.Parser Nothing
-            (Nothing `SYB.mkQ` inMatch `SYB.extQ` inDecl) t
-     where
-#if __GLASGOW_HASKELL__ <= 710
-      inMatch ((GHC.FunBind name _ (GHC.MG _matches _ _ _) _ _ _) :: GHC.HsBind GHC.Name)
-#else
-      inMatch ((GHC.FunBind name (GHC.MG _matches _ _ _) _ _ _) :: GHC.HsBind GHC.Name)
-#endif
-         | isJust (find (sameOccurrence pnt) [name]) = Just True
-      inMatch _ = Nothing
-
-#if __GLASGOW_HASKELL__ <= 710
-      inDecl ((GHC.TypeSig is _ _) :: GHC.Sig GHC.Name)
-#else
-      inDecl ((GHC.TypeSig is _) :: GHC.Sig GHC.Name)
-#endif
-        |isJust (find (sameOccurrence pnt) is)   = Just True
-      inDecl _ = Nothing
 
 -- ---------------------------------------------------------------------
 

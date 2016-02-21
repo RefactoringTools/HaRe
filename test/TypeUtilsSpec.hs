@@ -3174,7 +3174,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "usedWithoutQualR" $ do
-    it "Returns True if the identifier is used unqualified" $ do
+    it "returns True if the identifier is used unqualified Dd1" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
@@ -3182,7 +3182,7 @@ spec = do
           nm <- getRefactNameMap
 
           let Just n@name = locToNameRdrPure nm (14,21) parsed
-          let res = usedWithoutQualR name parsed
+          let res = usedWithoutQualR nm name parsed
           return (res,n,name)
 
       ((r,n1,n2),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -3193,7 +3193,26 @@ spec = do
 
     -- ---------------------------------
 
-    it "Returns False if the identifier is used qualified" $ do
+    it "returns True if the identifier is used unqualified Dd3" $ do
+      t <- ct $ parsedFileGhc "./DupDef/Dd3.hs"
+      let
+        comp = do
+          parsed <- getRefactParsed
+          nm <- getRefactNameMap
+
+          let Just n@name = locToNameRdrPure nm (8,1) parsed
+          let res = usedWithoutQualR nm name parsed
+          return (res,n,name)
+
+      ((r,n1,n2),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+      (GHC.getOccString n2) `shouldBe` "mm"
+      (showGhcQual n1) `shouldBe` "DupDef.Dd3.mm"
+      r `shouldBe` True
+
+    -- ---------------------------------
+
+    it "returns False if the identifier is used qualified" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let
         comp = do
@@ -3202,7 +3221,7 @@ spec = do
 
           let Just n@name = locToNameRdrPure nm (36,12) parsed
           let Just (GHC.L _ namep) = locToRdrName (36,12) parsed
-          let res = usedWithoutQualR name parsed
+          let res = usedWithoutQualR nm name parsed
           return (res,namep,name,n)
       ((r,np,n1,n2),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 

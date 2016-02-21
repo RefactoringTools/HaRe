@@ -776,7 +776,8 @@ namesNeedToBeHided clientModule modNames pns = do
 
     needToBeHided :: GHC.ParsedSource -> (GHC.Name,String,[GHC.Name]) -> RefactGhc [GHC.Name]
     needToBeHided parsed (pn,_pnStr,pnsLocal) = do
-      let uwoq = map (\n -> usedWithoutQualR n parsed) pnsLocal
+      nm <- getRefactNameMap
+      let uwoq = map (\n -> usedWithoutQualR nm n parsed) pnsLocal
 
       -- logm $ "needToBeHided:(hsBinds renamed)=" ++ (showGhc (hsBinds renamed))
       logm $ "needToBeHided:(pn,uwoq)=" ++ (showGhc (pn,uwoq))

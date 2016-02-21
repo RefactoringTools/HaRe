@@ -174,7 +174,7 @@ reallyDoDuplicating pn newName _inscopes = do
         doDuplicating'' :: (SYB.Data t) => GHC.Name -> t -> GHC.Located GHC.Name
                        -> RefactGhc t
         doDuplicating'' newNameGhc parentr ln = do
-          logm $ "doDuplicating'':parentr=" ++ SYB.showData SYB.Parser 0 parentr
+          -- logm $ "doDuplicating'':parentr=" ++ SYB.showData SYB.Parser 0 parentr
           r <- hasDeclsSybTransform workerHsDecls workerBind parentr
           logm $ "doDuplicating'':done"
           return r
@@ -241,8 +241,9 @@ refactorInClientMod oldPN serverModName newPName targetModule
 
        let fileName = GM.mpPath targetModule
        renamed <- getRefactRenamed
-       parsed <- getRefactParsed
+       parsed  <- getRefactParsed
 
+       logm $ "refactorInClientMod:got newPName:" ++ showGhcQual newPName
        let modNames = willBeUnQualImportedBy serverModName renamed
        logm ("refactorInClientMod: (modNames)=" ++ (showGhc (modNames))) -- ++AZ++ debug
 
@@ -256,8 +257,11 @@ refactorInClientMod oldPN serverModName newPName targetModule
    where
      needToBeHided :: GHC.Name -> GHC.ParsedSource -> RefactGhc Bool
      needToBeHided name parsed = do
+         -- logDataWithAnns "refactorInClientMod.needToBeHided:parsed" parsed
+         -- logm $ "refactorInClientMod.needToBeHided:name=" ++ showGhcQual name
          nm <- getRefactNameMap
-         let usedUnqual = usedWithoutQualR name parsed
+         logm $ "refactorInClientMod.needToBeHided:nm=" ++ showGhcQual nm
+         let usedUnqual = usedWithoutQualR nm name parsed
          logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhc (usedUnqual))) -- ++AZ++ debug
          return $ usedUnqual || causeNameClashInExports nm oldPN name serverModName parsed
 

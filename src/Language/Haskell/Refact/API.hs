@@ -136,7 +136,7 @@ module Language.Haskell.Refact.API
     ,isQualifiedPN, isFunOrPatName,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,isSimplePatDecl
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
-    ,usedWithoutQualR,isUsedInRhs
+    ,usedWithoutQualR
     ,findNameInRdr
     ,findNamesRdr, findEntity, findEntity'
     ,sameOccurrence
