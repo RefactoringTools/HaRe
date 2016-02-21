@@ -236,7 +236,6 @@ refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
 refactorInClientMod oldPN serverModName newPName targetModule
   = do
        logm ("refactorInClientMod: (oldPN,serverModName,newPName)=" ++ (showGhc (oldPN,serverModName,newPName)))
-       -- void $ activateModule targetModule
        getTargetGhc targetModule
 
        let fileName = GM.mpPath targetModule

@@ -3557,23 +3557,6 @@ spec = do
 
   -- ---------------------------------------
 
-  describe "hsValBinds" $ do
-    it "returns ValBinds for RenamedSource" $ do
-      t <- ct $ parsedFileGhc "./LiftOneLevel/D1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      let vb = hsValBinds renamed
-      (showGhcQual vb) `shouldBe` "LiftOneLevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftOneLevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftOneLevel.D1.sumSquares [] = 0\nLiftOneLevel.D1.main = LiftOneLevel.D1.sumSquares [1 .. 4]"
-
-    -- ---------------------------------
-
-    it "returns ValBinds for (HsGroup Name)" $ do
-      t <- ct $ parsedFileGhc "./LiftOneLevel/D1.hs"
-      let (g,_,_,_) = fromJust $ GHC.tm_renamed_source t
-      let vb = hsValBinds g
-      (showGhcQual vb) `shouldBe` "LiftOneLevel.D1.sumSquares (x : xs)\n  = sq x GHC.Num.+ LiftOneLevel.D1.sumSquares xs\n  where\n      sq x = x GHC.Real.^ pow\n      pow = 2\nLiftOneLevel.D1.sumSquares [] = 0\nLiftOneLevel.D1.main = LiftOneLevel.D1.sumSquares [1 .. 4]"
-
-  -- ---------------------------------------
-
   describe "addItemsToExport" $ do
     it "adds an item to an export entry with no items" $ do
       pendingWith "write these tests"

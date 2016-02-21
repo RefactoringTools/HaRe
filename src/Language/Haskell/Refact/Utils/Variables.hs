@@ -965,7 +965,7 @@ hsVisibleDsRdr nm e t = do
     valbinds :: (GHC.HsValBinds GHC.RdrName) -> RefactGhc DeclaredNames
     valbinds vb@(GHC.ValBindsIn bindsBag sigs)
       | findNameInRdr nm e vb = do
-          fdsb <- mapM (hsVisibleDsRdr nm e) $ hsBinds bindsBag
+          fdsb <- mapM (hsVisibleDsRdr nm e) $ GHC.bagToList bindsBag
           fdss <- mapM (hsVisibleDsRdr nm e) sigs
           return $ mconcat fdss <> mconcat fdsb
     valbinds vb@(GHC.ValBindsOut _binds _sigs)

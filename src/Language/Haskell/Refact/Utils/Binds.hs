@@ -40,9 +40,9 @@
 --------------------------------------------------------------------------------
 module Language.Haskell.Refact.Utils.Binds
    (
-     hsBinds
-   , getValBindSigs
-   , HsValBinds(..)
+   --   hsBinds
+   -- , getValBindSigs
+   -- , HsValBinds(..)
  ) where
 
 import Language.Haskell.GHC.ExactPrint.Utils
