@@ -56,7 +56,6 @@ import Data.Maybe
 import Data.Monoid
 -- import Debug.Trace
 
-import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad

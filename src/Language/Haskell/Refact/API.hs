@@ -230,7 +230,6 @@ module Language.Haskell.Refact.API
 
  ) where
 
-import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
