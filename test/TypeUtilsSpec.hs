@@ -559,49 +559,16 @@ spec = do
 
     it "finds declared HsVar" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let
         comp = do
           parsed <- getRefactParsed
           nm <- getRefactNameMap
           -- logDataWithAnns "parsed:"  parsed
           let rr = hsFreeAndDeclaredRdr nm parsed
-          let r  = hsFreeAndDeclaredPNsOld renamed
           rg <-    hsFreeAndDeclaredPNs    parsed
-          return (r,rg,rr)
+          return (rg,rr)
       -- ((res,resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
-      ((res,resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-
-      -- (showGhcQual _fff) `shouldBe` ""
-
-      -- ---------------------
-      -- Free Vars - renamed
-#if __GLASGOW_HASKELL__ <= 710
-      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst res)) `shouldBe`
-                   "[(Data.Generics.Text.gshow, (-1, -1)),\n "++
-                   "(System.IO.getChar, (-1, -1)), "++
-                   "(System.IO.putStrLn, (-1, -1)),\n "++
-                   "(GHC.Base.return, (-1, -1)), "++
-                   "(GHC.Base.$, (-1, -1)),\n "++
-                   "(GHC.List.head, (-1, -1)), "++
-                   "(GHC.List.zip, (-1, -1)),\n "++
-                   "(GHC.Num.fromInteger, (-1, -1)), "++
-                   "(GHC.Num.*, (-1, -1))]"
-
-      -- Declared Vars - renamed
-      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe`
-                   "[(FreeAndDeclared.Declare.ff, (36, 1)),\n "++
-                   "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
-                   "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
-                   "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
-                   "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
-                   "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++ -- ++AZ++ addition
-                   "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
-                   "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
-                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
-                   "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                   "(FreeAndDeclared.Declare.toplevel, (6, 1))]"
-#endif
+      ((resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       -- ---------------------
       -- Free Vars - parsed
@@ -910,28 +877,30 @@ spec = do
 
   -- ---------------------------------------------------------------------
 
-  describe "hsVisiblePNs" $ do
+  describe "hsVisibleDsRdr" $ do
 
     -- ---------------------------------
 
     it "returns [] if e does not occur in t" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
 
-      let Just tl1  = locToExp (4,13) (4,40) renamed :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
+      let Just tl1  = locToExp (4,13) (4,40) parsed :: (Maybe (GHC.Located (GHC.HsExpr GHC.RdrName)))
       let Just tup = getName "DupDef.Dd1.tup" renamed
       let
         comp = do
-          r <- hsVisiblePNs tup tl1
+          DN r <- hsVisibleDsRdr nm tup tl1
           return r
       ((res),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
-      (showGhcQual $ res) `shouldBe` "[]"
+      (null res) `shouldBe` True
 
     -- -----------------------------------------------------------------
 
     it "returns visible vars if e does occur in t #1" $ do
-      pendingWith "not sure it is still relevant"
+      pendingWith "no longer relevant?"
 {-
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -947,7 +916,7 @@ spec = do
         comp = do
          decls <- liftT $ hsDecls parsed
          let [decl] = definingDeclsRdrNames nm [tup] decls False False
-         r <- hsVisiblePNsRdr nm (rdrName2NamePure nm tl1) decl
+         r <- hsVisibleDsRdr nm (rdrName2NamePure nm tl1) decl
          return (r,decl)
       ((res,d),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
@@ -958,8 +927,8 @@ spec = do
     -- -----------------------------------------------------------------
 
     it "returns visible vars if e does occur in t #2" $ do
-      pendingWith "not sure it is still relevant"
-{-
+      pendingWith "no longer relevant?"
+ {-
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
@@ -972,66 +941,17 @@ spec = do
 
       let
         comp = do
-          r <- hsVisiblePNsRdr nm (rdrName2NamePure nm tl1) rhs
+          r <- hsVisibleDsRdr nm (rdrName2NamePure nm tl1) rhs
           return r
       ((res),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual res) `shouldBe` "[ll]"
 -}
-    -- -----------------------------------------------------------------
+    -- ---------------------------------
 
-{-
-    it "returns visible vars if e does occur in t #3" $ do
-      (t,toks) <- ct $ parsedFileGhc "./TypeUtils/VisiblePNs.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
-      (SYB.showData SYB.Renamer 0 renamed) `shouldBe` ""
-
-      let
-        comp = do
-          renamed <- getRefactRenamed
-          let Just tl1  = locToName (41,11) renamed  --  :: (Maybe (GHC.Located (GHC.HsExpr GHC.Name)))
-          r <- hsVisiblePNs tl1 renamed
-          -- let r = hsVisiblePNsGhc tl1 renamed
-          let fvs = map (\b -> (showGhcQual b,getFreeVars [b])) (hsBinds renamed)
-          let dvs = getDeclaredVars $ hsBinds renamed
-          return (tl1,r,fvs,dvs)
-      -- ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialState { rsModule = initRefactModule [] t }
-      ((tl,res,_f,d),_s) <- runRefactGhc comp $ initialLogOnState { rsModule = initRefactModule [] t }
-
-      (showGhcQual tl) `shouldBe` "modu"
-      -- (showGhcQual f) `shouldBe` ""
-      (showGhcQual d) `shouldBe`
-           "[TypeUtils.VisiblePNs.parsedFileGhc,\n"++
-           " TypeUtils.VisiblePNs.parsedFileBGhc,\n"++
-           " TypeUtils.VisiblePNs.runRefactGhcState,"++
-           " TypeUtils.VisiblePNs.zz,\n"++
-           " TypeUtils.VisiblePNs.yy,"++
-           " TypeUtils.VisiblePNs.xx,\n"++
-           " TypeUtils.VisiblePNs.ww,"++
-           " TypeUtils.VisiblePNs.spec,\n"++
-           " TypeUtils.VisiblePNs.main]"
-      (showGhcQual res) `shouldBe`
-           "[TypeUtils.VisiblePNs.parsedFileGhc,\n"++
-           " TypeUtils.VisiblePNs.parsedFileBGhc,\n"++
-           " TypeUtils.VisiblePNs.runRefactGhcState,"++
-           " TypeUtils.VisiblePNs.zz,\n"++
-           " TypeUtils.VisiblePNs.yy,"++
-           " TypeUtils.VisiblePNs.xx,\n"++
-           " TypeUtils.VisiblePNs.ww,"++
-           " TypeUtils.VisiblePNs.spec,\n"++
-           " TypeUtils.VisiblePNs.main,"++
-           " modu,"++
-           " t,"++
-           " _toks,"++
-           " expr]"
--}
-
-  -- ---------------------------------------------------------------------
-
-  describe "hsVisibleDsRdr" $ do
     it "Rdr:finds function arguments visible in RHS 1" $ do
-      pendingWith "not sure it is still relevant"
-{-
+      pendingWith "no longer relevant?"
+  {-
       t <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -1056,8 +976,8 @@ spec = do
     -- -----------------------------------
 
     it "Rdr:finds function arguments visible in RHS 2" $ do
-      pendingWith "not sure it is still relevant"
-{-
+      pendingWith "no longer relevant?"
+   {-
       t <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -1080,7 +1000,6 @@ spec = do
 
       (show fds) `shouldBe` "DN [x]"
 -}
-
     -- -----------------------------------
 
     it "Rdr:finds visible vars inside a function" $ do

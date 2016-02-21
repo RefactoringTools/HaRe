@@ -116,22 +116,19 @@ module Language.Haskell.Refact.API
     , isClassName
     , isInstanceName
     , hsTypeVbls
-    , hsNamess, hsNamessRdr
+    , hsNamessRdr
     , hsBinds
     , HsValBinds(..)
     , isDeclaredInRdr
     , FreeNames(..),DeclaredNames(..)
-    , hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
+    , hsFreeAndDeclaredNameStrings
     , hsFreeAndDeclaredRdr
     , hsFreeAndDeclaredPNs
-    , getDeclaredTypes
-    , getFvs, getFreeVars -- These two should replace hsFreeAndDeclaredPNs
-    , getDeclaredVars, getDeclaredVarsRdr
+    , getDeclaredVarsRdr
 
-    , hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
     , hsVisibleNamesRdr
     , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
-    , hsVisibleDs, hsVisibleDsRdr
+    , hsVisibleDsRdr
     , rdrName2Name, rdrName2NamePure
 
     -- *** Property checking
@@ -141,12 +138,11 @@ module Language.Haskell.Refact.API
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
     ,usedWithoutQualR,isUsedInRhs
     ,findNameInRdr
-    ,findPNT,findPN
-    ,findPNs, findNamesRdr, findEntity, findEntity'
+    ,findNamesRdr, findEntity, findEntity'
     ,sameOccurrence
     , findIdForName
     , getTypeForName
-    , definesTypeSig,definesTypeSigRdr,definesSigDRdr
+    , definesTypeSigRdr,definesSigDRdr
     , sameBindRdr
     , UsedByRhs(..)
 

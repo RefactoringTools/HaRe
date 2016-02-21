@@ -19,17 +19,15 @@ module Language.Haskell.Refact.Utils.Variables
   , isInstanceName
   , isDeclaredInRdr
   , FreeNames(..),DeclaredNames(..)
-  , hsFreeAndDeclaredPNsOld
   , hsFreeAndDeclaredRdr
   , hsFreeAndDeclaredNameStrings
   , hsFreeAndDeclaredPNs
   -- , hsFreeAndDeclaredGhc
-  , getDeclaredTypes
   , getDeclaredTypesRdr
-  , getFvs, getFreeVars, getDeclaredVars, getDeclaredVarsRdr
-  , hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames, hsVisibleNamesRdr
+  , getDeclaredVarsRdr
+  , hsVisibleNamesRdr
   , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
-  , hsVisibleDs, hsVisibleDsRdr
+  , hsVisibleDsRdr
   , rdrName2Name, rdrName2NamePure
   , eqRdrNamePure
   -- , rdrName2Name'
@@ -38,18 +36,15 @@ module Language.Haskell.Refact.Utils.Variables
   , FindEntity(..)
   , findNameInRdr
   , findNamesRdr
-  , findPNT,findPN
-  , findPNs
   , sameOccurrence
   , definedPNsRdr,definedNamesRdr
   , definingDeclsRdrNames,definingDeclsRdrNames',definingSigsRdrNames
   , definingTyClDeclsNames
-  , defines
   , definesRdr,definesDeclRdr
-  , definesTypeSig,definesTypeSigRdr,definesSigDRdr
+  , definesTypeSigRdr,definesSigDRdr
 
   , hsTypeVbls
-  , hsNamess, hsNamessRdr
+  , hsNamessRdr
   , findLRdrName
   , locToNameRdr, locToNameRdrPure
   , locToRdrName
@@ -126,19 +121,6 @@ instance FindEntity (GHC.Located GHC.RdrName) where
         | sameOccurrence n ln = Just True
         | otherwise = Nothing
 
--- ---------------------------------------------------------------------
-{-
--- This is not precise enough, RdrNames are ambiguous
-instance FindEntity GHC.RdrName where
-
-  findEntity n t = fromMaybe False res
-   where
-    res = SYB.something (Nothing `SYB.mkQ` worker) t
-
-    worker (name::GHC.RdrName)
-      | n == name = Just True
-    worker _ = Nothing
--}
 -- ---------------------------------------------------------------------
 
 -- TODO: should the location be matched too in this case?
@@ -250,19 +232,6 @@ isInstanceName _n = error "undefined isInstanceName"
 
 
 -- ---------------------------------------------------------------------
-{-
--- | Collect the identifiers (in PName format) in a given syntax phrase.
-
-{-# DEPRECATED hsPNs "Can't use Renamed in GHC 8" #-}
--- TODO:AZ pretty sure this is not doing what we want
-hsPNs::(SYB.Data t)=> t -> [PName]
-hsPNs t = (nub.ghead "hsPNs") res
-  where
-     res = SYB.everythingStaged SYB.Parser (++) [] ([] `SYB.mkQ` inPnt) t
-
-     inPnt (pname :: GHC.RdrName) = return [(PN pname)]
--}
--- ---------------------------------------------------------------------
 -- | Collect those type variables that are declared in a given syntax phrase t. In
 -- the returned result, the first list is always be empty.
 hsTypeVbls::(SYB.Data t) => t -> ([GHC.RdrName],[GHC.RdrName])
@@ -274,13 +243,6 @@ hsTypeVbls =ghead "hsTypeVbls".(applyTU (stop_tdTU (failTU `adhocTU` pnt)))
 
 
 -------------------------------------------------------------------------------
-
-{-
--- ++AZ++ see if we can get away with one only..
-{-# DEPRECATED isDeclaredIn "Can't use Renamed in GHC 8" #-}
-isDeclaredIn :: (HsValBinds t GHC.Name) => GHC.Name -> t -> Bool
-isDeclaredIn name t = nonEmptyList $ definingDeclsNames [name] (hsBinds t) False True
--}
 
 isDeclaredInRdr :: NameMap -> GHC.Name -> [GHC.LHsDecl GHC.RdrName] -> Bool
 isDeclaredInRdr nm name decls = nonEmptyList $ definingDeclsRdrNames nm [name] decls False True
@@ -590,7 +552,7 @@ hsFreeAndDeclaredRdr' nm t = do
             return (foldr unionF mempty (map fst fds),
                     foldr unionD mempty (map snd fds))
 
-
+{-
 -- ---------------------------------------------------------------------
 -- | Collect the free and declared variables (in the GHC.Name format)
 -- in a given syntax phrase t. In the result, the first list contains
@@ -745,7 +707,7 @@ hsFreeAndDeclaredPNs' t = do
           hsFreeAndDeclaredList l=do fds<-mapM hsFreeAndDeclaredPNs' l
                                      return (foldr union [] (map fst fds),
                                              foldr union [] (map snd fds))
-
+-}
 
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
@@ -1576,7 +1538,9 @@ getDeclaredTypesRdr d@(GHC.L _ (GHC.TyClD decl)) = do
         -- msn = getDeclaredVars $ hsBinds meths
 getDeclaredTypesRdr _ = return []
 
+{-
 -- |Get the names of all types declared in the given declaration
+{-# DEPRECATED getDeclaredTypes "Can't use Renamed in GHC 8, rather use findNameInRdr" #-}
 getDeclaredTypes :: GHC.LTyClDecl GHC.Name -> [GHC.Name]
 #if __GLASGOW_HASKELL__ <= 710
 getDeclaredTypes (GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ (GHC.L _ n) _ _))) = [n]
@@ -1618,13 +1582,14 @@ getDeclaredTypes (GHC.L _ (GHC.ClassDecl _ (GHC.L _ n) _vars _fds sigs meths _at
 
     ssn = concatMap getLSig sigs
     msn = getDeclaredVars $ hsBinds meths
-
+-}
 -- ---------------------------------------------------------------------
-
+{-
 -- | Return True if the identifier occurs in the given syntax phrase.
 findPNT::(SYB.Data t) => GHC.Located GHC.Name -> t -> Bool
 findPNT (GHC.L _ pn) = findPN pn
-
+-}
+{-
 -- | Return True if the identifier occurs in the given syntax phrase.
 {-# DEPRECATED findPN "Can't use Renamed in GHC 8, rather use findNameInRdr" #-}
 findPN::(SYB.Data t)=> GHC.Name -> t -> Bool
@@ -1646,7 +1611,7 @@ findPNs pns
         worker (n::GHC.Name)
            | elem (GHC.nameUnique n) uns = Just True
         worker _ = Nothing
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Return True if the specified Name ocuurs in the given syntax phrase.
@@ -1812,22 +1777,18 @@ definingTyClDeclsNames nm pns t = defining t
 #else
       defines' decl'@(GHC.L _ (GHC.FamDecl (GHC.FamilyDecl _ pname _ _ _)))
 #endif
-        -- | isJust (find (==(pname)) pns) = [decl']
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
       defines' decl'@(GHC.L _ (GHC.SynDecl pname _ _ _))
-        -- | isJust (find (==(pname)) pns) = [decl']
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
       defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _))
-        -- | isJust (find (==(pname)) pns) = [decl']
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
       defines' decl'@(GHC.L _ (GHC.ClassDecl _ pname _ _ _ _ _ _ _ _))
-        -- | isJust (find (==(pname)) pns) = [decl']
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
@@ -1837,7 +1798,7 @@ definingTyClDeclsNames nm pns t = defining t
       uns = map (\n -> GHC.nameUnique n) pns
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Return True if the function\/pattern binding defines the
 -- specified identifier.
 {-# DEPRECATED defines "Can't use Renamed in GHC 8" #-}
@@ -1851,7 +1812,7 @@ defines n (GHC.L _ (GHC.FunBind (GHC.L _ pname) _ _ _ _))
 defines n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
  = elem (GHC.nameUnique n) (map GHC.nameUnique $ hsNamess p)
 defines _ _= False
-
+-}
 -- | Return True if the function\/pattern binding defines the
 -- specified identifier.
 definesRdr :: NameMap -> GHC.Name -> GHC.LHsBind GHC.RdrName -> Bool
@@ -1885,6 +1846,7 @@ definesP _ _= False
 
 -- ---------------------------------------------------------------------
 
+{-
 -- | Return True if the declaration defines the type signature of the
 -- specified identifier.
 {-# DEPRECATED definesTypeSig "Can't use Renamed in GHC 8" #-}
@@ -1896,6 +1858,7 @@ definesTypeSig pn (GHC.L _ (GHC.TypeSig names _typ))
 #endif
   = elem (GHC.nameUnique pn) $ map (\(GHC.L _ n)->GHC.nameUnique n) names
 definesTypeSig _  _ = False
+-}
 
 -- | Return True if the declaration defines the type signature of the
 -- specified identifier.
@@ -1915,7 +1878,7 @@ definesSigDRdr nameMap nin (GHC.L _ (GHC.SigD d)) = definesTypeSigRdr nameMap ni
 definesSigDRdr _ _ _ = False
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Get all the names in the given syntax element
 {-# DEPRECATED hsNamess "Can't use Renamed in GHC 8" #-}
 hsNamess :: (SYB.Data t) => t -> [GHC.Name]
@@ -1924,7 +1887,7 @@ hsNamess t = nub $ concat res
      res = SYB.everythingStaged SYB.Renamer (++) [] ([] `SYB.mkQ` inName) t
 
      inName (pname :: GHC.Name) = return [pname]
-
+-}
 -- |Get all the names in the given syntax element
 hsNamessRdr :: (SYB.Data t) => t -> [GHC.Located GHC.RdrName]
 hsNamessRdr t = nub $ fromMaybe [] r
@@ -1963,9 +1926,10 @@ getDeclaredVarsRdr nm bs = concatMap vars bs
 #else
       vars (GHC.L _ (GHC.ValD (GHC.FunBind ln _ _ _ _fvs)))   = [rdrName2NamePure nm ln]
 #endif
-      vars (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) = (hsNamess p)
+      vars (GHC.L _ (GHC.ValD (GHC.PatBind p _rhs _ty _fvs _))) = (map (rdrName2NamePure nm) $ hsNamessRdr p)
       vars _ = []
 
+{-
 {-# DEPRECATED getDeclaredVars "Can't use Renamed in GHC 8" #-}
 getDeclaredVars :: [GHC.LHsBind GHC.Name] -> [GHC.Name]
 getDeclaredVars bs = concatMap vars bs
@@ -1978,8 +1942,9 @@ getDeclaredVars bs = concatMap vars bs
 #endif
       vars (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))            = (hsNamess p)
       vars _ = []
-
+-}
 -- ---------------------------------------------------------------------
+{-
 -- |Experiment with GHC fvs stuff
 {-# DEPRECATED getFvs "Can't use Renamed in GHC 8" #-}
 getFvs :: [GHC.LHsBind GHC.Name] -> [([GHC.Name], GHC.NameSet)]
@@ -2006,9 +1971,9 @@ getFreeVars bs = concatMap binds bs
 #endif
       binds (GHC.L _ (GHC.PatBind _p _rhs _ty fvs _))            = (GHC.nameSetElems fvs)
       binds _ = []
-
+-}
 ------------------------------------------------------------------------
-
+{-
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
@@ -2017,8 +1982,9 @@ hsVisiblePNs :: (FindEntity e,HsValBinds t GHC.Name,GHC.Outputable e)
 hsVisiblePNs e t = do
   (DN d) <- hsVisibleDs e t
   return d
-
+-}
 --------------------------------------------------------------------------------
+{-
 -- | Same as `hsVisiblePNs' except that the returned identifiers are
 -- in String format.
 {-# DEPRECATED hsVisibleNames "Can't use Renamed in GHC 8" #-}
@@ -2027,7 +1993,7 @@ hsVisibleNames:: (FindEntity t1,HsValBinds t2 GHC.Name,GHC.Outputable t1)
 hsVisibleNames e t = do
     d <- hsVisiblePNs e t
     return ((nub . map showGhc) d)
-
+-}
 --------------------------------------------------------------------------------
 -- | Same as `hsVisiblePNsRdr' except that the returned identifiers are
 -- in String format.
@@ -2040,6 +2006,7 @@ hsVisibleNamesRdr e t = do
 
 ------------------------------------------------------------------------
 
+{-
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
@@ -2049,7 +2016,7 @@ hsVisiblePNsRdr :: (SYB.Data t)
 hsVisiblePNsRdr nm e t = do
   (DN d) <- hsVisibleDsRdr nm e t
   return d
-
+-}
 ------------------------------------------------------------------------
 
 -- | Given a 'Name' n and a syntax phrase t, if n occurs in t, then return those
@@ -2859,7 +2826,7 @@ hsVisibleDsRdr nm e t = do
 -}
 
 ------------------------------------------------------------------------
-
+{-
 -- | Given syntax phrases e and t, if e occurs in t, then return those
 -- variables which are declared in t and accessible to e, otherwise
 -- return [].
@@ -3139,7 +3106,7 @@ hsVisibleDs e t = do
     -- -----------------------
 
     err = error $ "hsVisibleDs:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |`hsFDsFromInsideRdr` is different from `hsFreeAndDeclaredPNs` in

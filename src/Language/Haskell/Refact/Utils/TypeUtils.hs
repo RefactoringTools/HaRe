@@ -57,7 +57,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , findIdForName
     , getTypeForName
 
-    ,defines, definesTypeSig,definesTypeSigRdr
+    ,definesTypeSigRdr
     ,sameBindRdr
     ,UsedByRhs(..)
 
@@ -282,16 +282,6 @@ hsQualifier pnt@(PNT pname _ _ ) inScopeRel
 -}
 
 -- ---------------------------------------------------------------------
-{-
--- TODO: get rid of this
-{-# DEPRECATED defaultName "Can't use Renamed in GHC 8" #-}
-defaultName :: GHC.Name
-defaultName = n
-  where
-    un = GHC.mkUnique 'H' 0 -- H for HaRe :)
-    n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc "nothing")
--}
--- ---------------------------------------------------------------------
 
 -- |Make a qualified 'GHC.RdrName'
 mkQualifiedRdrName :: GHC.ModuleName -> String -> GHC.RdrName
@@ -441,38 +431,6 @@ causeNameClashInExports nm pn newName modName parsed@(GHC.L _ p)
       in isJust $ find (\(GHC.L _ (GHC.ImportDecl _ (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h))
                                 -> modName1 == modName' && (not isQualified)) (GHC.hsmodImports p)
 
-{-
--- | Check if the proposed new name will conflict with an existing export
-{-# DEPRECATED causeNameClashInExports "Can't use Renamed in GHC 8" #-}
-causeNameClashInExports::  GHC.Name          -- ^ The original name
-                        -> GHC.Name          -- ^ The new name
-                        -> GHC.ModuleName    -- ^ The identity of the module
-                        -> GHC.RenamedSource -- ^ The AST of the module
-                        -> Bool              -- ^ The result
-
--- Note that in the abstract representation of exps, there is no qualified entities.
-causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
-  = let exps = fromMaybe [] maybeExps
-        varExps = filter isImpVar exps
-        -- TODO: make withoutQual part of the API
-        withoutQual n = showGhc $ GHC.localiseName n
-        modNames=nub (concatMap (\(GHC.L _ (GHC.IEVar (GHC.L _ x)))->if withoutQual x== withoutQual newName
-                                                        then [GHC.moduleName $ GHC.nameModule x]
-                                                        else []) varExps)
-        res = (isExplicitlyExported pn renamed) &&
-               ( any (modIsUnQualifedImported renamed) modNames
-                 || elem modName modNames)
-    in res
- where
-    isImpVar (GHC.L _ x) = case x of
-      GHC.IEVar _ -> True
-      _           -> False
-
-    modIsUnQualifedImported _mod' modName'
-     =let
-      in isJust $ find (\(GHC.L _ (GHC.ImportDecl _ (GHC.L _ modName1) _qualify _source _safe isQualified _isImplicit _as _h))
-                                -> modName1 == modName' && (not isQualified)) imps
--}
 -- Original seems to be
 --   1. pick up any module names in the export list with same unQual
      --   part as the new name
@@ -481,51 +439,6 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
 --        or belongs to the current module
 --       then it will cause a clash
 
--- ---------------------------------------------------------------------
-{-
--- | Given a RenamedSource Located name, return the equivalent ParsedSource
--- part.
-{-# DEPRECATED getParsedForRenamedLocated "Can't use Renamed in GHC 8" #-}
-getParsedForRenamedLocated :: ({- SYB.Typeable a, SYB.Data a, -} SYB.Typeable b {- , SYB.Data b -})
-  => GHC.Located a -> RefactGhc (GHC.Located b)
-getParsedForRenamedLocated (GHC.L l _n) = do
-  parsed <- getRefactParsed
-  let
-    mres = res parsed
-    r = case mres of
-      Just rr -> rr
-      Nothing -> error $ "HaRe error: could not find Parsed Location for"
-                 ++ (showGhc l)
-
-    res t = SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` lname) t
-
-    lname :: (GHC.Located b) -> (Maybe (GHC.Located b))
-    lname p@(GHC.L lp _)
-       | lp == l = Just p
-    lname _ = Nothing
-
-  return r
--}
-{-
--- | Given a RenamedSource Located name, return the equivalent
--- ParsedSource part.
-{-# DEPRECATED getParsedForRenamedName "Can't use Renamed in GHC 8" #-}
-getParsedForRenamedName :: GHC.ParsedSource -> GHC.Located GHC.Name -> GHC.Located GHC.RdrName
-getParsedForRenamedName parsed n@(GHC.L l _n) = r
-  where
-    mres = res parsed
-    r = case mres of
-      Just rr -> rr
-      Nothing -> error $ "HaRe error: could not find Parsed LPat for"
-                 ++ (SYB.showData SYB.Renamer 0 n)
-
-    res t = SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` lname) t
-
-    lname :: (GHC.Located GHC.RdrName) -> (Maybe (GHC.Located GHC.RdrName))
-    lname p@(GHC.L lp _)
-       | lp == l = Just p
-    lname _ = Nothing
--}
 ------------------------------------------------------------------------
 
 -- | Return True if the identifier is unqualifiedly used in the given
@@ -2553,36 +2466,6 @@ isUsedInRhs pnt t = useLoc pnt /= defineLoc pnt  && not (notInLhs)
       inDecl _ = Nothing
 
 -- ---------------------------------------------------------------------
-{-
--- | Find all occurrences with location of the given name
-{-# DEPRECATED findAllNameOccurences "Can't use Renamed in GHC 8" #-}
-findAllNameOccurences :: (SYB.Data t) => GHC.Name -> t -> [(GHC.Located GHC.Name)]
-findAllNameOccurences  name t
-  = res
-  -- ++AZ++:TODO: should use nameSybQuery?
-       where
-        res = SYB.everythingStaged SYB.Renamer (++) []
-            ([] `SYB.mkQ` worker
-#if __GLASGOW_HASKELL__ <= 710
-             `SYB.extQ` workerBind `SYB.extQ` workerExpr
-#endif
-            ) t
-
-        worker (ln@(GHC.L _l n) :: (GHC.Located GHC.Name))
-          | GHC.nameUnique n == GHC.nameUnique name = [ln]
-        worker _ = []
-
-#if __GLASGOW_HASKELL__ <= 710
-        workerBind (GHC.L l (GHC.VarPat n) :: (GHC.Located (GHC.Pat GHC.Name)))
-          | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
-        workerBind _ = []
-
-        workerExpr (GHC.L l (GHC.HsVar n) :: (GHC.Located (GHC.HsExpr GHC.Name)))
-          | GHC.nameUnique n == GHC.nameUnique name  = [(GHC.L l n)]
-        workerExpr _ = []
-#endif
--}
--- ---------------------------------------------------------------------
 
 -- | Return the type checked `GHC.Id` corresponding to the given
 -- `GHC.Name`
@@ -2639,28 +2522,6 @@ locToExp beginPos endPos t = res
 
 --------------------------------------------------------------------------------
 
-{-
-{-# DEPRECATED ghcToPN "Can't use Renamed in GHC 8" #-}
-ghcToPN :: GHC.RdrName -> PName
-ghcToPN rdr = PN rdr
-
-{-# DEPRECATED lghcToPN "Can't use Renamed in GHC 8" #-}
-lghcToPN :: GHC.Located GHC.RdrName -> PName
-lghcToPN (GHC.L _ rdr) = PN rdr
--}
-{-
--- | If an expression consists of only one identifier then return this
--- identifier in the GHC.Name format, otherwise return the default Name
-{-# DEPRECATED expToName "Can't use Renamed in GHC 8" #-}
-expToName:: GHC.LHsExpr GHC.Name -> GHC.Name -- TODO: Use a Maybe, rather than defaultName
-#if __GLASGOW_HASKELL__ <= 710
-expToName (GHC.L _ (GHC.HsVar pnt)) = pnt
-#else
-expToName (GHC.L _ (GHC.HsVar (GHC.L _ pnt))) = pnt
-#endif
-expToName (GHC.L _ (GHC.HsPar e))   = expToName e
-expToName _ = defaultName
--}
 -- | If an expression consists of only one identifier then return this
 -- identifier in the GHC.Name format, otherwise return the default Name
 expToNameRdr :: NameMap -> GHC.LHsExpr GHC.RdrName -> Maybe GHC.Name
@@ -2686,18 +2547,6 @@ patToNameRdr nm (GHC.L l (GHC.VarPat n)) = Just (rdrName2NamePure nm n)
 #endif
 patToNameRdr _ _ = Nothing
 
-{-
--- | If a pattern consists of only one identifier then return this
--- identifier, otherwise return Nothing
-{-# DEPRECATED patToPNT "Can't use Renamed in GHC 8" #-}
-patToPNT :: GHC.LPat GHC.Name -> Maybe GHC.Name
-#if __GLASGOW_HASKELL__ <= 710
-patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
-#else
-patToPNT (GHC.L _ (GHC.VarPat (GHC.L _ n))) = Just n
-#endif
-patToPNT _ = Nothing
--}
 -- | Compose a pattern from a pName.
 {-# DEPRECATED pNtoPat "Can't use Renamed in GHC 8" #-}
 pNtoPat :: name -> GHC.Pat name
