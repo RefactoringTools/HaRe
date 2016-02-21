@@ -2570,26 +2570,26 @@ hsVisibleDsRdr nm e t = do
     lpat (GHC.L _ (GHC.ConPatIn n det)) = do
       -- logm $ "hsFreeAndDeclaredGhc.lpat.ConPatIn:details=" ++ (SYB.showData SYB.Renamer 0 det)
       (DN d) <- details det
-      return $ (FN [rdrName2NamePure nm n],DN d) <> (FN [],DN f)
+      return $ (DN (rdrName2NamePure nm n:d))
     -- lpat (GHC.ConPatOut )
-    lpat (GHC.L _ (GHC.ViewPat e p _)) = do
-      fde <- hsFreeAndDeclaredRdr' nm e
+    lpat (GHC.L _ (GHC.ViewPat ex p _)) = do
+      fde <- hsVisibleDsRdr nm e ex
       fdp <- lpat p
       return $ fde <> fdp
     -- lpat (GHC.QuasiQuotePat _)
-    lpat (GHC.L _ (GHC.LitPat _)) = return emptyFD
+    lpat (GHC.L _ (GHC.LitPat _)) = return (DN [])
 #if __GLASGOW_HASKELL__ <= 710
-    lpat (GHC.L _ (GHC.NPat _ _ _)) = return emptyFD
-    lpat (GHC.L _ (GHC.NPlusKPat n _ _ _)) = return (FN [],DN [rdrName2NamePure nm n])
+    lpat (GHC.L _ (GHC.NPat _ _ _)) = return (DN [])
+    lpat (GHC.L _ (GHC.NPlusKPat n _ _ _)) = return (DN [rdrName2NamePure nm n])
 #else
-    lpat (GHC.L _ (GHC.NPat _ _ _ _)) = return emptyFD
-    lpat (GHC.L _ (GHC.NPlusKPat (GHC.L _ n) _ _ _ _ _)) = return (FN [],DN [n])
+    lpat (GHC.L _ (GHC.NPat _ _ _ _)) = return (DN [])
+    lpat (GHC.L _ (GHC.NPlusKPat (GHC.L _ n) _ _ _ _ _)) = return (DN [n])
 #endif
     lpat (GHC.L _ _p@(GHC.SigPatIn p b)) = do
-      fdp <- lpat p
-      (FN fb,DN _db) <- hsFreeAndDeclaredRdr' nm b
+      dp <- lpat p
+      db <- hsVisibleDsRdr nm e b
       -- error $ "lpat.SigPatIn:(b,fb,db)" ++ showGhc (b,fb,db)
-      return $ fdp <> (FN fb,DN [])
+      return $ dp <> db
     lpat (GHC.L _ (GHC.SigPatOut p _)) = lpat p
     lpat (GHC.L l (GHC.CoPat _ p _)) = lpat (GHC.L l p)
 
