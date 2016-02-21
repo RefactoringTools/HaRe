@@ -3642,14 +3642,6 @@ spec = do
 
   -- ---------------------------------------
 
-  describe "stripLeadingSpaces" $ do
-    it "Strips the longest common space prefix from a list of Strings" $ do
-      (stripLeadingSpaces []) `shouldBe` []
-      (stripLeadingSpaces ["a"," b","  c"]) `shouldBe` ["a"," b","  c"]
-      (stripLeadingSpaces [" a"," b","  c"]) `shouldBe` ["a","b"," c"]
-
-  -- ---------------------------------------
-
   describe "unspace" $ do
     it "Reduces all sequences of more than one space to a single one" $ do
       (unspace []) `shouldBe` []

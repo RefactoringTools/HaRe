@@ -86,10 +86,10 @@ module Language.Haskell.Refact.Utils.TypeUtils
     , rmQualifier, qualifyToplevelName, renamePN, autoRenameLocalVar
 
     -- ** Identifiers, expressions, patterns and declarations
-    ,ghcToPN,lghcToPN, expToName, expToNameRdr
+    , expToNameRdr
     ,nameToString
     ,patToNameRdr
-    , patToPNT, pNtoPat
+    , pNtoPat
 
     -- ** Others
     , divideDecls
@@ -106,10 +106,7 @@ module Language.Haskell.Refact.Utils.TypeUtils
     -- ,removeFromInts, getDataName, checkTypes, getPNs, getPN, getPNPats, mapASTOverTAST
 
     -- * Debug stuff
-    , getParsedForRenamedName
-    , getParsedForRenamedLocated
     , rdrNameFromName
-    , stripLeadingSpaces
  ) where
 
 import Control.Monad.State
@@ -285,7 +282,7 @@ hsQualifier pnt@(PNT pname _ _ ) inScopeRel
 -}
 
 -- ---------------------------------------------------------------------
-
+{-
 -- TODO: get rid of this
 {-# DEPRECATED defaultName "Can't use Renamed in GHC 8" #-}
 defaultName :: GHC.Name
@@ -293,7 +290,7 @@ defaultName = n
   where
     un = GHC.mkUnique 'H' 0 -- H for HaRe :)
     n = GHC.localiseName $ GHC.mkSystemName un (GHC.mkVarOcc "nothing")
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |Make a qualified 'GHC.RdrName'
@@ -485,7 +482,7 @@ causeNameClashInExports pn newName modName renamed@(_g,imps,maybeExps,_doc)
 --       then it will cause a clash
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Given a RenamedSource Located name, return the equivalent ParsedSource
 -- part.
 {-# DEPRECATED getParsedForRenamedLocated "Can't use Renamed in GHC 8" #-}
@@ -508,8 +505,8 @@ getParsedForRenamedLocated (GHC.L l _n) = do
     lname _ = Nothing
 
   return r
-
-
+-}
+{-
 -- | Given a RenamedSource Located name, return the equivalent
 -- ParsedSource part.
 {-# DEPRECATED getParsedForRenamedName "Can't use Renamed in GHC 8" #-}
@@ -528,7 +525,7 @@ getParsedForRenamedName parsed n@(GHC.L l _n) = r
     lname p@(GHC.L lp _)
        | lp == l = Just p
     lname _ = Nothing
-
+-}
 ------------------------------------------------------------------------
 
 -- | Return True if the identifier is unqualifiedly used in the given
@@ -1110,7 +1107,7 @@ rdrNameFromName useQual newName = do
     else return $ GHC.mkRdrUnqual     (GHC.nameOccName newName)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Take a list of strings and return a list with the longest prefix
 -- of spaces removed
 stripLeadingSpaces :: [String] -> [String]
@@ -1121,7 +1118,7 @@ stripLeadingSpaces xs = map (drop n) xs
     oneLen x = length prefix
       where
         (prefix,_) = break (/=' ') x
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | add items to the hiding list of an import declaration which
@@ -2642,7 +2639,7 @@ locToExp beginPos endPos t = res
 
 --------------------------------------------------------------------------------
 
-
+{-
 {-# DEPRECATED ghcToPN "Can't use Renamed in GHC 8" #-}
 ghcToPN :: GHC.RdrName -> PName
 ghcToPN rdr = PN rdr
@@ -2650,8 +2647,8 @@ ghcToPN rdr = PN rdr
 {-# DEPRECATED lghcToPN "Can't use Renamed in GHC 8" #-}
 lghcToPN :: GHC.Located GHC.RdrName -> PName
 lghcToPN (GHC.L _ rdr) = PN rdr
-
-
+-}
+{-
 -- | If an expression consists of only one identifier then return this
 -- identifier in the GHC.Name format, otherwise return the default Name
 {-# DEPRECATED expToName "Can't use Renamed in GHC 8" #-}
@@ -2663,7 +2660,7 @@ expToName (GHC.L _ (GHC.HsVar (GHC.L _ pnt))) = pnt
 #endif
 expToName (GHC.L _ (GHC.HsPar e))   = expToName e
 expToName _ = defaultName
-
+-}
 -- | If an expression consists of only one identifier then return this
 -- identifier in the GHC.Name format, otherwise return the default Name
 expToNameRdr :: NameMap -> GHC.LHsExpr GHC.RdrName -> Maybe GHC.Name
@@ -2689,6 +2686,7 @@ patToNameRdr nm (GHC.L l (GHC.VarPat n)) = Just (rdrName2NamePure nm n)
 #endif
 patToNameRdr _ _ = Nothing
 
+{-
 -- | If a pattern consists of only one identifier then return this
 -- identifier, otherwise return Nothing
 {-# DEPRECATED patToPNT "Can't use Renamed in GHC 8" #-}
@@ -2699,7 +2697,7 @@ patToPNT (GHC.L _ (GHC.VarPat n)) = Just n
 patToPNT (GHC.L _ (GHC.VarPat (GHC.L _ n))) = Just n
 #endif
 patToPNT _ = Nothing
-
+-}
 -- | Compose a pattern from a pName.
 {-# DEPRECATED pNtoPat "Can't use Renamed in GHC 8" #-}
 pNtoPat :: name -> GHC.Pat name

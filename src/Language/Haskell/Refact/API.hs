@@ -175,10 +175,10 @@ module Language.Haskell.Refact.API
     ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
 
     -- *** Identifiers, expressions, patterns and declarations
-    , ghcToPN,lghcToPN, expToName, expToNameRdr
+    , expToNameRdr
     , patToNameRdr
     , nameToString
-    , patToPNT ,pNtoPat
+    , pNtoPat
     , definedPNsRdr,definedNamesRdr
     , definingDeclsRdrNames, definingDeclsRdrNames', definingSigsRdrNames
     , definingTyClDeclsNames
@@ -195,11 +195,6 @@ module Language.Haskell.Refact.API
 
     -- ** Typed AST traversals (added by CMB)
     -- ** Miscellous
-
-    -- ** Debug stuff
-    , getParsedForRenamedName
-    , getParsedForRenamedLocated
-    , stripLeadingSpaces
 
  -- ** from `Language.Haskell.Refact.Utils.GhcUtils`
     -- ** SYB versions
