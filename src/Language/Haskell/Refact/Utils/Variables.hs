@@ -270,9 +270,7 @@ hsFreeAndDeclaredRdr' nm t = do
           hsFreeAndDeclared' = applyTU (stop_tdTU (failTU
                                                       `adhocTU` expr
                                                       `adhocTU` pat
-#if __GLASGOW_HASKELL__ <= 710
                                                       `adhocTU` bndrs
-#endif
                                                       `adhocTU` binds
                                                       `adhocTU` bindList
                                                       `adhocTU` match
@@ -370,7 +368,7 @@ hsFreeAndDeclaredRdr' nm t = do
           pat (GHC.L _ (GHC.NPlusKPat n _ _ _)) = return (FN [],DN [rdrName2NamePure nm n])
 #else
           pat (GHC.L _ (GHC.NPat _ _ _ _)) = return emptyFD
-          pat (GHC.L _ (GHC.NPlusKPat (GHC.L _ n) _ _ _ _ _)) = return (FN [],DN [n])
+          pat (GHC.L _ (GHC.NPlusKPat n _ _ _ _ _)) = return (FN [],DN [rdrName2NamePure nm n])
 #endif
           pat (GHC.L _ _p@(GHC.SigPatIn p b)) = do
             fdp <- pat p
@@ -409,6 +407,11 @@ hsFreeAndDeclaredRdr' nm t = do
           bndrs (GHC.HsWB thing _ _ _) = do
             (_ft,DN dt) <- hsFreeAndDeclaredRdr' nm thing
             -- error $ "hsFreeAndDeclaredRdr'.bndrs (_ft,dt)=" ++ show (_ft,DN dt)
+            return (FN dt,DN [])
+#else
+          bndrs :: GHC.LHsSigWcType GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
+          bndrs (GHC.HsIB _ (GHC.HsWC _ _ ty)) = do
+            (_ft,DN dt) <- hsFreeAndDeclaredRdr' nm ty
             return (FN dt,DN [])
 #endif
 
@@ -526,6 +529,15 @@ hsFreeAndDeclaredRdr' nm t = do
           hstype (GHC.L _ (GHC.HsNamedWildcardTy _)) = error "To implement: HsNamedWildcardTy"
 #else
           hstype (GHC.L _ (GHC.HsWildCardTy _)) = error "To implement: hstype, HsWildcardTy"
+#endif
+#if __GLASGOW_HASKELL__ > 710
+          hstype (GHC.L _ (GHC.HsQualTy _ _)) = error "To implement: hstype, HsQualTy"
+          hstype (GHC.L _ (GHC.HsAppsTy as)) = do
+            fds <- mapM doApp as
+            return $ mconcat fds
+            where
+              doApp (GHC.L _ (GHC.HsAppInfix n)) = return (FN [rdrName2NamePure nm n],DN [])
+              doApp (GHC.L _ (GHC.HsAppPrefix ty)) = hstype ty
 #endif
 
           -- ---------------------------------
@@ -947,6 +959,9 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` lstmt
           `SYB.extQ` lpats
           `SYB.extQ` lpat
+#if __GLASGOW_HASKELL__ > 710
+          `SYB.extQ` ibndrs
+#endif
           ) t
 
     -- err2 = error $ "hsVisibleDsRdr:err2:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
@@ -1313,7 +1328,7 @@ hsVisibleDsRdr nm e t = do
     lpat (GHC.L _ (GHC.NPlusKPat n _ _ _)) = return (DN [rdrName2NamePure nm n])
 #else
     lpat (GHC.L _ (GHC.NPat _ _ _ _)) = return (DN [])
-    lpat (GHC.L _ (GHC.NPlusKPat (GHC.L _ n) _ _ _ _ _)) = return (DN [n])
+    lpat (GHC.L _ (GHC.NPlusKPat n _ _ _ _ _)) = return (DN [rdrName2NamePure nm n])
 #endif
     lpat (GHC.L _ _p@(GHC.SigPatIn p b)) = do
       dp <- lpat p
@@ -1343,6 +1358,11 @@ hsVisibleDsRdr nm e t = do
       fds <- mapM lpat args
       return $ mconcat fds
 
+    -- -----------------------
+#if __GLASGOW_HASKELL__ > 710
+    ibndrs :: GHC.LHsSigWcType GHC.RdrName -> RefactGhc DeclaredNames
+    ibndrs (GHC.HsIB _ (GHC.HsWC _ _ ty)) = hsVisibleDsRdr nm e ty
+#endif
     -- -----------------------
 
     err = error $ "hsVisibleDsRdr nm:no match for:" ++ (SYB.showData SYB.Parser 0 t)

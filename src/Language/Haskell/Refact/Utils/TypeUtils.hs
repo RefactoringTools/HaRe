@@ -1365,13 +1365,13 @@ HsWrapTy HsTyWrapper (HsType name)
 -- ---------------------------------------------------------------------
 
 addParamsToDecls::
-        [GHC.LHsDecl GHC.RdrName] -- ^ A declaration list where the function is defined and\/or used.
+         [GHC.LHsDecl GHC.RdrName] -- ^ A declaration list where the function is defined and\/or used.
       -> GHC.Name       -- ^ The function name.
       -> [GHC.RdrName]  -- ^ The parameters to be added.
       -> RefactGhc [GHC.LHsDecl GHC.RdrName] -- ^ The result.
 
 addParamsToDecls decls pn paramPNames = do
-  -- logm $ "addParamsToDecls (pn,paramPNames,modifyToks)=" ++ (showGhc (pn,paramPNames,modifyToks))
+  logm $ "addParamsToDecls (pn,paramPNames)=" ++ (showGhc (pn,paramPNames))
   nameMap <- getRefactNameMap
   if (paramPNames /= [])
         then mapM (addParamToDecl nameMap) decls
@@ -1396,6 +1396,7 @@ addParamsToDecls decls pn paramPNames = do
         = do
              rhs' <- addActualParamsToRhs pn paramPNames rhs
              pats' <- liftT $ mapM addParam paramPNames
+             -- logDataWithAnns "addParamToDecl.addParam:pats'" pats'
              return (GHC.L l (GHC.Match fn1 (pats'++pats) mtyp rhs'))
 
    -- TODO: The following will never match, as a PatBind only deals with complex patterns.
@@ -1405,8 +1406,13 @@ addParamsToDecls decls pn paramPNames = do
 
    addParam n = do
      newSpan <- uniqueSrcSpanT
-     let vn = (GHC.L newSpan (pNtoPat n))
+#if __GLASGOW_HASKELL__ <= 710
+     let vn = (GHC.L newSpan (GHC.VarPat n))
      addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+#else
+     let vn = (GHC.L newSpan (GHC.VarPat (GHC.L newSpan n)))
+     addSimpleAnnT (GHC.L newSpan n) (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+#endif
      return vn
 
 -- ---------------------------------------------------------------------

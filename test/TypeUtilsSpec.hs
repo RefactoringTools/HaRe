@@ -566,7 +566,7 @@ spec = do
           let rr = hsFreeAndDeclaredRdr nm parsed
           rg <-    hsFreeAndDeclaredPNs    parsed
           return (rg,rr)
-      -- ((res,resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      -- ((resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       ((resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       -- ---------------------
@@ -974,7 +974,7 @@ spec = do
 -}
     -- -----------------------------------
 
-    it "Rdr:finds function arguments visible in RHS 2" $ do
+    it "finds function arguments visible in RHS 2" $ do
       pendingWith "no longer relevant?"
    {-
       t <- ct $ parsedFileGhc "./Visible/Simple.hs"
@@ -1001,7 +1001,7 @@ spec = do
 -}
     -- -----------------------------------
 
-    it "Rdr:finds visible vars inside a function" $ do
+    it "finds visible vars inside a function" $ do
       t <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -1028,7 +1028,7 @@ spec = do
 
     -- -----------------------------------
 
-    it "Rdr:finds visible vars inside a data declaration" $ do
+    it "finds visible vars inside a data declaration" $ do
       t <- ct $ parsedFileGhc "./Renaming/D1.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -1056,7 +1056,7 @@ spec = do
 
     -- -----------------------------------
 
-    it "Rdr:finds visible vars inIdIn5" $ do
+    it "finds visible vars inIdIn5" $ do
       t <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
 
@@ -1082,7 +1082,7 @@ spec = do
 
   -- ---------------------------------------------------------------------
 
-  describe "hsFreeAndDeclaredGhc" $ do
+  describe "hsFreeAndDeclaredRdr" $ do
     it "finds function arguments visible in RHS fd" $ do
       t <- ct $ parsedFileGhc "./Visible/Simple.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
@@ -1173,6 +1173,7 @@ spec = do
         comp = do
           nm <- getRefactNameMap
           parsed <- getRefactParsed
+          -- logDataWithAnns "parsed" parsed
           decls <- liftT $ hsDecls parsed
           let [decl] = definingDeclsRdrNames nm [n] decls False False
 #if __GLASGOW_HASKELL__ <= 710

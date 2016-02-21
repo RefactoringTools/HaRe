@@ -8,11 +8,15 @@ module Language.Haskell.Refact.Utils.GhcModuleGraph
   ) where
 
 -- GHC imports
+#if __GLASGOW_HASKELL__ > 710
+import BasicTypes
+#endif
 import Digraph
 import FastString
 import GHC
 import HscTypes
 import Panic
+
 
 -- Other imports
 import qualified Data.Map as Map
@@ -192,6 +196,7 @@ home_imps imps = [ ideclName i |  L _ i <- imps, isLocal (ideclPkgQual i) ]
 #if __GLASGOW_HASKELL__ <= 710
         isLocal (Just pkg) | pkg == fsLit "this" = True -- "this" is special
 #else
+        -- isLocal (Just pkg) | sl_fs pkg == fsLit "this" = True -- "this" is special
         isLocal (Just pkg) | sl_fs pkg == fsLit "this" = True -- "this" is special
 #endif
         isLocal _ = False
