@@ -353,10 +353,8 @@ hsFreeAndDeclaredRdr' nm t = do
             fds <- mapM pat ps
             return $ mconcat fds
           pat (GHC.L _ (GHC.ConPatIn n det)) = do
-            -- logm $ "hsFreeAndDeclaredGhc.pat.ConPatIn:details=" ++ (SYB.showData SYB.Renamer 0 det)
             (FN f,DN d) <- details det
             return $ (FN [rdrName2NamePure nm n],DN d) <> (FN [],DN f)
-          -- pat (GHC.ConPatOut )
           pat (GHC.L _ (GHC.ViewPat e p _)) = do
             fde <- hsFreeAndDeclaredRdr' nm e
             fdp <- pat p
@@ -405,9 +403,10 @@ hsFreeAndDeclaredRdr' nm t = do
 #if __GLASGOW_HASKELL__ <= 710
           bndrs :: GHC.HsWithBndrs GHC.RdrName (GHC.LHsType GHC.RdrName) -> Maybe (FreeNames,DeclaredNames)
           bndrs (GHC.HsWB thing _ _ _) = do
-            (_ft,DN dt) <- hsFreeAndDeclaredRdr' nm thing
+            (FN ft,DN dt) <- hsFreeAndDeclaredRdr' nm thing
             -- error $ "hsFreeAndDeclaredRdr'.bndrs (_ft,dt)=" ++ show (_ft,DN dt)
-            return (FN dt,DN [])
+            -- return (FN dt,DN [])
+            return (FN ft,DN [])
 #else
           bndrs :: GHC.LHsSigWcType GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
           bndrs (GHC.HsIB _ (GHC.HsWC _ _ ty)) = do
@@ -418,7 +417,7 @@ hsFreeAndDeclaredRdr' nm t = do
           -- ---------------------------
 
           bindList (ds :: [GHC.LHsBind GHC.RdrName])
-            =do (FN f,DN d) <- hsFreeAndDeclaredList ds
+            =do (FN f,DN d) <- recurseList ds
                 return (FN (f\\d),DN d)
           -- bindList _ = mzero
 
@@ -496,7 +495,11 @@ hsFreeAndDeclaredRdr' nm t = do
           hstype (GHC.L _ (GHC.HsForAllTy _ typ)) = hsFreeAndDeclaredRdr' nm typ
 #endif
 #if __GLASGOW_HASKELL__ <= 710
-          hstype (GHC.L l (GHC.HsTyVar n)) = return (FN [],DN [rdrName2NamePure nm (GHC.L l n)])
+          hstype (GHC.L l (GHC.HsTyVar n)) = return (FN [rdrName2NamePure nm (GHC.L l n)],DN [])
+          -- hstype (GHC.L l (GHC.HsTyVar n)) =
+          --   if GHC.isRdrTyVar n
+          --     then return (FN [rdrName2NamePure nm (GHC.L l n)],DN [])
+          --     else return (FN [],                               DN [rdrName2NamePure nm (GHC.L l n)])
 #else
           hstype (GHC.L _ (GHC.HsTyVar n)) = return (FN [],DN [rdrName2NamePure nm n])
 #endif
@@ -552,14 +555,14 @@ hsFreeAndDeclaredRdr' nm t = do
                   -> Maybe (FreeNames,DeclaredNames)
           addFree free (FN fr,de) = return (FN $ [free] `union` fr, de)
 
-          hsFreeAndDeclaredList :: (SYB.Data t) => [t] -> Maybe (FreeNames,DeclaredNames)
-          hsFreeAndDeclaredList l = do
-            fds <- mapM (hsFreeAndDeclaredRdr' nm) l
-            let
-              unionF (FN a) (FN b) = FN (a `union` b)
-              unionD (DN a) (DN b) = DN (a `union` b)
-            return (foldr unionF mempty (map fst fds),
-                    foldr unionD mempty (map snd fds))
+          -- hsFreeAndDeclaredList :: (SYB.Data t) => [t] -> Maybe (FreeNames,DeclaredNames)
+          -- hsFreeAndDeclaredList l = do
+          --   fds <- mapM (hsFreeAndDeclaredRdr' nm) l
+          --   let
+          --     unionF (FN a) (FN b) = FN (a `union` b)
+          --     unionD (DN a) (DN b) = DN (a `union` b)
+          --   return (foldr unionF mempty (map fst fds),
+          --           foldr unionD mempty (map snd fds))
 
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned

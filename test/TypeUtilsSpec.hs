@@ -562,7 +562,7 @@ spec = do
         comp = do
           parsed <- getRefactParsed
           nm <- getRefactNameMap
-          -- logDataWithAnns "parsed:"  parsed
+          logDataWithAnns "parsed:"  parsed
           let rr = hsFreeAndDeclaredRdr nm parsed
           rg <-    hsFreeAndDeclaredPNs    parsed
           return (rg,rr)
@@ -572,7 +572,9 @@ spec = do
       -- ---------------------
       -- Free Vars - parsed
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) fr) `shouldBe`
-                   "[(GHC.Num.*, (-1, -1)), "++
+                   "[(GHC.Integer.Type.Integer, (-1, -1)), "++
+                   "(GHC.Num.*, (-1, -1)),\n "++
+                   "(GHC.Types.Int, (-1, -1)), "++
                    "(GHC.Base.$, (-1, -1)),\n "++
                    "(GHC.List.head, (-1, -1)), "++
                    "(GHC.List.zip, (-1, -1)),\n "++
@@ -582,46 +584,9 @@ spec = do
 
       -- Declared Vars - parsed
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) dr) `shouldBe`
-                    "[(GHC.Integer.Type.Integer, (-1, -1)),\n "++
-                    "(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
-                    "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                    "(FreeAndDeclared.Declare.d, (10, 1)), "++
-                    "(GHC.Types.Int, (-1, -1)),\n "++
-                    "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
-                    "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
-                    "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
-                    "(FreeAndDeclared.Declare.D, (18, 1)),\n "++
-                    "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
-                    "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
-                    "(FreeAndDeclared.Declare.C, (18, 25)),\n "++
-                    "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
-                    "(FreeAndDeclared.Declare.F, (25, 1)),\n "++
-                    "(FreeAndDeclared.Declare.G, (25, 10)),\n "++
-                    "(FreeAndDeclared.Declare.:|, (25, 14)),\n "++
-                    "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
-                    "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
-                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
-                    "(FreeAndDeclared.Declare.ff, (36, 1))]"
-
-      -- ---------------------
-      -- GHC version
-      -- Free Vars
-      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
-                   "[(GHC.Num.*, (-1, -1)), "++
-                   "(GHC.Base.$, (-1, -1)),\n "++
-                   "(GHC.List.head, (-1, -1)), "++
-                   "(GHC.List.zip, (-1, -1)),\n "++
-                   "(System.IO.getChar, (-1, -1)), "++
-                   "(System.IO.putStrLn, (-1, -1)),\n "++
-                   "(Data.Generics.Text.gshow, (-1, -1))]"
-
-      -- Declared Vars
-      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
-                   "[(GHC.Integer.Type.Integer, (-1, -1)),\n "++
-                   "(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
+                   "[(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
                    "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                   "(FreeAndDeclared.Declare.d, (10, 1)), "++
-                   "(GHC.Types.Int, (-1, -1)),\n "++
+                   "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
                    "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
                    "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
                    "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
@@ -637,6 +602,41 @@ spec = do
                    "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
                    "(FreeAndDeclared.Declare.ff, (36, 1))]"
+
+      -- ---------------------
+      -- GHC version
+      -- Free Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
+                   "[(GHC.Integer.Type.Integer, (-1, -1)), "++
+                   "(GHC.Num.*, (-1, -1)),\n "++
+                   "(GHC.Types.Int, (-1, -1)), "++
+                   "(GHC.Base.$, (-1, -1)),\n "++
+                   "(GHC.List.head, (-1, -1)), "++
+                   "(GHC.List.zip, (-1, -1)),\n "++
+                   "(System.IO.getChar, (-1, -1)), "++
+                   "(System.IO.putStrLn, (-1, -1)),\n "++
+                   "(Data.Generics.Text.gshow, (-1, -1))]"
+
+      -- Declared Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
+                  "[(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
+                  "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
+                  "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
+                  "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
+                  "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
+                  "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
+                  "(FreeAndDeclared.Declare.D, (18, 1)),\n "++
+                  "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
+                  "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
+                  "(FreeAndDeclared.Declare.C, (18, 25)),\n "++
+                  "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
+                  "(FreeAndDeclared.Declare.F, (25, 1)),\n "++
+                  "(FreeAndDeclared.Declare.G, (25, 10)),\n "++
+                  "(FreeAndDeclared.Declare.:|, (25, 14)),\n "++
+                  "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
+                  "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
+                  "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
+                  "(FreeAndDeclared.Declare.ff, (36, 1))]"
 
 
     -- ---------------------------------
@@ -1038,6 +1038,7 @@ spec = do
 
       let
         comp = do
+          -- logDataWithAnns "parsed" parsed
           nm <- getRefactNameMap
           fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm ln) parsed
           -- ffds <- hsFreeAndDeclaredGhc renamed
@@ -1046,11 +1047,23 @@ spec = do
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
-      (show _fds) `shouldBe` "(FN [GHC.Base.++, GHC.Classes.==, GHC.Classes./=, :, GHC.Num.+,\n"++
-                             " GHC.Real.^, []],"++
-                             "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch, a,\n"++
-                             " Renaming.D1.fringe, Renaming.D1.SameOrNot, GHC.Types.Int,\n"++
-                             " Renaming.D1.isSame, Renaming.D1.isNotSame, Renaming.D1.sumSquares])"
+      (show _fds) `shouldBe` "(FN [a, "++
+                                  "GHC.Base.++, "++
+                                  "GHC.Types.Int, "++
+                                  "GHC.Classes.==, "++
+                                  "GHC.Classes./=, "++
+                                  ":,\n "++
+                                  "GHC.Num.+, "++
+                                  "GHC.Real.^, "++
+                                  "[]],"++
+                             "DN [Renaming.D1.Tree, "++
+                                 "Renaming.D1.Leaf, "++
+                                 "Renaming.D1.Branch,\n "++
+                                 "Renaming.D1.fringe, "++
+                                 "Renaming.D1.SameOrNot, "++
+                                 "Renaming.D1.isSame,\n "++
+                                 "Renaming.D1.isNotSame, "++
+                                 "Renaming.D1.sumSquares])"
 
       (show fds) `shouldBe` "DN [Renaming.D1.Tree, Renaming.D1.Leaf, Renaming.D1.Branch]"
 
