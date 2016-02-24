@@ -2429,14 +2429,10 @@ spec = do
          return (new,newName)
       let
 
-      -- ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-      ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
--- #if __GLASGOW_HASKELL__ <= 710
       (showGhcQual n) `shouldBe` "Field1.pointx"
--- #else
---       (showGhcQual n) `shouldBe` "pointx"
--- #endif
       (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx1, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p +\n                  pointy p * pointy p)\n\n"
       (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata Point = Pt {pointx1, pointy :: Float}\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p + pointy p * pointy p)"
 
@@ -3167,9 +3163,14 @@ spec = do
           return (old,equiv)
 
       ((o,e),_s) <- ctc $ runRefactGhc comp initialState testOptions
+      -- ((o,e),_s) <- ctc $ runRefactGhc comp initialLogOnState testOptions
       (showGhcQual (o,e)) `shouldBe` "(Foo.Bar.bar, Foo.Bar.bar)"
-      -- (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)) `shouldBe` ""
+      -- putStrLn( "(GHC.nameUnique o,GHC.nameUnique e)" ++ (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)))
+#if __GLASGOW_HASKELL__ <= 710
       (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
+#else
+      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
+#endif
 
     -- ---------------------------------
 
@@ -3192,7 +3193,11 @@ spec = do
       ((o,e,n),_s) <- ctc $ runRefactGhc comp initialState testOptions
       (showGhcQual (o,e,n)) `shouldBe` "(Foo.Bar.baz, Foo.Bar.baz, B.baz)"
       -- (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)) `shouldBe` ""
+#if __GLASGOW_HASKELL__ <= 710
       (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
+#else
+      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
+#endif
 
   -- ---------------------------------------------
 
@@ -3608,11 +3613,7 @@ spec = do
       let Just n  = locToNameRdrPure nm (10,1)  parsed
 
       (showGhcQual n) `shouldBe` "Field3.absPoint"
-#if __GLASGOW_HASKELL__ <= 710
       (showGhcQual nf) `shouldBe` "Field3.pointx"
-#else
-      (showGhcQual nf) `shouldBe` "pointx"
-#endif
 
   -- ---------------------------------------
 
@@ -3642,11 +3643,7 @@ spec = do
       "24" ++ (show $ GHC.isValName n2)     `shouldBe` "24True"
       "25" ++ (show $ GHC.isVarName n2)     `shouldBe` "25False"
 
-#if __GLASGOW_HASKELL__ <= 710
       (showGhcQual n3) `shouldBe` "Main.fooA" -- field name
-#else
-      (showGhcQual n3) `shouldBe` "fooA" -- field name
-#endif
       "31" ++ (show $ GHC.isTyVarName n3)   `shouldBe` "31False"
       "32" ++ (show $ GHC.isTyConName n3)   `shouldBe` "32False"
       "33" ++ (show $ GHC.isDataConName n3) `shouldBe` "33False"

@@ -1601,11 +1601,12 @@ addActualParamsToRhs pn paramPNames rhs = do
          registerRdrName (GHC.L ss2 param)
 #if __GLASGOW_HASKELL__ <= 710
          let var   = GHC.L ss2 (GHC.HsVar param)
+         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #else
          let var   = GHC.L ss2 (GHC.HsVar (GHC.L ss2 param))
+         liftT $ addSimpleAnnT (GHC.L ss2 param) (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #endif
          let expr' = GHC.L ss1 (GHC.HsApp expr var)
-         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
          liftT $ addSimpleAnnT expr' (DP (0,0)) []
          return expr'
 
