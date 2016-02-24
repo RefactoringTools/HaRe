@@ -2273,8 +2273,8 @@ spec = do
          newDecl <- addDecl tlDecl Nothing ([yDecl],Nothing)
 
          return (yDecl,tlDecl,newDecl)
-      r <- catchException $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-      r `shouldBe` Just  "addDecl:Cannot add a local decl to a FunBind with multiple matches"
+      Just r <- catchException $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      (isPrefixOf "addDecl:Cannot add a local decl to a FunBind with multiple matches" r) `shouldBe` True
 
     -- -------------------------------------------
 
