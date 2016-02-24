@@ -2416,6 +2416,11 @@ spec = do
       let Just n = locToNameRdrPure nm (5, 19) parsed
       let
         comp = do
+         renamed <- getRefactRenamed
+         logDataWithAnns "renamed" renamed
+         -- logDataWithAnns "parsed" parsed
+         logm $ "nm:" ++ showNameMap nm
+         logm $ "n:nameUnique:" ++ show (GHC.nameUnique n)
          newName <- mkNewGhcName Nothing "pointx1"
          new <- renamePN n newName False parsed
 
@@ -2424,9 +2429,14 @@ spec = do
          return (new,newName)
       let
 
-      ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
+-- #if __GLASGOW_HASKELL__ <= 710
       (showGhcQual n) `shouldBe` "Field1.pointx"
+-- #else
+--       (showGhcQual n) `shouldBe` "pointx"
+-- #endif
       (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx1, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p +\n                  pointy p * pointy p)\n\n"
       (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata Point = Pt {pointx1, pointy :: Float}\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p + pointy p * pointy p)"
 

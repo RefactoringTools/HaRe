@@ -33,13 +33,15 @@ module TestUtils
        , ss2span
        , PosToken
        , getHsDecls
+       , showNameMap
        ) where
 
 
+import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
--- import qualified Outputable    as GHC
+import qualified Outputable    as GHC
 import qualified Unique        as GHC
 
 import Data.Algorithm.Diff
@@ -394,5 +396,14 @@ getHsDecls t = decls
   where
     -- runTransform :: Anns -> Transform a -> (a, (Anns, Int), [String])
     (decls,_,_) = runTransform mempty (hsDecls t)
+-- ---------------------------------------------------------------------
+
+showNameMap :: NameMap -> String
+showNameMap  nm = GHC.showSDocDebug GHC.unsafeGlobalDynFlags doc
+    where
+      doc = GHC.text "NameMap" GHC.<+> GHC.vcat (map one $ Map.toList nm)
+      -- one (s,n) = GHC.parens $ GHC.text (showGhc (s,n,GHC.nameUnique n)) GHC.<+> GHC.ppr n
+      one (s,n) = GHC.parens $ GHC.hsep [GHC.ppr s, GHC.comma, GHC.ppr n]
+
 -- ---------------------------------------------------------------------
 -- EOF

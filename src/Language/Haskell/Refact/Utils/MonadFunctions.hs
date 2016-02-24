@@ -82,6 +82,7 @@ import qualified GhcMonad      as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified Unique        as GHC
+import qualified Var
 
 import qualified Data.Generics as SYB
 
@@ -452,6 +453,7 @@ initRdrNameMap tm = r
   where
     parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
     renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
+    typechecked = GHC.tm_typechecked_source tm
 
     checkRdr :: GHC.Located GHC.RdrName -> Maybe [(GHC.SrcSpan,GHC.RdrName)]
     checkRdr (GHC.L l n@(GHC.Unqual _)) = Just [(l,n)]
@@ -462,7 +464,25 @@ initRdrNameMap tm = r
     checkName ln = Just [ln]
 
     rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr ) parsed
+#if __GLASGOW_HASKELL__ <= 710
     names    = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
+#else
+    names1   = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
+    names2 = names1 ++ SYB.everything (++) ([] `SYB.mkQ` fieldOcc
+                                              `SYB.extQ` hsRecFieldN) renamed
+    names  = names2 ++ SYB.everything (++) ([] `SYB.mkQ` hsRecFieldT) typechecked
+
+    fieldOcc :: GHC.FieldOcc GHC.Name -> [GHC.Located GHC.Name]
+    fieldOcc (GHC.FieldOcc (GHC.L l _) n) = [(GHC.L l n)]
+
+    hsRecFieldN :: GHC.LHsExpr GHC.Name -> [GHC.Located GHC.Name]
+    hsRecFieldN (GHC.L _ (GHC.HsRecFld (GHC.Unambiguous (GHC.L l _) n) )) = [GHC.L l n]
+    hsRecFieldN _ = []
+
+    hsRecFieldT :: GHC.LHsExpr GHC.Id -> [GHC.Located GHC.Name]
+    hsRecFieldT (GHC.L _ (GHC.HsRecFld (GHC.Ambiguous (GHC.L l _) n) )) = [GHC.L l (Var.varName n)]
+    hsRecFieldT _ = []
+#endif
 
     nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
 

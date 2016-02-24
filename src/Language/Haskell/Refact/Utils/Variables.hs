@@ -410,8 +410,9 @@ hsFreeAndDeclaredRdr' nm t = do
 #else
           bndrs :: GHC.LHsSigWcType GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
           bndrs (GHC.HsIB _ (GHC.HsWC _ _ ty)) = do
-            (_ft,DN dt) <- hsFreeAndDeclaredRdr' nm ty
-            return (FN dt,DN [])
+            (FN ft,DN dt) <- hsFreeAndDeclaredRdr' nm ty
+            -- return (FN dt,DN [])
+            return (FN ft,DN [])
 #endif
 
           -- ---------------------------
@@ -496,12 +497,8 @@ hsFreeAndDeclaredRdr' nm t = do
 #endif
 #if __GLASGOW_HASKELL__ <= 710
           hstype (GHC.L l (GHC.HsTyVar n)) = return (FN [rdrName2NamePure nm (GHC.L l n)],DN [])
-          -- hstype (GHC.L l (GHC.HsTyVar n)) =
-          --   if GHC.isRdrTyVar n
-          --     then return (FN [rdrName2NamePure nm (GHC.L l n)],DN [])
-          --     else return (FN [],                               DN [rdrName2NamePure nm (GHC.L l n)])
 #else
-          hstype (GHC.L _ (GHC.HsTyVar n)) = return (FN [],DN [rdrName2NamePure nm n])
+          hstype (GHC.L _ (GHC.HsTyVar n)) = return (FN [rdrName2NamePure nm n],DN [])
 #endif
           hstype (GHC.L _ (GHC.HsAppTy t1 t2)) = recurseList [t1,t2]
           hstype (GHC.L _ (GHC.HsFunTy t1 t2)) = recurseList [t1,t2]

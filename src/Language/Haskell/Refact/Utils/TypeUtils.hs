@@ -2154,6 +2154,7 @@ renamePN oldPN newName useQual t = do
     rename useQual' old@(GHC.L l n)
      | cond (GHC.L l n)
      = do
+          logTr $ "renamePN:rename for " ++ showGhc (l,n,GHC.nameUnique $ rdrName2NamePure nameMap (GHC.L l n),GHC.nameUnique oldPN)
           logTr $ "renamePN:rename at :" ++ showGhc l
           let nn = newNameCalcBool useQual' n
           -- A RdrName Can have a number of constructors, which are used to
@@ -2165,14 +2166,15 @@ renamePN oldPN newName useQual t = do
           return new
     rename _ x = return x
 
-    renameVar :: Bool -> (GHC.Located (GHC.HsExpr GHC.RdrName)) -> Transform (GHC.Located (GHC.HsExpr GHC.RdrName))
+    renameVar :: Bool -> GHC.LHsExpr GHC.RdrName -> Transform (GHC.LHsExpr GHC.RdrName)
 #if __GLASGOW_HASKELL__ <= 710
     renameVar useQual' (GHC.L l (GHC.HsVar n))
 #else
-    renameVar useQual' (GHC.L l (GHC.HsVar (GHC.L _ n)))
+    renameVar useQual' x@(GHC.L l (GHC.HsVar (GHC.L _ n)))
 #endif
      | cond (GHC.L l n)
      = do
+          logTr $ "renameVar:renameVar for " ++ showGhc (l,n,GHC.nameUnique $ rdrName2NamePure nameMap (GHC.L l n),GHC.nameUnique oldPN)
           logTr $ "renamePN:renameVar at :" ++ (showGhc l)
           -- logTr $ "renamePN:renameVar useQual' :" ++ (show useQual')
           -- logTr $ "renamePN:renameVar ln :" ++ SYB.showData SYB.Parser 0 (GHC.L l (GHC.HsVar n))
@@ -2185,7 +2187,12 @@ renamePN oldPN newName useQual t = do
 #else
           return (GHC.L l (GHC.HsVar (GHC.L l nn)))
 #endif
-    renameVar _ x = return x
+     | otherwise = do
+         logTr $ "renameVar:skipping for " ++ showGhc (l,n,GHC.nameUnique $ rdrName2NamePure nameMap (GHC.L l n),GHC.nameUnique oldPN)
+         return x
+    renameVar _ x = do
+      logTr $ "renameVar:skipping" ++ showGhc (mkAnnKey x)
+      return x
 
     -- HsTyVar {Name: Renaming.D1.Tree}))
     renameTyVar :: Bool -> (GHC.Located (GHC.HsType GHC.RdrName)) -> Transform (GHC.Located (GHC.HsType GHC.RdrName))
