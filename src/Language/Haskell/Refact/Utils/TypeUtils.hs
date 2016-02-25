@@ -2135,7 +2135,7 @@ renamePN oldPN newName useQual t = do
     cond nm (GHC.L ln _) =
       case Map.lookup ln nm of
         Nothing -> False
-        Just n -> GHC.nameUnique n == GHC.nameUnique oldPN
+        Just n -> GHC.nameUnique n == GHC.nameUnique oldPN || GHC.nameUnique n == GHC.nameUnique newName
 
     -- Decision process for new names
     newNameCalcBool :: Bool -> GHC.RdrName -> GHC.RdrName
@@ -2151,16 +2151,12 @@ renamePN oldPN newName useQual t = do
         newNameCalc' NoQualify       (Just (_n,_)) = GHC.Unqual  (GHC.occName newName)
         newNameCalc' uq' _ =  if uq' == Qualify then newNameQual else newNameUnqual
 
-    rename :: Bool -> GHC.Located GHC.RdrName -> RefactGhc (GHC.Located GHC.RdrName)
-    rename useQual' old@(GHC.L l n) = do
+    renameLRdr :: Bool -> GHC.Located GHC.RdrName -> RefactGhc (GHC.Located GHC.RdrName)
+    renameLRdr useQual' old@(GHC.L l n) = do
      nm <- getRefactNameMap
      if cond nm (GHC.L l n)
        then do
           logm $ "renamePN:rename old :" ++ SYB.showData SYB.Parser 0 old
-          -- let
-          --   nn = if useQual'
-          --          then newNameCalcBool useQual'        n
-          --          else newNameCalc     PreserveQualify n
           let nn = newNameCalcBool useQual' n
 
           -- A RdrName Can have a number of constructors, which are used to
@@ -2405,7 +2401,8 @@ renamePN oldPN newName useQual t = do
      = do
          logm $ "renamePN:renameTypeSig"
          -- Has already been renamed, make sure qualifier is removed
-         ns'  <- renameTransform False ns
+         ns'  <- mapM (renameLRdr False) ns
+         -- ns'  <- renameTransform False ns
          typ' <- renameTransform False typ
          logm $ "renamePN:renameTypeSig done"
 #if __GLASGOW_HASKELL__ <= 710
@@ -2417,10 +2414,10 @@ renamePN oldPN newName useQual t = do
 
     renameTransform useQual' t' =
           -- Note: bottom-up traversal (no ' at end)
-            -- (SYB.everywhereM (
-            (everywhereM' (
-                   SYB.mkM   (rename            useQual')
-                  `SYB.extM` (renameVar         useQual')
+            (SYB.everywhereM ( -- bottom-up
+            -- (everywhereM' ( -- top-down
+                   SYB.mkM   (renameVar         useQual')
+                  `SYB.extM` (renameLRdr        useQual')
                   `SYB.extM` (renameTyVar       useQual')
                   `SYB.extM` (renameHsTyVarBndr useQual')
                   `SYB.extM` (renameLIE         useQual')

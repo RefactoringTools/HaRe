@@ -2305,7 +2305,7 @@ spec = do
   -- ---------------------------------------------
 
   describe "renamePN" $ do
-    it "replaces a Name with another, updating tokens 1" $ do
+    it "replaces a Name with another 1" $ do
       t <- ct $ parsedFileGhc "./DupDef/Dd1.hs"
       let
         comp = do
@@ -2325,7 +2325,7 @@ spec = do
 
     -- -----------------------------------------------------------------
 
-    it "replaces a Name with another, updating tokens 2" $ do
+    it "replaces a Name with another 2" $ do
       t <- ct $ parsedFileGhc "./Demote/WhereIn4.hs"
 
       let
@@ -2350,7 +2350,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "replaces a Name with another in limited scope, updating tokens 1" $ do
+    it "replaces a Name with another in limited scope 1" $ do
       t <- ct $ parsedFileGhc "./TokenTest.hs"
 
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2378,7 +2378,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "replace a Name with another in limited scope, updating tokens 2" $ do
+    it "replace a Name with another in limited scope 2" $ do
       t <- ct $ parsedFileGhc "./TokenTest.hs"
 
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2416,9 +2416,9 @@ spec = do
       let Just n = locToNameRdrPure nm (5, 19) parsed
       let
         comp = do
-         renamed <- getRefactRenamed
-         logDataWithAnns "renamed" renamed
-         -- logDataWithAnns "parsed" parsed
+         -- renamed <- getRefactRenamed
+         -- logDataWithAnns "renamed" renamed
+         logDataWithAnns "parsed" parsed
          logm $ "nm:" ++ showNameMap nm
          logm $ "n:nameUnique:" ++ show (GHC.nameUnique n)
          newName <- mkNewGhcName Nothing "pointx1"
@@ -2892,8 +2892,8 @@ spec = do
          return ()
       let
 
-      -- (_,s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-      (_,s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      (_,s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- (_,s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual n) `shouldBe` "Renaming.C7.myFringe"
       (sourceFromState s) `shouldBe` "module Renaming.C7(Renaming.C7.myFringe)  where\n\nimport Renaming.D7\n\nmyFringe:: Tree a -> [a]\nmyFringe (Leaf x ) = [x]\nmyFringe (Branch left right) = Renaming.C7.myFringe left ++ fringe right\n\n\n\n\n"
