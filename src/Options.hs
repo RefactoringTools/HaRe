@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE OverloadedStrings, FlexibleInstances, GeneralizedNewtypeDeriving #-}
 
@@ -137,6 +138,13 @@ globalArgSpec = Options
           <=> metavar "OPT"
           <=> help "Option to be passed to GHC"
       <*> many fileMappingSpec
+#if __GLASGOW_HASKELL__ > 710
+      <*> strOption
+          $$  long "encoding"
+          <=> value "UTF-8"
+          <=> showDefault
+          <=> help "I/O encoding"
+#endif
   where
     fileMappingSpec =
       getFileMapping . splitOn '=' <$> strOption

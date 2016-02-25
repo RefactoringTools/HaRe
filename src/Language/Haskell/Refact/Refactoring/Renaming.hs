@@ -66,6 +66,8 @@ compRename fileName newName (row,col) = do
     targetModule <- getRefactTargetModule
     nm           <- getRefactNameMap
 
+    -- logDataWithAnns "parsed" parsed
+
     let modName = maybe (GHC.mkModuleName "Main") fst $ getModuleName parsed
         maybePn = locToRdrName (row, col) parsed
 
@@ -281,6 +283,8 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
         vs <- hsVisibleNamesRdr oldPN' =<< getRefactParsed  -- Does this check names other than variable names?
         logm $ "renameInClientMod.worker:(vs,oldPN',isInScopeUnqualNew)=" ++
                showGhc (vs, oldPN', isInScopeUnqualNew)
+
+        -- logParsedSource "worker:parsed"
 
         parsed <- renamePN oldPN' newNameGhc'
                           (newName' `elem` (nub vs \\ [nameToString oldPN']) || isInScopeUnqualNew)

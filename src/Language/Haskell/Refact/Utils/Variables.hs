@@ -531,7 +531,7 @@ hsFreeAndDeclaredRdr' nm t = do
           hstype (GHC.L _ (GHC.HsWildCardTy _)) = error "To implement: hstype, HsWildcardTy"
 #endif
 #if __GLASGOW_HASKELL__ > 710
-          hstype (GHC.L _ (GHC.HsQualTy _ _)) = error "To implement: hstype, HsQualTy"
+          hstype (GHC.L _ (GHC.HsQualTy (GHC.L _ ctxt) ty)) = recurseList (ty:ctxt)
           hstype (GHC.L _ (GHC.HsAppsTy as)) = do
             fds <- mapM doApp as
             return $ mconcat fds
@@ -961,6 +961,7 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` lpat
 #if __GLASGOW_HASKELL__ > 710
           `SYB.extQ` ibndrs
+          `SYB.extQ` lsigty
 #endif
           ) t
 
@@ -1362,6 +1363,9 @@ hsVisibleDsRdr nm e t = do
 #if __GLASGOW_HASKELL__ > 710
     ibndrs :: GHC.LHsSigWcType GHC.RdrName -> RefactGhc DeclaredNames
     ibndrs (GHC.HsIB _ (GHC.HsWC _ _ ty)) = hsVisibleDsRdr nm e ty
+
+    lsigty :: GHC.LHsSigType GHC.RdrName -> RefactGhc DeclaredNames
+    lsigty (GHC.HsIB _ ty) = hsVisibleDsRdr nm e ty
 #endif
     -- -----------------------
 

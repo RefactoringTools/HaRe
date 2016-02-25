@@ -2490,7 +2490,7 @@ spec = do
 
     it "replaces a qualified name in a FunBind with multiple patterns" $ do
       t <- ct $ parsedFileGhc "./LocToName.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 #if __GLASGOW_HASKELL__ <= 710
@@ -2502,7 +2502,8 @@ spec = do
       let Just n = locToNameRdrPure nm (20, 1) parsed
       let
         comp = do
-         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         -- logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         logDataWithAnns "parsed" parsed
          newName <- mkNewGhcName (Just modu) "newPoint"
          new <- renamePN n newName True parsed
 
@@ -2513,7 +2514,7 @@ spec = do
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
-      (unspace $ showGhcQual nb) `shouldBe` "module LocToName where\nLocToName.newPoint (x : xs) = x ^ 2 + LocToName.newPoint xs\nLocToName.newPoint [] = 0"
+      (unspace $ showGhcQual nb) `shouldBe` "module LocToName where\nnewPoint (x : xs) = x ^ 2 + LocToName.newPoint xs\nnewPoint [] = 0"
       (sourceFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
 
 
@@ -2602,7 +2603,7 @@ spec = do
 
       (showGhcQual n) `shouldBe` "Renaming.C7.myFringe"
       (sourceFromState s) `shouldBe` "module Renaming.C7(LocToName.myNewFringe)  where\n\nimport Renaming.D7\n\nmyNewFringe:: Tree a -> [a]\nmyNewFringe (Leaf x ) = [x]\nmyNewFringe (Branch left right) = LocToName.myNewFringe left ++ fringe right\n\n\n\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` "module Renaming.C7 (\n LocToName.myNewFringe\n ) where\nimport Renaming.D7\nmyNewFringe :: Tree a -> [a]\nLocToName.myNewFringe (Leaf x) = [x]\nLocToName.myNewFringe (Branch left right)\n = LocToName.myNewFringe left ++ fringe right"
+      (unspace $ showGhcQual nb) `shouldBe` "module Renaming.C7 (\n LocToName.myNewFringe\n ) where\nimport Renaming.D7\nmyNewFringe :: Tree a -> [a]\nmyNewFringe (Leaf x) = [x]\nmyNewFringe (Branch left right)\n = LocToName.myNewFringe left ++ fringe right"
 
     ------------------------------------
 
@@ -2891,7 +2892,8 @@ spec = do
          return ()
       let
 
-      (_,s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- (_,s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      (_,s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual n) `shouldBe` "Renaming.C7.myFringe"
       (sourceFromState s) `shouldBe` "module Renaming.C7(Renaming.C7.myFringe)  where\n\nimport Renaming.D7\n\nmyFringe:: Tree a -> [a]\nmyFringe (Leaf x ) = [x]\nmyFringe (Branch left right) = Renaming.C7.myFringe left ++ fringe right\n\n\n\n\n"
