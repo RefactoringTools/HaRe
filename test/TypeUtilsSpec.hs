@@ -2490,13 +2490,12 @@ spec = do
 
     it "replaces a qualified name in a FunBind with multiple patterns" $ do
       t <- ct $ parsedFileGhc "./LocToName.hs"
-      -- let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 #if __GLASGOW_HASKELL__ <= 710
       let modu = GHC.mkModule (GHC.stringToPackageKey "mypackage-1.0") (GHC.mkModuleName "LocToName")
 #else
-      let modu = GHC.mkModule (GHC.stringToUnitId "mypackage-1.0") (GHC.mkModuleName "LocToName")
+      let modu = GHC.mkModule (GHC.stringToUnitId     "mypackage-1.0") (GHC.mkModuleName "LocToName")
 #endif
 
       let Just n = locToNameRdrPure nm (20, 1) parsed
@@ -2508,13 +2507,14 @@ spec = do
          new <- renamePN n newName True parsed
 
          putRefactParsed new emptyAnns
+         -- logParsedSource "parsed:after"
 
          return (new,newName)
 
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       (showGhcQual n) `shouldBe` "LocToName.sumSquares"
-      (unspace $ showGhcQual nb) `shouldBe` "module LocToName where\nnewPoint (x : xs) = x ^ 2 + LocToName.newPoint xs\nnewPoint [] = 0"
+      (unspace $ showGhcQual nb) `shouldBe` "module LocToName where\nLocToName.newPoint (x : xs) = x ^ 2 + LocToName.newPoint xs\nLocToName.newPoint [] = 0"
       (sourceFromState s) `shouldBe` "module LocToName where\n\n{-\n\n\n\n\n\n\n\n\n-}\n\n\n\n\n\n\n\nnewPoint (x:xs) = x ^2 + LocToName.newPoint xs\n    -- where sq x = x ^pow \n    --       pow = 2\n\nnewPoint [] = 0\n"
 
 
@@ -2522,14 +2522,13 @@ spec = do
 
     it "replaces a parameter name in a FunBind" $ do
       t <- ct $ parsedFileGhc "./Renaming/LayoutIn2.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n = locToNameRdrPure nm (8, 7) parsed
       let
         comp = do
-         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         logParsedSource "parsed"
 
          newName <- mkNewGhcName Nothing "ls"
          new <- renamePN n newName False parsed
@@ -2539,7 +2538,7 @@ spec = do
          return (new,newName)
 
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-      -- (showGhcQual $ sourceTreeFromState s) `shouldBe` ""
+      -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n\n"
       (unspace $ showGhcQual nb) `shouldBe` "module LayoutIn2 where\nsilly :: [Int] -> Int\nsilly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x < 10 -> 4\n where\n x = last xs\n otherwise -> 12 }"
 
@@ -2559,6 +2558,7 @@ spec = do
       let Just n = locToNameRdrPure nm (4, 24) parsed
       let
         comp = do
+         logParsedSource "parsed"
          newName <- mkNewGhcName (Just modu) "mySum"
          new <- renamePN n newName True parsed
 
@@ -2578,7 +2578,6 @@ spec = do
 
     it "does not qualify the subject of a type signature" $ do
       t <- ct $ parsedFileGhc "./Renaming/C7.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 #if __GLASGOW_HASKELL__ <= 710
@@ -2590,7 +2589,7 @@ spec = do
       let Just n = locToNameRdrPure nm (5, 1) parsed
       let
         comp = do
-         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         logParsedSource "parsed"
          newName <- mkNewGhcName (Just modu) "myNewFringe"
 
          new <- renamePN n newName True parsed
@@ -2603,11 +2602,11 @@ spec = do
 
       (showGhcQual n) `shouldBe` "Renaming.C7.myFringe"
       (sourceFromState s) `shouldBe` "module Renaming.C7(LocToName.myNewFringe)  where\n\nimport Renaming.D7\n\nmyNewFringe:: Tree a -> [a]\nmyNewFringe (Leaf x ) = [x]\nmyNewFringe (Branch left right) = LocToName.myNewFringe left ++ fringe right\n\n\n\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` "module Renaming.C7 (\n LocToName.myNewFringe\n ) where\nimport Renaming.D7\nmyNewFringe :: Tree a -> [a]\nmyNewFringe (Leaf x) = [x]\nmyNewFringe (Branch left right)\n = LocToName.myNewFringe left ++ fringe right"
+      (unspace $ showGhcQual nb) `shouldBe` "module Renaming.C7 (\n LocToName.myNewFringe\n ) where\nimport Renaming.D7\nmyNewFringe :: Tree a -> [a]\nLocToName.myNewFringe (Leaf x) = [x]\nLocToName.myNewFringe (Branch left right)\n = LocToName.myNewFringe left ++ fringe right"
 
     ------------------------------------
 
-    it "realigns toks in a case for a shorter name" $ do
+    it "realigns in a case for a shorter name" $ do
       t <- ct $ parsedFileGhc "./Renaming/LayoutIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2635,7 +2634,7 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a case for a longer name" $ do
+    it "realigns in a case for a longer name" $ do
       t <- ct $ parsedFileGhc "./Renaming/LayoutIn2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2662,7 +2661,7 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a do for a shorter name" $ do
+    it "realigns in a do for a shorter name" $ do
       t <- ct $ parsedFileGhc "./Renaming/LayoutIn4.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2689,7 +2688,7 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a do for a longer name" $ do
+    it "realigns in a do for a longer name" $ do
       t <- ct $ parsedFileGhc "./Renaming/LayoutIn4.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2715,7 +2714,7 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a where for a shorter name" $ do
+    it "realigns in a where for a shorter name" $ do
       t <- ct $ parsedFileGhc "./Renaming/LayoutIn1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2742,16 +2741,17 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a where for a longer name" $ do
+    it "realigns in a where for a longer name" $ do
       t <- ct $ parsedFileGhc "./Renaming/LayoutIn1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      -- let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n = locToNameRdrPure nm (7, 17) parsed
       let
         comp = do
-         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         -- logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         logParsedSource "parsed"
 
          newName <- mkNewGhcName Nothing "square"
          new <- renamePN n newName False parsed
@@ -2761,6 +2761,7 @@ spec = do
          return (new,newName)
 
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual n) `shouldBe` "sq"
       (sourceFromState s) `shouldBe` "module LayoutIn1 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'sq' to 'square'.\n\nsumSquares x y= square x + square y where square x= x^pow\n          --There is a comment.\n                                          pow=2\n"
@@ -2768,7 +2769,7 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a let/in for a shorter name" $ do
+    it "realigns in a let/in for a shorter name" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/LayoutLet1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2794,7 +2795,7 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a let/in for a longer name 1" $ do
+    it "realigns in a let/in for a longer name 1" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/LayoutLet1.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2823,7 +2824,7 @@ spec = do
 
     ------------------------------------
 
-    it "realigns toks in a let/in for a longer name 2" $ do
+    it "realigns in a let/in for a longer name 2" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/LayoutLet2.hs"
       let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -2874,6 +2875,31 @@ spec = do
 
       (showGhcQual (n,nn)) `shouldBe` "(Renaming.RenameInExportedType.NT, NewType)"
       (sourceFromState s) `shouldBe` "module Renaming.RenameInExportedType\n  (\n  MyType (NewType)\n  ) where\n\ndata MyType = MT Int | NewType\n\n\n"
+    ------------------------------------
+
+    it "renames a qualified usage of a name" $ do
+      t <- ct $ parsedFileGhc "./Renaming/QualClient.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
+
+      let Just n = locToNameRdrPure nm (10, 10) parsed
+      let
+        comp = do
+         logm $ "parsed:" ++ (SYB.showData SYB.Parser 0 parsed)
+
+         newName <- mkNewGhcName Nothing "foo1"
+         new <- renamePN n newName False parsed
+
+         putRefactParsed new emptyAnns
+         logm $ "parsed:after" ++ (SYB.showData SYB.Parser 0 new)
+
+         return (new,newName)
+
+      -- ((_nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      ((_nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+
+      (showGhcQual (n,nn)) `shouldBe` "(Renaming.QualServer.foo, foo1)"
+      (sourceFromState s) `shouldBe` "module Renaming.QualClient where\n\n{- foo is imported qualified as in QualClient. Renaming should\n   preserve the qualification there\n-}\n\nimport qualified Renaming.QualServer as QS\n\nbaz :: String\nbaz = QS.foo1 : \"hello\"\n"
 
 
   -- ---------------------------------------------
