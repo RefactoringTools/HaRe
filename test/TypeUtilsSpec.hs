@@ -2313,7 +2313,7 @@ spec = do
          nm <- getRefactNameMap
          let Just n' = locToNameRdrPure nm (3, 1) parsed
          newName <- mkNewGhcName Nothing "bar2"
-         new <- renamePN n' newName False parsed
+         new <- renamePN n' newName PreserveQualify parsed
          putRefactParsed new emptyAnns
          return (new,newName,n')
       let
@@ -2336,7 +2336,7 @@ spec = do
          let decl = head $ drop 0 declsr
          let Just n' = locToNameRdrPure nm (11, 21) parsed
          newName <- mkNewGhcName Nothing "p_1"
-         new <- renamePN n' newName False decl
+         new <- renamePN n' newName PreserveQualify decl
          parsed' <- liftT $ replaceDecls parsed (new:tail declsr)
          putRefactParsed parsed' emptyAnns
          return (new,newName,decl,n')
@@ -2363,7 +2363,7 @@ spec = do
          -- parsed <- getRefactParsed
          decls <- liftT $ hsDecls parsed
          newName <- mkNewGhcName Nothing "bar2"
-         new <- renamePN n newName False (head $ drop 3 decls)
+         new <- renamePN n newName PreserveQualify (head $ drop 3 decls)
          parsed' <- liftT $ replaceDecls parsed (take 3 decls ++ [new] ++ drop 4 decls)
          putRefactParsed parsed' emptyAnns
          return (new,newName)
@@ -2392,7 +2392,7 @@ spec = do
          decls <- liftT $ hsDecls parsed
          let decl = head $ drop 3 decls
          newName <- mkNewGhcName Nothing "bar2"
-         new <- renamePN n newName False decl
+         new <- renamePN n newName PreserveQualify decl
 
          parsed' <- liftT $ replaceDecls parsed (take 3 decls ++ [new] ++ drop 4 decls)
          putRefactParsed parsed' emptyAnns
@@ -2422,7 +2422,7 @@ spec = do
          logm $ "nm:" ++ showNameMap nm
          logm $ "n:nameUnique:" ++ show (GHC.nameUnique n)
          newName <- mkNewGhcName Nothing "pointx1"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2450,7 +2450,7 @@ spec = do
         comp = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          newName <- mkNewGhcName Nothing "NewPoint"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2474,7 +2474,7 @@ spec = do
       let
         comp = do
          newName <- mkNewGhcName Nothing "newPoint"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2504,7 +2504,7 @@ spec = do
          -- logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
          logDataWithAnns "parsed" parsed
          newName <- mkNewGhcName (Just modu) "newPoint"
-         new <- renamePN n newName True parsed
+         new <- renamePN n newName Qualify parsed
 
          putRefactParsed new emptyAnns
          -- logParsedSource "parsed:after"
@@ -2531,7 +2531,7 @@ spec = do
          logParsedSource "parsed"
 
          newName <- mkNewGhcName Nothing "ls"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2560,7 +2560,7 @@ spec = do
         comp = do
          logParsedSource "parsed"
          newName <- mkNewGhcName (Just modu) "mySum"
-         new <- renamePN n newName True parsed
+         new <- renamePN n newName Qualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2592,7 +2592,7 @@ spec = do
          logParsedSource "parsed"
          newName <- mkNewGhcName (Just modu) "myNewFringe"
 
-         new <- renamePN n newName True parsed
+         new <- renamePN n newName Qualify parsed
          putRefactParsed new emptyAnns
 
          return (new,newName)
@@ -2618,7 +2618,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "ls"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2646,7 +2646,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "listlonger"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2673,7 +2673,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "io"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2700,7 +2700,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "ioFunLong"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2726,7 +2726,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "q"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2754,7 +2754,7 @@ spec = do
          logParsedSource "parsed"
 
          newName <- mkNewGhcName Nothing "square"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2781,7 +2781,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "x"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2808,7 +2808,7 @@ spec = do
 
          newName <- mkNewGhcName Nothing "xxxlong"
          -- new <- renamePN n newName False renamed
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2836,7 +2836,7 @@ spec = do
          logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
 
          newName <- mkNewGhcName Nothing "xxxlong"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
 
@@ -2863,7 +2863,7 @@ spec = do
          logm $ "parsed:" ++ (SYB.showData SYB.Parser 0 parsed)
 
          newName <- mkNewGhcName Nothing "NewType"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
          logm $ "parsed:after" ++ (SYB.showData SYB.Parser 0 new)
@@ -2875,6 +2875,7 @@ spec = do
 
       (showGhcQual (n,nn)) `shouldBe` "(Renaming.RenameInExportedType.NT, NewType)"
       (sourceFromState s) `shouldBe` "module Renaming.RenameInExportedType\n  (\n  MyType (NewType)\n  ) where\n\ndata MyType = MT Int | NewType\n\n\n"
+
     ------------------------------------
 
     it "renames a qualified usage of a name" $ do
@@ -2888,18 +2889,71 @@ spec = do
          logm $ "parsed:" ++ (SYB.showData SYB.Parser 0 parsed)
 
          newName <- mkNewGhcName Nothing "foo1"
-         new <- renamePN n newName False parsed
+         new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
          logm $ "parsed:after" ++ (SYB.showData SYB.Parser 0 new)
 
          return (new,newName)
 
-      -- ((_nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
-      ((_nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      ((_nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- ((_nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual (n,nn)) `shouldBe` "(Renaming.QualServer.foo, foo1)"
       (sourceFromState s) `shouldBe` "module Renaming.QualClient where\n\n{- foo is imported qualified as in QualClient. Renaming should\n   preserve the qualification there\n-}\n\nimport qualified Renaming.QualServer as QS\n\nbaz :: String\nbaz = QS.foo1 : \"hello\"\n"
+
+    ------------------------------------
+
+    it "renames a class op signature" $ do
+      t <- ct $ parsedFileGhc "./Renaming/D4.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
+
+      let Just n = locToNameRdrPure nm (13, 5) parsed
+      let
+        comp = do
+         logm $ "parsed:" ++ (SYB.showData SYB.Parser 0 parsed)
+
+         newName <- mkNewGhcName Nothing "isSameOrNot"
+         new <- renamePN n newName PreserveQualify parsed
+
+         putRefactParsed new emptyAnns
+         logm $ "parsed:after" ++ (SYB.showData SYB.Parser 0 new)
+
+         return (new,newName)
+
+      ((_nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- ((_nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+
+      (showGhcQual (n,nn)) `shouldBe` "(Renaming.D4.isSame, isSameOrNot)"
+      (sourceFromState s) `shouldBe` "module Renaming.D4 where\n\n{-Rename instance name 'isSame'' to 'sameOrNot'.\n  This refactoring affects module `D4', 'B4' and 'C4' -}\n\ndata Tree a = Leaf a | Branch (Tree a) (Tree a)\n\nfringe :: Tree a -> [a]\nfringe (Leaf x ) = [x]\nfringe (Branch left right) = fringe left ++ fringe right\n\nclass SameOrNot a where\n   isSameOrNot  :: a -> a -> Bool\n   isNotSame :: a -> a -> Bool\n\ninstance SameOrNot Int where\n   isSameOrNot a  b = a == b\n   isNotSame a b = a /= b\n\nsumSquares (x:xs) = sq x + sumSquares xs\n    where sq x = x ^pow\n          pow = 2\n\nsumSquares [] = 0\n"
+
+
+    ------------------------------------
+
+    it "renames a data decl parameter" $ do
+      t <- ct $ parsedFileGhc "./Renaming/ConstructorIn3.hs"
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+          nm = initRdrNameMap t
+
+      let Just n = locToNameRdrPure nm (9, 13) parsed
+      let
+        comp = do
+         logParsedSource "parsed"
+
+         newName <- mkNewGhcName Nothing "b"
+         new <- renamePN n newName PreserveQualify parsed
+
+         putRefactParsed new emptyAnns
+         logParsedSource "parsed:after"
+
+         return (new,newName)
+
+      ((_nb,nn),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+      -- ((_nb,nn),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+
+      (showGhcQual (n,nn)) `shouldBe` "(a, b)"
+      (sourceFromState s) `shouldBe` "module ConstructorIn3 where\n\n\n--Any type/data constructor name declared in this module can be renamed.\n--Any type variable can be renamed.\n\n--Rename tyoe variable 'a' in BTree to 'b'\n\ndata BTree b = Empty | T b (BTree b) (BTree b)\n               deriving Show\n\nbuildtree :: Ord a => [a] -> BTree a\nbuildtree [] = Empty\nbuildtree (x:xs) = insert x (buildtree xs)\n\ninsert :: Ord a => a -> BTree a -> BTree a\ninsert val Empty = T val Empty Empty\ninsert val tree@(T tval left right)\n   | val > tval = T tval left (insert val right)\n   | otherwise = T tval (insert val left) right\n\nmain :: BTree Int\nmain = buildtree [3,1,2]\n"
 
 
   -- ---------------------------------------------

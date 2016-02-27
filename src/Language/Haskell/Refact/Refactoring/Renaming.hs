@@ -185,7 +185,8 @@ renameTopLevelVarName oldPN newName newNameGhc modName existChecking exportCheck
                         , newName, "' will change the program's semantics!\n"]
 
     logm "renameTopLevelVarName start..:should have qualified"
-    parsed' <- renamePN oldPN newNameGhc (exportChecking && isInScopeUnqual) parsed
+    let qual = if (exportChecking && isInScopeUnqual) then Qualify else PreserveQualify
+    parsed' <- renamePN oldPN newNameGhc qual parsed
     putRefactParsed parsed' mempty
     logm "renameTopLevelVarName done:should have qualified"
 
@@ -241,7 +242,8 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
 
         if isInScopeUnqualNew -- ++AZ++: should this be negated?
             then do
-                (refactoredMod, _) <- applyRefac (refactRenameSimple oldNameGhc newName newNameGhc True)
+                -- (refactoredMod, _) <- applyRefac (refactRenameSimple oldNameGhc newName newNameGhc True)
+                (refactoredMod, _) <- applyRefac (refactRenameSimple oldNameGhc newName newNameGhc Qualify)
                                                 RSAlreadyLoaded
                 return [refactoredMod]
             else do
@@ -254,7 +256,7 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
                 -- TODO: implement rest of this
                 return [refactoredMod]
 
-    refactRenameSimple :: GHC.Name -> String -> GHC.Name -> Bool -> RefactGhc ()
+    refactRenameSimple :: GHC.Name -> String -> GHC.Name -> HowToQual -> RefactGhc ()
     refactRenameSimple old newStr new useQual = do
         logm $ "refactRenameSimple:(old,newStr,new,useQual)=" ++ showGhc (old, newStr, new, useQual)
         qualifyTopLevelVar newStr
@@ -286,9 +288,10 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
 
         -- logParsedSource "worker:parsed"
 
-        parsed <- renamePN oldPN' newNameGhc'
-                          (newName' `elem` (nub vs \\ [nameToString oldPN']) || isInScopeUnqualNew)
-                          =<< getRefactParsed
+        let qual = if (newName' `elem` (nub vs \\ [nameToString oldPN']) || isInScopeUnqualNew)
+                      then Qualify
+                      else PreserveQualify
+        parsed <- renamePN oldPN' newNameGhc' qual =<< getRefactParsed
         putRefactParsed parsed mempty
         return ()
 

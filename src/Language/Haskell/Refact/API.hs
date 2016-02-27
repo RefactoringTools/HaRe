@@ -166,7 +166,7 @@ module Language.Haskell.Refact.API
 
     -- *** Updating
     -- ,Update(update)
-    ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
+    ,rmQualifier,qualifyToplevelName,renamePN, HowToQual(..), autoRenameLocalVar
 
     -- *** Identifiers, expressions, patterns and declarations
     , expToNameRdr

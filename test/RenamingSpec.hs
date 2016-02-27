@@ -291,7 +291,7 @@ spec = do
 
     it "renames in ConstructorIn3 9 12" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn3.hs" "b" (9,13)
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn3.hs" "b" (9,13)
+     -- ct $ rename logTestSettings testOptions "./Renaming/ConstructorIn3.hs" "b" (9,13)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/ConstructorIn3.hs"
                   ]
