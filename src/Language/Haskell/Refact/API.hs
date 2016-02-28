@@ -42,6 +42,8 @@ module Language.Haskell.Refact.API
        , clientModsAndFiles
        , serverModsAndFiles
 
+       , stripCallStack
+
 
  -- * from `Language.Haskell.Refact.Utils.MonadFunctions`
 

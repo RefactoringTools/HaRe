@@ -307,4 +307,4 @@ catchException f = do
   return res
   where
     handler:: SomeException -> IO (Either String t)
-    handler e = return (Left (show e))
+    handler e = return (Left (stripCallStack $ show e))

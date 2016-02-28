@@ -1194,7 +1194,10 @@ addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns (GHC.HsIB ivs (GHC.HsWC wcs 
 
       addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
 #else
-      let typ = error $ "addParamsToSigs:need to update for GHC 8"
+      -- let typ = error $ "addParamsToSigs:need to update for GHC 8:hst=" ++ SYB.showData SYB.Parser 0 hst
+      let typ = GHC.L ss1 (GHC.HsFunTy hst et)
+
+      addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
 #endif
       return typ
 

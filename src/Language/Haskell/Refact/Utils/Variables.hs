@@ -934,6 +934,7 @@ hsVisibleDsRdr nm e t = do
     --       of looping back into the main function.
     res = (const err -- (DN [])
           `SYB.extQ` parsed
+          `SYB.extQ` lvalbinds
           `SYB.extQ` valbinds
           `SYB.extQ` lhsdecls
           `SYB.extQ` lhsdecl
@@ -976,6 +977,9 @@ hsVisibleDsRdr nm e t = do
          logm $ "hsVisibleDsRdr parsedSource:decls done"
          return $ mconcat dfds
     parsed _ = return (DN [])
+
+    lvalbinds :: (GHC.Located (GHC.HsLocalBinds GHC.RdrName)) -> RefactGhc DeclaredNames
+    lvalbinds (GHC.L _ (GHC.HsValBinds vb)) = valbinds vb
 
     valbinds :: (GHC.HsValBinds GHC.RdrName) -> RefactGhc DeclaredNames
     valbinds vb@(GHC.ValBindsIn bindsBag sigs)

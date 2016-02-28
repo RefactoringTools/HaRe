@@ -245,7 +245,7 @@ catchException f = do
   return res
   where
     handler:: SomeException -> IO (Maybe String)
-    handler e = return (Just (show e))
+    handler e = return (Just (stripCallStack $ show e))
 
 -- ---------------------------------------------------------------------
 

@@ -397,7 +397,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                           -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
                           -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
              liftToMatchQ nm ans (m@(GHC.L _ (GHC.Match _ _pats _mtyp (GHC.GRHSs _rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-                 | (nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans  ds) False False))
+                 | (nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans ds) False False))
                     = Just (doLiftZ m (getHsDecls ans  ds))
                  | otherwise = Nothing
 

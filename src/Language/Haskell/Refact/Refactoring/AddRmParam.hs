@@ -361,11 +361,13 @@ addParamToExp (expr@(GHC.L _ (GHC.HsVar _))) argPName = do
   lv <- liftT uniqueSrcSpanT
 #if __GLASGOW_HASKELL__ <= 710
   let e2 = GHC.L lv (GHC.HsVar argPName)
+  liftT $ addSimpleAnnT e2  (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
 #else
-  let e2 = GHC.L lv (GHC.HsVar (GHC.L lv argPName))
+  let lname = GHC.L lv argPName
+  let e2 = GHC.L lv (GHC.HsVar lname)
+  liftT $ addSimpleAnnT lname (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
 #endif
   let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr e2)))
-  liftT $ addSimpleAnnT e2  (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
   liftT $ addSimpleAnnT ret (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
   liftT $ transferEntryDPT expr ret
   liftT $ setEntryDPT expr (DP (0,0))
@@ -427,11 +429,13 @@ addArgToSig pn decls = do
          lv <- liftT $ uniqueSrcSpanT
 #if __GLASGOW_HASKELL__ <= 710
          let tv = GHC.L lv (GHC.HsTyVar (mkRdrName tVar))
+         liftT $ addSimpleAnnT tv  (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
 #else
-         let tv = GHC.L lv (GHC.HsTyVar (GHC.L lv (mkRdrName tVar)))
+         let lname = GHC.L lv (mkRdrName tVar)
+         let tv = GHC.L lv (GHC.HsTyVar lname)
+         liftT $ addSimpleAnnT lname  (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
 #endif
          let typ = GHC.L ls (GHC.HsFunTy tv tp)
-         liftT $ addSimpleAnnT tv  (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
          liftT $ addSimpleAnnT typ (DP (0,1)) [((G GHC.AnnRarrow),DP (0,1))]
          return typ
 
@@ -560,6 +564,7 @@ doRmParam pn nTh = do
                   `choiceTP` failure) parsed
     logm $ "doRmParam after applyTP"
     putRefactParsed r emptyAnns
+    logParsedSource "doRmParam:parsed after"
     return ()
       where
              --1. pn is declared in top level.
@@ -740,7 +745,8 @@ rmNthArgInSig pn nTh decls = do
 #if __GLASGOW_HASKELL__ <= 710
          rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.L lt (GHC.HsForAllTy ex wc bnd ctx tp)) c))]
 #else
-         rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lt (GHC.HsForAllTy bnd tp))))))]
+         -- rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lt (GHC.HsForAllTy bnd tp))))))]
+         rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.HsIB ivs (GHC.HsWC wcs mwc tp))))]
 #endif
           =do
               ed <- liftT $ getEntryDPT tp
@@ -751,7 +757,8 @@ rmNthArgInSig pn nTh decls = do
 #if __GLASGOW_HASKELL__ <= 710
               let typ' = GHC.L lt (GHC.HsForAllTy ex wc bnd ctx (GHC.L lp' tp'))
 #else
-              let typ' = GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lt (GHC.HsForAllTy bnd (GHC.L lp' tp'))))
+              -- let typ' = GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lt (GHC.HsForAllTy bnd (GHC.L lp' tp'))))
+              let typ' = GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lp' tp'))
 #endif
               newSig <- liftT $ if length is ==1
                 then --this type signature only defines the type of pn
