@@ -604,4 +604,12 @@ spec = do
       let s = "\nThe identifier is not a local function/pattern name!\nCallStack (from HasCallStack):\n  error, called at ../src/Language/Haskell/Refact/Refactoring/MoveDef.hs:155:12 in main:Language.Haskell.Refact.Refactoring.MoveDef"
       (stripCallStack s) `shouldBe` "\nThe identifier is not a local function/pattern name!"
 
+    it "noops if no call stack from the end of an error string" $ do
+      let s = "\nThe identifier is not a local function/pattern name!"
+      (stripCallStack s) `shouldBe` "\nThe identifier is not a local function/pattern name!"
+
+    it "noops if no call stack from the end of an error string, trailing nl" $ do
+      let s = "\nThe identifier is not a local function/pattern name!\n"
+      (stripCallStack s) `shouldBe` "\nThe identifier is not a local function/pattern name!\n"
+
 -- ---------------------------------------------------------------------

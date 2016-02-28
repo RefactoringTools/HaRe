@@ -15,11 +15,11 @@ module Language.Haskell.Refact.Utils.Types
        ) where
 
 import qualified GHC        as GHC
-import qualified Name       as GHC
-import qualified Outputable as GHC
+-- import qualified Name       as GHC
+-- import qualified Outputable as GHC
 
 import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Utils
+-- import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Data.Map as Map
 

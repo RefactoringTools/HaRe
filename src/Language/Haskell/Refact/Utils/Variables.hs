@@ -635,7 +635,6 @@ getDeclaredTypesRdr d@(GHC.L _ (GHC.TyClD decl)) = do
         getLSig (GHC.L _ (GHC.MinimalSig _ _)) = error "To implement: getLSig PatSynSig"
 
         ssn = concatMap getLSig sigs
-        -- msn = getDeclaredVars $ hsBinds meths
 getDeclaredTypesRdr _ = return []
 
 -- ---------------------------------------------------------------------

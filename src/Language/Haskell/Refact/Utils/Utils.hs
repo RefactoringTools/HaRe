@@ -451,5 +451,9 @@ serverModsAndFiles m = do
 -- | In GHC 8 an error has an attached callstack. This is not always what we
 -- want, so this function strips it
 stripCallStack :: String -> String
-stripCallStack str
-  = init $ unlines $ takeWhile (\s -> s /= "CallStack (from HasCallStack):") $ lines str
+stripCallStack str = str'
+  where
+    s1 = init $ unlines $ takeWhile (\s -> s /= "CallStack (from HasCallStack):") $ lines str
+    str' = if last str == '\n'
+              then s1 ++ "\n"
+              else s1

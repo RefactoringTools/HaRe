@@ -82,7 +82,9 @@ import qualified GhcMonad      as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified Unique        as GHC
+#if __GLASGOW_HASKELL__ > 710
 import qualified Var
+#endif
 
 import qualified Data.Generics as SYB
 
@@ -453,7 +455,9 @@ initRdrNameMap tm = r
   where
     parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
     renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
+#if __GLASGOW_HASKELL__ > 710
     typechecked = GHC.tm_typechecked_source tm
+#endif
 
     checkRdr :: GHC.Located GHC.RdrName -> Maybe [(GHC.SrcSpan,GHC.RdrName)]
     checkRdr (GHC.L l n@(GHC.Unqual _)) = Just [(l,n)]

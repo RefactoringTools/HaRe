@@ -2159,7 +2159,7 @@ renamePN::(SYB.Data t)
 renamePN oldPN newName useQual t = do
   -- logm $ "renamePN: (oldPN,newName)=" ++ (showGhc (oldPN,newName))
   -- logm $ "renamePN: t=" ++ (SYB.showData SYB.Parser 0 t)
-  nm <- getRefactNameMap
+  -- nm <- getRefactNameMap
   newNameQual   <- rdrNameFromName True  newName
   newNameUnqual <- rdrNameFromName False newName
   -- newNameRdr    <- rdrNameFromName useQual newName
@@ -2302,7 +2302,7 @@ renamePN oldPN newName useQual t = do
           return (GHC.L l (GHC.IEVar new))
        else return x
 
-    renameLIE useQual' x@(GHC.L l (GHC.IEThingAbs old@(GHC.L ln n))) = do
+    renameLIE useQual' x@(GHC.L l (GHC.IEThingAbs old@(GHC.L _ln n))) = do
      nm <- getRefactNameMap
      if cond nm (GHC.L l n)
        then do
