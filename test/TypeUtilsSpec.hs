@@ -2416,16 +2416,14 @@ spec = do
       let Just n = locToNameRdrPure nm (5, 19) parsed
       let
         comp = do
-         -- renamed <- getRefactRenamed
-         -- logDataWithAnns "renamed" renamed
-         logDataWithAnns "parsed" parsed
+         logParsedSource "parsed"
          logm $ "nm:" ++ showNameMap nm
          logm $ "n:nameUnique:" ++ show (GHC.nameUnique n)
          newName <- mkNewGhcName Nothing "pointx1"
          new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
-
+         logParsedSource "parsed:after"
          return (new,newName)
       let
 
@@ -2441,18 +2439,18 @@ spec = do
 
     it "replaces a name in a type signature too" $ do
       t <- ct $ parsedFileGhc "./Renaming/Field1.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
           nm = initRdrNameMap t
 
       let Just n = locToNameRdrPure nm (5, 6) parsed
       let
         comp = do
-         logm $ "renamed:" ++ (SYB.showData SYB.Renamer 0 renamed)
+         logParsedSource "parsed"
          newName <- mkNewGhcName Nothing "NewPoint"
          new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
+         logParsedSource "parsed:after"
 
          return (new,newName)
       let
@@ -2534,12 +2532,13 @@ spec = do
          new <- renamePN n newName PreserveQualify parsed
 
          putRefactParsed new emptyAnns
+         logParsedSource "parsed:after"
 
          return (new,newName)
 
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
-      (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n\n"
+      (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n"
       (unspace $ showGhcQual nb) `shouldBe` "module LayoutIn2 where\nsilly :: [Int] -> Int\nsilly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x < 10 -> 4\n where\n x = last xs\n otherwise -> 12 }"
 
 
@@ -2627,7 +2626,7 @@ spec = do
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual n) `shouldBe` "list"
-      (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n\n"
+      (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly ls = case ls of  (1:xs) -> 1\n--There is a comment\n                       (2:xs)\n                         | x < 10    -> 4  where  x = last xs\n                       otherwise -> 12\n"
       (unspace $ showGhcQual nb) `shouldBe` "module LayoutIn2 where\nsilly :: [Int] -> Int\nsilly ls\n = case ls of {\n (1 : xs) -> 1\n (2 : xs)\n | x < 10 -> 4\n where\n x = last xs\n otherwise -> 12 }"
 
 
@@ -2655,7 +2654,7 @@ spec = do
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual n) `shouldBe` "list"
-      (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly listlonger = case listlonger of  (1:xs) -> 1\n            --There is a comment\n                                       (2:xs)\n                                         | x < 10    -> 4  where  x = last xs\n                                       otherwise -> 12\n\n"
+      (sourceFromState s) `shouldBe` "module LayoutIn2 where\n\n--Layout rule applies after 'where','let','do' and 'of'\n\n--In this Example: rename 'list' to 'ls'.\n\nsilly :: [Int] -> Int\nsilly listlonger = case listlonger of  (1:xs) -> 1\n            --There is a comment\n                                       (2:xs)\n                                         | x < 10    -> 4  where  x = last xs\n                                       otherwise -> 12\n"
       (unspace $ showGhcQual nb) `shouldBe` "module LayoutIn2 where\nsilly :: [Int] -> Int\nsilly listlonger\n = case listlonger of {\n (1 : xs) -> 1\n (2 : xs)\n | x < 10 -> 4\n where\n x = last xs\n otherwise -> 12 }"
 
 

@@ -2192,17 +2192,16 @@ renamePN oldPN newName useQual t = do
      nm <- getRefactNameMap
      if cond nm (GHC.L l n)
        then do
-          let
-            -- nn = if useQual'
-            --        then newNameCalcBool useQual'        n
-            --        else newNameCalc     PreserveQualify n
           let nn = newNameCalc useQual' n
-          new@(GHC.L l' _) <- makeNewName (GHC.L l n) nn
-          logm $ "renamePN:renameVar nn :" ++ (showGhcQual nn)
 #if __GLASGOW_HASKELL__ <= 710
+          ss' <- liftT $ uniqueSrcSpanT
+          let new@(GHC.L l' _) = (GHC.L ss' nn)
+          liftT $ modifyAnnsT (copyAnn x (GHC.L ss' (GHC.HsVar nn)))
+          addToNameMap ss' newName
           return (GHC.L l' (GHC.HsVar nn))
 #else
-          return (GHC.L l (GHC.HsVar (GHC.L l' nn)))
+          new <- makeNewName (GHC.L l n) nn
+          return (GHC.L l (GHC.HsVar new))
 #endif
        else return x
     renameVar _ x = return x
@@ -2219,15 +2218,16 @@ renamePN oldPN newName useQual t = do
      if cond nm (GHC.L l n)
        then do
           logm $ "renamePN:renameTyVar at :" ++ (showGhc l)
-          -- let nn = newNameCalcBool useQual' n
           let nn = newNameCalc useQual' n
-          -- liftT $ modifyAnnsT (replaceAnnKey (GHC.L l n) (GHC.L l nn))
-          -- addToNameMap l newName
-          new@(GHC.L l' _) <- makeNewName (GHC.L l n) nn
 #if __GLASGOW_HASKELL__ <= 710
+          ss' <- liftT $ uniqueSrcSpanT
+          let new@(GHC.L l' _) = (GHC.L ss' nn)
+          liftT $ modifyAnnsT (copyAnn x (GHC.L ss' (GHC.HsTyVar nn)))
+          addToNameMap ss' newName
           return (GHC.L l' (GHC.HsTyVar nn))
 #else
-          return (GHC.L l (GHC.HsTyVar (GHC.L l' nn)))
+          new <- makeNewName (GHC.L l n) nn
+          return (GHC.L l (GHC.HsTyVar new))
 #endif
        else return x
     renameTyVar _ x = return x
@@ -2246,11 +2246,12 @@ renamePN oldPN newName useQual t = do
           logm $ "renamePN:renameHsTyVarBndr at :" ++ (showGhc l)
           -- let nn = newNameCalcBool useQual' n
           let nn = newNameCalc useQual' n
-          GHC.L l' _ <- makeNewName (GHC.L l n) nn
 #if __GLASGOW_HASKELL__ <= 710
-          return (GHC.L l' (GHC.UserTyVar nn))
+          addToNameMap l newName
+          return (GHC.L l (GHC.UserTyVar nn))
 #else
-          return (GHC.L l (GHC.UserTyVar (GHC.L l' nn)))
+          new <- makeNewName (GHC.L l n) nn
+          return (GHC.L l (GHC.UserTyVar new))
 #endif
        else return x
     renameHsTyVarBndr _ x = return x
@@ -2263,7 +2264,6 @@ renamePN oldPN newName useQual t = do
      if cond nm (GHC.L ln n)
        then do
           -- logm $ "renamePN:renameLIE.IEVar at :" ++ (showGhc l)
-          -- let nn = newNameCalcBool useQual' n
           let nn = newNameCalc useQual' n
 
           new <- makeNewName old nn
@@ -2276,7 +2276,6 @@ renamePN oldPN newName useQual t = do
      if cond nm (GHC.L l n)
        then do
           -- logm $ "renamePN:renameLIE.IEThingAbs at :" ++ (showGhc l)
-          -- let nn = newNameCalcBool useQual' n
           let nn = newNameCalc useQual' n
 
           new <- makeNewName old nn
@@ -2289,7 +2288,6 @@ renamePN oldPN newName useQual t = do
      if cond nm (GHC.L ln n)
        then do
           -- logm $ "renamePN:renameLIE.IEThingAll at :" ++ (showGhc l)
-          -- let nn = newNameCalcBool useQual' n
           let nn = newNameCalc useQual' n
 
           new <- makeNewName old nn
@@ -2340,13 +2338,16 @@ renamePN oldPN newName useQual t = do
      if cond nm (GHC.L l n)
        then do
           logm $ "renamePNworker:renameLPat at :" ++ (showGhc l)
-          -- let nn = newNameCalcBool useQual' n
           let nn = newNameCalc useQual' n
-          GHC.L l' _ <- makeNewName (GHC.L l n) nn
 #if __GLASGOW_HASKELL__ <= 710
+          ss' <- liftT $ uniqueSrcSpanT
+          let new@(GHC.L l' _) = (GHC.L ss' nn)
+          liftT $ modifyAnnsT (copyAnn x (GHC.L ss' (GHC.VarPat nn)))
+          addToNameMap ss' newName
           return (GHC.L l' (GHC.VarPat nn))
 #else
-          return (GHC.L l (GHC.VarPat (GHC.L l' nn)))
+          new <- makeNewName (GHC.L l n) nn
+          return (GHC.L l (GHC.VarPat new))
 #endif
        else return x
     renameLPat _ x = return x
@@ -2375,10 +2376,7 @@ renamePN oldPN newName useQual t = do
          nm <- getRefactNameMap
          if cond nm old
            then do
-             logDataWithAnns "renamePN.renameFunBind.renameFunBind.w:old=" old
              new <- makeNewName old newNameUnqual
-             logDataWithAnns "renamePN.renameFunBind.renameFunBind.w:old2=" old
-             logDataWithAnns "renamePN.renameFunBind.renameFunBind.w:new=" new
              return (GHC.FunBindMatch new f)
            else return mln
        GHC.NonFunBindMatch -> return mln
@@ -2404,9 +2402,7 @@ renamePN oldPN newName useQual t = do
 #endif
      = do
          logm $ "renamePN:renameTypeSig"
-         -- Has already been renamed, make sure qualifier is removed
          ns'  <- mapM (renameLRdr NoQualify) ns
-         -- ns'  <- renameTransform False ns
          typ' <- renameTransform _useQual typ
          logm $ "renamePN:renameTypeSig done"
 #if __GLASGOW_HASKELL__ <= 710
@@ -2417,10 +2413,8 @@ renamePN oldPN newName useQual t = do
 #if __GLASGOW_HASKELL__ > 710
     renameTypeSig _useQual (GHC.ClassOpSig f ns typ)
      = do
-         logm $ "renamePN:renameTypeSig.ClassOpSig"
          ns'  <- mapM (renameLRdr NoQualify) ns
          typ' <- renameTransform _useQual typ
-         logm $ "renamePN:renameTypeSigClassOpSig done"
          return (GHC.ClassOpSig f ns' typ')
 #endif
     renameTypeSig _ x = return x
