@@ -1160,6 +1160,7 @@ addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns ltyp pns)) = do
 #else
 addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns (GHC.HsIB ivs (GHC.HsWC wcs mwc ltyp)))) = do
 #endif
+  logm $ "addParamsToSigs:newParams=" ++ showGhc newParams
   mts <- mapM getTypeForName newParams
   let ts = catMaybes mts
   logm $ "addParamsToSigs:ts=" ++ showGhc ts
@@ -1194,8 +1195,19 @@ addParamsToSigs newParams (GHC.L l (GHC.TypeSig lns (GHC.HsIB ivs (GHC.HsWC wcs 
 
       addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
 #else
+      hst1 <- case t of
+         -- GHC 8: (ForAllTy (Anon arg) res used to be called FunTy arg res.)
+        (GHC.ForAllTy (GHC.Anon _) _) -> do
+          ss <- uniqueSrcSpanT
+          let t1 = GHC.L ss (GHC.HsParTy hst)
+          setEntryDPT hst (DP (0,0))
+          addSimpleAnnT t1  (DP (0,0)) [((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+          return t1
+        _ -> return hst
+      let typ = GHC.L ss1 (GHC.HsFunTy hst1 et)
+
       -- let typ = error $ "addParamsToSigs:need to update for GHC 8:hst=" ++ SYB.showData SYB.Parser 0 hst
-      let typ = GHC.L ss1 (GHC.HsFunTy hst et)
+      -- let typ = GHC.L ss1 (GHC.HsFunTy hst et)
 
       addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
 #endif
@@ -1216,22 +1228,29 @@ addParamsToSigs np ls = error $ "addParamsToSigs: no match for:" ++ showGhc (np,
 --    part and the new.
 isNewSignatureOk :: [GHC.Type] -> RefactGhc Bool
 isNewSignatureOk types = do
+  logm $ "isNewSignatureOk:types=" ++ SYB.showData SYB.Parser 0 types
   -- NOTE: under some circumstances enabling Rank2Types or RankNTypes
   --       can resolve the type conflict, this can potentially be checked
   --       for.
   -- NOTE2: perhaps proceed and reload the tentative refactoring into
   --        the GHC session and accept it only if it type checks
+
+  -- GHC 8: (ForAllTy (Anon arg) res used to be called FunTy arg res.)
+
   let
     r = SYB.everythingStaged SYB.TypeChecker (++) []
           ([] `SYB.mkQ` usesForAll) types
+#if __GLASGOW_HASKELL__ <= 710
     usesForAll (GHC.ForAllTy _ _) = [1::Int]
+#else
+    usesForAll (GHC.ForAllTy (GHC.Named _ _) _) = [1::Int]
+#endif
     usesForAll _                  = []
 
   return $ emptyList r
 
 -- ---------------------------------------------------------------------
 
--- TODO: perhaps move this to TypeUtils
 -- TODO: complete this
 typeToLHsType :: GHC.Type -> Transform (GHC.LHsType GHC.RdrName)
 typeToLHsType (GHC.TyVarTy v)   = do
@@ -1254,6 +1273,15 @@ typeToLHsType t@(GHC.TyConApp _tc _ts) = tyConAppToHsType t
 
 #if __GLASGOW_HASKELL__ <= 710
 typeToLHsType (GHC.FunTy t1 t2) = do
+  t1' <- typeToLHsType t1
+  t2' <- typeToLHsType t2
+  ss <- uniqueSrcSpanT
+  let typ = GHC.L ss (GHC.HsFunTy t1' t2')
+  addSimpleAnnT typ (DP (0,0)) [((G GHC.AnnRarrow),DP (0,1))]
+  return typ
+#else
+-- GHC 8: (ForAllTy (Anon arg) res used to be called FunTy arg res.)
+typeToLHsType (GHC.ForAllTy (GHC.Anon t1) t2) = do
   t1' <- typeToLHsType t1
   t2' <- typeToLHsType t2
   ss <- uniqueSrcSpanT
