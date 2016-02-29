@@ -9,6 +9,7 @@ import           Data.Version
 import           Development.GitRev (gitCommitCount)
 import           Distribution.System (buildArch)
 import           Distribution.Text (display)
+import           Language.Haskell.Refact.API
 import           Language.Haskell.Refact.HaRe
 import           Options.Applicative.Simple
 import qualified Language.Haskell.GhcMod as GM
