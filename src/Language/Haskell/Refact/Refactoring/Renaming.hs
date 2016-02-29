@@ -297,10 +297,9 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
 
 causeAmbiguityInExports :: GHC.Name -> GHC.Name -> RefactGhc Bool
 causeAmbiguityInExports old newName {- inscps -} = do
-    nm <- getRefactNameMap
     (GHC.L _ (GHC.HsModule _ exps _imps _decls _ _)) <- getRefactParsed
     isInScopeUnqual <- isInScopeAndUnqualifiedGhc (nameToString old) Nothing
-    let usedUnqual = usedWithoutQualR nm newName exps
+    let usedUnqual = usedWithoutQualR newName exps
     logm $ "causeAmbiguityInExports:(isInScopeUnqual,usedUnqual)" ++ show (isInScopeUnqual, usedUnqual)
     return (isInScopeUnqual && usedUnqual)
 

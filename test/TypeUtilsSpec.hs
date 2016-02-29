@@ -3291,7 +3291,7 @@ spec = do
           nm <- getRefactNameMap
 
           let Just n@name = locToNameRdrPure nm (14,21) parsed
-          let res = usedWithoutQualR nm name parsed
+          let res = usedWithoutQualR name parsed
           return (res,n,name)
 
       ((r,n1,n2),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -3310,7 +3310,7 @@ spec = do
           nm <- getRefactNameMap
 
           let Just n@name = locToNameRdrPure nm (8,1) parsed
-          let res = usedWithoutQualR nm name parsed
+          let res = usedWithoutQualR name parsed
           return (res,n,name)
 
       ((r,n1,n2),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -3330,7 +3330,7 @@ spec = do
 
           let Just n@name = locToNameRdrPure nm (36,12) parsed
           let Just (GHC.L _ namep) = locToRdrName (36,12) parsed
-          let res = usedWithoutQualR nm name parsed
+          let res = usedWithoutQualR name parsed
           return (res,namep,name,n)
       ((r,np,n1,n2),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 

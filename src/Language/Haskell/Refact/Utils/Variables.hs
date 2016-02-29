@@ -376,6 +376,13 @@ hsFreeAndDeclaredRdr' nm t = do
           pat (GHC.L _ (GHC.SigPatOut p _)) = pat p
           pat (GHC.L l (GHC.CoPat _ p _)) = pat (GHC.L l p)
 
+          pat (GHC.L _ (GHC.LazyPat p)) = pat p
+
+          pat (GHC.L _ (GHC.ConPatOut {})) = error $ "hsFreeAndDeclaredRdr'.pat:impossible: ConPatOut"
+
+          pat (GHC.L _ (GHC.SplicePat (GHC.HsSplice _ e))) = hsFreeAndDeclaredRdr' nm e
+          pat (GHC.L _ (GHC.QuasiQuotePat _)) = return (FN [], DN [])
+
           -- pat p = error $ "hsFreeAndDeclaredRdr'.pat:unimplemented:" ++ (showGhc p)
 
           -- ---------------------------
@@ -403,9 +410,7 @@ hsFreeAndDeclaredRdr' nm t = do
 #if __GLASGOW_HASKELL__ <= 710
           bndrs :: GHC.HsWithBndrs GHC.RdrName (GHC.LHsType GHC.RdrName) -> Maybe (FreeNames,DeclaredNames)
           bndrs (GHC.HsWB thing _ _ _) = do
-            (FN ft,DN dt) <- hsFreeAndDeclaredRdr' nm thing
-            -- error $ "hsFreeAndDeclaredRdr'.bndrs (_ft,dt)=" ++ show (_ft,DN dt)
-            -- return (FN dt,DN [])
+            (FN ft,DN _dt) <- hsFreeAndDeclaredRdr' nm thing
             return (FN ft,DN [])
 #else
           bndrs :: GHC.LHsSigWcType GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
@@ -420,7 +425,6 @@ hsFreeAndDeclaredRdr' nm t = do
           bindList (ds :: [GHC.LHsBind GHC.RdrName])
             =do (FN f,DN d) <- recurseList ds
                 return (FN (f\\d),DN d)
-          -- bindList _ = mzero
 
           -- match and patBind, same type--
 #if __GLASGOW_HASKELL__ <= 710
@@ -586,7 +590,7 @@ hsFreeAndDeclaredPNs t = do
 -- |Get the names of all types declared in the given declaration
 -- getDeclaredTypesRdr :: GHC.LTyClDecl GHC.RdrName -> RefactGhc [GHC.Name]
 getDeclaredTypesRdr :: GHC.LHsDecl GHC.RdrName -> RefactGhc [GHC.Name]
-getDeclaredTypesRdr d@(GHC.L _ (GHC.TyClD decl)) = do
+getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
   nm <- getRefactNameMap
   case decl of
 #if __GLASGOW_HASKELL__ <= 710
@@ -979,6 +983,8 @@ hsVisibleDsRdr nm e t = do
 
     lvalbinds :: (GHC.Located (GHC.HsLocalBinds GHC.RdrName)) -> RefactGhc DeclaredNames
     lvalbinds (GHC.L _ (GHC.HsValBinds vb)) = valbinds vb
+    lvalbinds (GHC.L _ (GHC.HsIPBinds _))   = return (DN [])
+    lvalbinds (GHC.L _ GHC.EmptyLocalBinds) = return (DN [])
 
     valbinds :: (GHC.HsValBinds GHC.RdrName) -> RefactGhc DeclaredNames
     valbinds vb@(GHC.ValBindsIn bindsBag sigs)
@@ -1341,6 +1347,11 @@ hsVisibleDsRdr nm e t = do
       return $ dp <> db
     lpat (GHC.L _ (GHC.SigPatOut p _)) = lpat p
     lpat (GHC.L l (GHC.CoPat _ p _)) = lpat (GHC.L l p)
+
+    lpat (GHC.L _ (GHC.LazyPat p)) = lpat p
+    lpat (GHC.L _ (GHC.ConPatOut {})) = error $ "hsFreeAndDeclared.lpat:impossible GHC.ConPatOut"
+    lpat (GHC.L _ (GHC.SplicePat (GHC.HsSplice _ expr))) = hsVisibleDsRdr nm e expr
+    lpat (GHC.L _ (GHC.QuasiQuotePat _)) = return mempty
 
     -- ---------------------------
 

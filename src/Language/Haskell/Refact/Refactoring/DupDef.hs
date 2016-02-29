@@ -260,7 +260,7 @@ refactorInClientMod oldPN serverModName newPName targetModule
          -- logm $ "refactorInClientMod.needToBeHided:name=" ++ showGhcQual name
          nm <- getRefactNameMap
          logm $ "refactorInClientMod.needToBeHided:nm=" ++ showGhcQual nm
-         let usedUnqual = usedWithoutQualR nm name parsed
+         let usedUnqual = usedWithoutQualR name parsed
          logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhc (usedUnqual))) -- ++AZ++ debug
          return $ usedUnqual || causeNameClashInExports nm oldPN name serverModName parsed
 
