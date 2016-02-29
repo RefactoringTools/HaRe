@@ -2,4 +2,4 @@ module MMP1 where
 import Control.Monad
 
 f :: (MonadPlus m) => m Int -> m Int
-f = ( >>= (\i -> return (i + 1)))
+f mi = mi >>= (\i -> return (i + 1))

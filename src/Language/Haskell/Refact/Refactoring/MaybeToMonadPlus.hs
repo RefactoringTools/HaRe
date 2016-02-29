@@ -66,13 +66,19 @@ doRewriteAsBind fileName pos funNm = do
     (newRhs, _) <- liftT $ cloneT rhs
     lam <- wrapInLambda funNm newPat newRhs
     lam_par <- locate $ GHC.HsPar lam
-    new_rhs <- createGRHS lam_par
+--    logm $ "New pat: " ++ (SYB.showData SYB.Parser 3 newPat)
+    let (GHC.L _ (GHC.VarPat nm)) = newPat
+        newNm = mkNewNm nm
+    locate newNm
+    new_rhs <- createGRHS newNm lam_par
     replaceGRHS funNm new_rhs
     prsed <- getRefactParsed
     logm $ "Final parsed: " ++ (SYB.showData SYB.Parser 3 prsed)
     currAnns <- fetchAnnsFinal
     logm $ "Final anns: " ++ (show currAnns)
-
+      where mkNewNm rdr = let str = GHC.occNameString $ GHC.rdrNameOcc rdr in
+              GHC.Unqual $ GHC.mkVarOcc ("m_" ++ str)
+              
 replaceGRHS :: String -> (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc ()
 replaceGRHS funNm new_rhs = do
   parsed <- getRefactParsed
@@ -125,21 +131,27 @@ wrapInPars expr = do
   addAnn newAst newAnn
   return newAst
 
-createGRHS :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-createGRHS lam_par = do
+createGRHS :: GHC.RdrName -> GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+createGRHS name lam_par = do
   bind_occ <- locate $ GHC.HsVar (GHC.Unqual (GHC.mkDataOcc ">>="))
-  let occDp = [(G GHC.AnnVal, DP (0,0))]
+  let occDp = [(G GHC.AnnVal, DP (0,1))]
       occAnn = annNone {annsDP = occDp}
   addAnn bind_occ occAnn
-  l_section <- locate $ GHC.SectionR bind_occ lam_par
-  addEmptyAnn l_section
-  l_par <- wrapInPars l_section
-  lgrhs <- locate $ GHC.GRHS [] l_par
+  l_name <- locate $ GHC.HsVar name
+  let l_ann = annNone {annsDP = [(G GHC.AnnVal, DP (0,1))]}
+  addAnn l_name l_ann 
+  oppApp <- locate $ GHC.OpApp l_name bind_occ GHC.PlaceHolder lam_par
+  addEmptyAnn oppApp
+  lgrhs <- locate $ GHC.GRHS [] oppApp
   addEmptyAnn lgrhs
   return $ GHC.GRHSs [lgrhs] GHC.EmptyLocalBinds
 
 addEmptyAnn :: (Data a) => GHC.Located a -> RefactGhc ()
 addEmptyAnn a = addAnn a annNone
+
+addAnnVal :: (Data a) => GHC.Located a -> RefactGhc ()
+addAnnVal a = addAnn a valAnn
+  where valAnn = annNone {annsDP = [(G GHC.AnnVal, DP (0,0))]}
 
 addAnn :: (Data a) => GHC.Located a -> Annotation -> RefactGhc ()
 addAnn a ann = do
