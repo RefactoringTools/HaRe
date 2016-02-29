@@ -21,6 +21,7 @@ import qualified OccName as GHC
 import qualified RdrName as GHC
 import qualified BasicTypes as GHC
 import qualified ApiAnnotation as GHC
+import Data.Maybe
 
 maybeToMonadPlus :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> IO [FilePath]
 maybeToMonadPlus settings cradle fileName pos funNm = do
@@ -76,6 +77,12 @@ doRewriteAsBind fileName pos funNm = do
     logm $ "Final parsed: " ++ (SYB.showData SYB.Parser 3 prsed)
     currAnns <- fetchAnnsFinal
     logm $ "Final anns: " ++ (show currAnns)
+    fixType funNm
+    let monadModNm = GHC.mkModuleName "Control.Monad"
+    finalParsed <- getRefactParsed
+    newP <- addImportDecl finalParsed monadModNm Nothing False False False Nothing False []
+    currAnns <- fetchAnnsFinal
+    putRefactParsed newP currAnns
       where mkNewNm rdr = let str = GHC.occNameString $ GHC.rdrNameOcc rdr in
               GHC.Unqual $ GHC.mkVarOcc ("m_" ++ str)
               
@@ -117,7 +124,7 @@ wrapInLambda :: String -> GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHs
 wrapInLambda funNm varPat rhs = do
   let gen_rhs = justToReturn rhs
   match@(GHC.L l match') <- mkMatch varPat gen_rhs
-  --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match) 
+  --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match)
   let mg = GHC.MG [match] [] GHC.PlaceHolder GHC.Generated
   currAnns <- fetchAnnsFinal
   --logm $ "Anns :" ++ (show $ getAllAnns currAnns match)
@@ -185,6 +192,7 @@ mkMatch varPat rhs = do
   lMatch@(GHC.L l m) <- locate (GHC.Match Nothing [varPat] Nothing rhs)
   let dp = [(G GHC.AnnRarrow, DP (0,1))]
       newAnn = annNone {annsDP = dp, annEntryDelta = DP (0,-1)}
+  zeroDP varPat
   addAnn lMatch newAnn
   return lMatch
 
@@ -197,6 +205,14 @@ locate ast = do
   loc <- liftT uniqueSrcSpanT
   return (GHC.L loc ast)
 
+zeroDP :: (Data a) => GHC.Located a -> RefactGhc ()
+zeroDP ast = do
+  currAnns <- fetchAnnsFinal
+  let k = mkAnnKey ast
+      mv = Map.lookup k currAnns
+  case mv of
+    Nothing -> return ()
+    Just v -> addAnn ast (v {annEntryDelta = DP (0,0)})
 
 getVarAndRHS :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LPat GHC.RdrName, GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
 getVarAndRHS match = do
@@ -286,6 +302,48 @@ handleParseResult msg e = case e of
   (Left (_, errStr)) -> error $ "The parse from: " ++ msg ++ " with error: " ++ errStr
   (Right res) -> return res
 
+fixType :: String -> RefactGhc ()
+fixType funNm = do
+  parsed <- getRefactParsed
+  currAnns <- fetchAnnsFinal
+  dFlags <- GHC.getSessionDynFlags
+  let m_sig = getSigD parsed
+      (GHC.L sigL (GHC.SigD sig)) = fromJust m_sig
+      iType = fromJust $ getInnerType sig
+      strTy = exactPrint iType currAnns
+      tyStr = funNm ++ " :: (MonadPlus m) => m" ++ strTy ++ " -> m" ++ strTy
+      pRes = parseDecl dFlags "MaybeToMonadPlus.hs" tyStr
+  logm $ "Type string: " ++ tyStr
+  (anns, newSig) <- handleParseResult "MaybeToMonadPlus.fixType" pRes
+  newParsed <- replaceAtLocation sigL newSig
+  let newAnns = Map.union currAnns anns
+  putRefactParsed newParsed newAnns
+  addNewLines 2 newSig
+    where getSigD :: (Data a) => a -> Maybe (GHC.LHsDecl GHC.RdrName)
+          getSigD = SYB.everything (<|>) (Nothing `SYB.mkQ` isSigD)
+          isSigD :: GHC.LHsDecl GHC.RdrName -> Maybe (GHC.LHsDecl GHC.RdrName)
+          isSigD s@(GHC.L _ (GHC.SigD sig)) = if isSig sig
+                                              then Just s
+                                              else Nothing
+          isSigD _ = Nothing
+          isSig :: GHC.Sig GHC.RdrName -> Bool
+          isSig sig@(GHC.TypeSig [(GHC.L _ nm)] _ _) = (compNames funNm nm)
+          isSig _ = False
+          compNames :: String -> GHC.RdrName -> Bool
+          compNames s rdr = let sRdr = (GHC.occNameString . GHC.rdrNameOcc) rdr in
+            sRdr == s
+            
+getInnerType :: GHC.Sig GHC.RdrName -> Maybe (GHC.LHsType GHC.RdrName)
+getInnerType = SYB.everything (<|>) (Nothing `SYB.mkQ` getTy)
+  where getTy :: GHC.HsType GHC.RdrName -> Maybe (GHC.LHsType GHC.RdrName)
+        getTy (GHC.HsAppTy mCon otherTy) = if isMaybeTy mCon
+                                           then Just otherTy
+                                           else Nothing
+        getTy _ = Nothing
+        isMaybeTy :: GHC.LHsType GHC.RdrName -> Bool
+        isMaybeTy (GHC.L _ (GHC.HsTyVar (GHC.Unqual occNm))) = (GHC.occNameString occNm) == "Maybe"
+        isMaybeTy _ = False
+
 -- Retrieves all annotations that correspond to all subtrees of the provided ast chunk
 getAllAnns :: (Data a) => Anns -> a -> Anns
 getAllAnns anns = generic `SYB.ext2Q` located
@@ -302,7 +360,7 @@ getAllAnns anns = generic `SYB.ext2Q` located
                   v <- Map.lookup k anns
                   let rst = getAllAnns anns b
                   return $ Map.singleton k v `Map.union` rst
-
+        
 -- This creates an empty annotation for every located item where an annotation does not already exist in the given AST chunk
 synthesizeAnns :: (Data a) => a -> RefactGhc a
 synthesizeAnns = generic `SYB.ext2M` located
@@ -348,4 +406,41 @@ removeAnns = generic `SYB.ext2M` located
             _ <- gmapM removeAnns b
             return b
           Nothing -> return b
+         
             
+replaceAtLocation :: (Data a) => GHC.SrcSpan -> GHC.Located a -> RefactGhc (GHC.ParsedSource)
+replaceAtLocation span new = do
+  parsed <- getRefactParsed
+  newParsed <- SYB.everywhereM (SYB.mkM findLoc) parsed
+  return newParsed
+    where --findLoc :: (forall b. (Data b) => GHC.Located b -> RefactGhc (GHC.Located b))
+          findLoc a@(GHC.L l s) = if l == span
+                                  then do
+                                    removeAnns s
+                                    return new
+                                  else return a
+
+--Takes a piece of AST and adds a one row offset
+addNewLines :: (Data a) => Int -> GHC.Located a -> RefactGhc ()
+addNewLines n ast = do
+  currAnns <- fetchAnnsFinal
+  let key = mkAnnKey ast
+      mv = Map.lookup key currAnns
+  case mv of
+    Nothing -> return ()
+    Just v -> do
+      let (DP (row,col)) = annEntryDelta v
+          newDP = (DP (row+n,col))
+          newAnn = v {annEntryDelta = newDP}
+          newAnns = Map.insert key newAnn currAnns
+      setRefactAnns newAnns
+
+addSimpleImportDecl :: String -> RefactGhc ()
+addSimpleImportDecl modName = do
+  (GHC.L l parsedS) <- getRefactParsed
+  let newImport = GHC.simpleImportDecl (GHC.mkModuleName modName)
+      imports = GHC.hsmodImports parsedS
+  l_import <- locate newImport
+  currAnns <- fetchAnnsFinal
+  let newAnn = annNone {annsDP = [(G GHC.AnnImport, DP (0,0))], annEntryDelta = (DP (1,0))} 
+  putRefactParsed (GHC.L l (parsedS {GHC.hsmodImports = (l_import : imports)})) (Map.insert (mkAnnKey l_import) newAnn currAnns)
