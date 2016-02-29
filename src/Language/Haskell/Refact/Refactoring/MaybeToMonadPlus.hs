@@ -71,7 +71,7 @@ doRewriteAsBind fileName pos funNm = do
         newNm = mkNewNm nm
     locate newNm
     new_rhs <- createGRHS newNm lam_par
-    replaceGRHS funNm new_rhs
+    replaceGRHS funNm new_rhs newNm
     prsed <- getRefactParsed
     logm $ "Final parsed: " ++ (SYB.showData SYB.Parser 3 prsed)
     currAnns <- fetchAnnsFinal
@@ -79,8 +79,8 @@ doRewriteAsBind fileName pos funNm = do
       where mkNewNm rdr = let str = GHC.occNameString $ GHC.rdrNameOcc rdr in
               GHC.Unqual $ GHC.mkVarOcc ("m_" ++ str)
               
-replaceGRHS :: String -> (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc ()
-replaceGRHS funNm new_rhs = do
+replaceGRHS :: String -> (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> GHC.RdrName -> RefactGhc ()
+replaceGRHS funNm new_rhs lhs_name = do
   parsed <- getRefactParsed
   newParsed <- SYB.everywhereM (SYB.mkM worker) parsed
   --logm $ "new_rhs: " ++ (SYB.showData SYB.Parser 3 new_rhs)
@@ -93,13 +93,25 @@ replaceGRHS funNm new_rhs = do
             (GHC.occNameString . GHC.rdrNameOcc) nm == funNm = do
               logm $ "=======Found funbind========"
               new_matches <- SYB.everywhereM (SYB.mkM worker') (GHC.fun_matches fb)
-              return $ fb{GHC.fun_matches = new_matches}
+              final_matches <- fix_lhs new_matches
+              return $ fb{GHC.fun_matches = final_matches}
           worker bind = return bind
           worker' :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) 
           worker' (GHC.GRHSs _ _) = do
             logm "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! worker'!!!!!!!!!!!!!!!!!!!!!!"
             return new_rhs
-            
+          fix_lhs :: GHC.MatchGroup GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.MatchGroup GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+          fix_lhs mg = do
+            let [(GHC.L _ match)] = GHC.mg_alts mg
+                new_pat = GHC.VarPat lhs_name
+            lPat <- locate new_pat
+            addAnnVal lPat
+            let newMatch = match {GHC.m_pats = [lPat]}
+                mAnn = annNone {annsDP = [(G GHC.AnnEqual, (DP (0,1)))]}
+            new_l_match <- locate newMatch
+            addAnn new_l_match mAnn
+            return $ mg {GHC.mg_alts = [new_l_match]}
+                        
 
 wrapInLambda :: String -> GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
 wrapInLambda funNm varPat rhs = do
@@ -151,7 +163,7 @@ addEmptyAnn a = addAnn a annNone
 
 addAnnVal :: (Data a) => GHC.Located a -> RefactGhc ()
 addAnnVal a = addAnn a valAnn
-  where valAnn = annNone {annsDP = [(G GHC.AnnVal, DP (0,0))]}
+  where valAnn = annNone {annEntryDelta = DP (0,1), annsDP = [(G GHC.AnnVal, DP (0,0))]}
 
 addAnn :: (Data a) => GHC.Located a -> Annotation -> RefactGhc ()
 addAnn a ann = do
