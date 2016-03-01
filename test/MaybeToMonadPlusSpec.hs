@@ -26,3 +26,10 @@ spec = do
       diff <- ct $ compareFiles "./MaybeToMonadPlus/MMP2.refactored.hs"
                                 "./MaybeToMonadPlus/MMP2.hs.expected1"
       diff `shouldBe` []
+    it "Function with nothing to nothing case but has mzero value and an extra parameter." $ do
+      res <- ct $ maybeToMonadPlus logTestSettings testOptions "./MaybeToMonadPlus/MMP3.hs" (4,1) "f"
+      res' <- ct $ mapM makeRelativeToCurrentDirectory res
+      res' `shouldBe` ["MaybeToMonadPlus/MMP3.hs"]
+      diff <- ct $ compareFiles "./MaybeToMonadPlus/MMP3.refactored.hs"
+                                "./MaybeToMonadPlus/MMP3.hs.expected"
+      diff `shouldBe` []
