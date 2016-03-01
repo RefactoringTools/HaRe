@@ -380,8 +380,17 @@ hsFreeAndDeclaredRdr' nm t = do
 
           pat (GHC.L _ (GHC.ConPatOut {})) = error $ "hsFreeAndDeclaredRdr'.pat:impossible: ConPatOut"
 
+#if __GLASGOW_HASKELL__ <= 710
           pat (GHC.L _ (GHC.SplicePat (GHC.HsSplice _ e))) = hsFreeAndDeclaredRdr' nm e
+#else
+          pat (GHC.L _ (GHC.SplicePat (GHC.HsQuasiQuote {})))     = return (FN [], DN [])
+          pat (GHC.L _ (GHC.SplicePat (GHC.HsTypedSplice _ e)))   = hsFreeAndDeclaredRdr' nm e
+          pat (GHC.L _ (GHC.SplicePat (GHC.HsUntypedSplice _ e))) = hsFreeAndDeclaredRdr' nm e
+#endif
+
+#if __GLASGOW_HASKELL__ <= 710
           pat (GHC.L _ (GHC.QuasiQuotePat _)) = return (FN [], DN [])
+#endif
 
           -- pat p = error $ "hsFreeAndDeclaredRdr'.pat:unimplemented:" ++ (showGhc p)
 
@@ -415,7 +424,7 @@ hsFreeAndDeclaredRdr' nm t = do
 #else
           bndrs :: GHC.LHsSigWcType GHC.RdrName -> Maybe (FreeNames,DeclaredNames)
           bndrs (GHC.HsIB _ (GHC.HsWC _ _ ty)) = do
-            (FN ft,DN dt) <- hsFreeAndDeclaredRdr' nm ty
+            (FN ft,DN _dt) <- hsFreeAndDeclaredRdr' nm ty
             -- return (FN dt,DN [])
             return (FN ft,DN [])
 #endif
@@ -1286,6 +1295,10 @@ hsVisibleDsRdr nm e t = do
 #else
     lstmt (GHC.L _ (GHC.RecStmt stmts _ _ _ _ _ _ _ _ _)) = hsVisibleDsRdr nm e stmts
 #endif
+
+#if __GLASGOW_HASKELL__ > 710
+    lstmt (GHC.L _ (GHC.ApplicativeStmt {})) = return mempty
+#endif
     -- lstmt _ = return (DN [])
 
     -- -----------------------
@@ -1350,8 +1363,10 @@ hsVisibleDsRdr nm e t = do
 
     lpat (GHC.L _ (GHC.LazyPat p)) = lpat p
     lpat (GHC.L _ (GHC.ConPatOut {})) = error $ "hsFreeAndDeclared.lpat:impossible GHC.ConPatOut"
+#if __GLASGOW_HASKELL__ <= 710
     lpat (GHC.L _ (GHC.SplicePat (GHC.HsSplice _ expr))) = hsVisibleDsRdr nm e expr
     lpat (GHC.L _ (GHC.QuasiQuotePat _)) = return mempty
+#endif
 
     -- ---------------------------
 

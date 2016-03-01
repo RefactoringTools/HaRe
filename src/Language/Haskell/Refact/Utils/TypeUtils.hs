@@ -393,6 +393,7 @@ causeNameClashInExports nm pn newName modName parsed@(GHC.L _ p)
   = let exps = GHC.unLoc $ fromMaybe (GHC.noLoc []) (GHC.hsmodExports p)
         varExps = concatMap nameFromExport $ filter isImpVar exps
         nameFromExport (GHC.L _ (GHC.IEVar x)) = [rdrName2NamePure nm x]
+        nameFromExport _                       = []
         -- TODO: make withoutQual part of the API
         withoutQual n = showGhc $ GHC.localiseName n
         modNames=nub (concatMap (\x -> if withoutQual x== withoutQual newName
@@ -748,6 +749,9 @@ instance UsedByRhs (GHC.HsBind GHC.RdrName) where
   usedByRhsRdr nm  (GHC.PatSynBind (GHC.PSB _ _ _ rhs _)) pns = findNamesRdr nm pns rhs
   usedByRhsRdr nm  (GHC.VarBind _ rhs _)                  pns = findNamesRdr nm pns rhs
   usedByRhsRdr _nm (GHC.AbsBinds _ _ _ _ _)              _pns = False
+#if __GLASGOW_HASKELL__ > 710
+  usedByRhsRdr _nm (GHC.AbsBindsSig _ _ _ _ _ _)         _pns = False
+#endif
 
 -- -------------------------------------
 
@@ -1248,8 +1252,8 @@ typeToLHsType (GHC.ForAllTy (GHC.Anon t1) t2) = do
 typeToLHsType (GHC.ForAllTy _v t) = do
   t' <- typeToLHsType t
   ss1 <- uniqueSrcSpanT
-  ss2 <- uniqueSrcSpanT
 #if __GLASGOW_HASKELL__ <= 710
+  ss2 <- uniqueSrcSpanT
   return $ GHC.L ss1 (GHC.HsForAllTy GHC.Explicit Nothing (GHC.HsQTvs [] []) (GHC.L ss2 []) t')
 #else
   return $ GHC.L ss1 (GHC.HsForAllTy [] t')
@@ -2354,7 +2358,7 @@ renamePN oldPN newName useQual t = do
            else return mln
        Nothing -> return mln
 #else
-       GHC.FunBindMatch old@(GHC.L lmn mn) f -> do
+       GHC.FunBindMatch old f -> do
          nm <- getRefactNameMap
          if cond nm old
            then do
@@ -2542,7 +2546,7 @@ expToNameRdr :: NameMap -> GHC.LHsExpr GHC.RdrName -> Maybe GHC.Name
 #if __GLASGOW_HASKELL__ <= 710
 expToNameRdr nm (GHC.L l (GHC.HsVar pnt)) = Just (rdrName2NamePure nm (GHC.L l pnt))
 #else
-expToNameRdr nm (GHC.L l (GHC.HsVar pnt)) = Just (rdrName2NamePure nm pnt)
+expToNameRdr nm (GHC.L _ (GHC.HsVar pnt)) = Just (rdrName2NamePure nm pnt)
 #endif
 expToNameRdr nm (GHC.L _ (GHC.HsPar e))   = expToNameRdr nm e
 expToNameRdr _ _ = Nothing
@@ -2557,7 +2561,7 @@ patToNameRdr :: NameMap -> GHC.LPat GHC.RdrName -> Maybe GHC.Name
 #if __GLASGOW_HASKELL__ <= 710
 patToNameRdr nm (GHC.L l (GHC.VarPat n)) = Just (rdrName2NamePure nm (GHC.L l n))
 #else
-patToNameRdr nm (GHC.L l (GHC.VarPat n)) = Just (rdrName2NamePure nm n)
+patToNameRdr nm (GHC.L _ (GHC.VarPat n)) = Just (rdrName2NamePure nm n)
 #endif
 patToNameRdr _ _ = Nothing
 
