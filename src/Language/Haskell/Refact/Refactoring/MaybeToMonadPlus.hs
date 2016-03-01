@@ -196,10 +196,6 @@ mkMatch varPat rhs = do
   addAnn lMatch newAnn
   return lMatch
 
-lookupAllAnns :: Anns -> [GHC.Located a] -> Anns
-lookupAllAnns anns [] = emptyAnns
-lookupAllAnns anns ((GHC.L l _):xs) = (lookupAnns anns l) `Map.union` (lookupAllAnns anns xs)
-
 locate :: a -> RefactGhc (GHC.Located a)
 locate ast = do
   loc <- liftT uniqueSrcSpanT

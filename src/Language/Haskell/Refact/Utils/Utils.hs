@@ -245,30 +245,12 @@ mergeRefResults lst = Map.elems $ mergeHelp lst Map.empty
 threadState :: GM.Options -> RefactState -> [RefactGhc [ApplyRefacResult]] -> IO [([ApplyRefacResult], RefactState)]
 threadState _ _ [] = return []
 threadState opt currState (rGhc : rst) = do
-  res@(refMods, newState) <- runRefactGhcCd rGhc currState opt
+  res@(refMods, newState) <- runRefactGhc rGhc currState opt
   let (Just mod) = rsModule newState
       newMod = mod {rsStreamModified = RefacUnmodifed}
       nextState = newState {rsModule = Just newMod }
   rest <- threadState opt nextState rst
   return (res : rest)
-
--- ---------------------------------------------------------------------
-
-runRefactGhcCd ::
-  RefactGhc a -> RefactState -> GM.Options -> IO (a, RefactState)
-runRefactGhcCd comp initialState opt = do
-
-  let
-    runMain :: IO a -> IO a
-    runMain progMain = do
-      catches progMain [
-        Handler $ \(GM.GMEWrongWorkingDirectory projDir _curDir) -> do
-          cdAndDo projDir progMain
-        ]
-
-    fullComp = runRefactGhc comp initialState opt
-
-  runMain fullComp
 
 -- ---------------------------------------------------------------------
 

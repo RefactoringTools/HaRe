@@ -4,7 +4,7 @@ module Language.Haskell.Refact.Refactoring.DeleteDef where
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 import BasicTypes
-import qualified GHC 
+import qualified GHC
 import Control.Monad
 import Control.Monad.State
 import Language.Haskell.GhcMod
@@ -33,7 +33,7 @@ comp fileName (row,col) = do
     Just pn@(GHC.L _ n) ->
       do
         logm $ "DeleteDef.comp: before isPNUsed"
-        let (Just (GHC.L _ ghcn)) = locToName (row,col) renamed
+        Just ghcn <- locToNameRdr (row,col) parsed
         pnIsUsedLocal <- isPNUsed ghcn targetModule fileName
         clients <- clientModsAndFiles targetModule
         pnUsedClients <- isPNUsedInClients ghcn n targetModule
