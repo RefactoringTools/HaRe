@@ -1364,8 +1364,12 @@ hsVisibleDsRdr nm e t = do
     lpat (GHC.L _ (GHC.LazyPat p)) = lpat p
     lpat (GHC.L _ (GHC.ConPatOut {})) = error $ "hsFreeAndDeclared.lpat:impossible GHC.ConPatOut"
 #if __GLASGOW_HASKELL__ <= 710
-    lpat (GHC.L _ (GHC.SplicePat (GHC.HsSplice _ expr))) = hsVisibleDsRdr nm e expr
     lpat (GHC.L _ (GHC.QuasiQuotePat _)) = return mempty
+    lpat (GHC.L _ (GHC.SplicePat (GHC.HsSplice _ expr))) = hsVisibleDsRdr nm e expr
+#else
+    lpat (GHC.L _ (GHC.SplicePat (GHC.HsTypedSplice _ expr)))   = hsVisibleDsRdr nm e expr
+    lpat (GHC.L _ (GHC.SplicePat (GHC.HsUntypedSplice _ expr))) = hsVisibleDsRdr nm e expr
+    lpat (GHC.L _ (GHC.SplicePat (GHC.HsQuasiQuote {})))        = return mempty
 #endif
 
     -- ---------------------------
