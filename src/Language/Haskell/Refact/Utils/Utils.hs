@@ -16,7 +16,6 @@ module Language.Haskell.Refact.Utils.Utils
 
        -- * The bits that do the work
        , runRefacSession
-       , runRefactGhcCd
        , applyRefac
        , applyRefac'
        , refactDone
@@ -28,14 +27,23 @@ module Language.Haskell.Refact.Utils.Utils
        , serverModsAndFiles
        , lookupAnns
        , runMultRefacSession
+
+       , modifiedFiles
+       , writeRefactoredFiles
+
+       , stripCallStack
+
        ) where
 
-import Control.Exception
+-- import Control.Exception
+import Control.Monad.Identity
 import Control.Monad.State
 import Data.List
 
-import Language.Haskell.GHC.ExactPrint
+-- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
+import Language.Haskell.GHC.ExactPrint.Print
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Language.Haskell.GhcMod          as GM
@@ -101,7 +109,6 @@ setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (
 
 setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
 setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
--- setDynFlags df = return df
 
 -- ---------------------------------------------------------------------
 
@@ -198,7 +205,7 @@ runRefacSession settings opt comp = do
         , rsModule        = Nothing
         }
 
-  (refactoredMods,_s) <- runRefactGhcCd comp initialState opt
+  (refactoredMods,_s) <- runRefactGhc comp initialState opt
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
@@ -244,7 +251,7 @@ threadState opt currState (rGhc : rst) = do
       nextState = newState {rsModule = Just newMod }
   rest <- threadState opt nextState rst
   return (res : rest)
-  
+
 -- ---------------------------------------------------------------------
 
 runRefactGhcCd ::
@@ -307,6 +314,8 @@ applyRefac' clearSt refac source = do
     fileName <- case source of
          RSFile fname    -> do parseSourceFileGhc fname
                                return fname
+         RSTarget tgt    -> do getTargetGhc tgt
+                               return (GM.mpPath tgt)
          RSMod  ms       -> do parseSourceFileGhc $ fileNameFromModSummary ms
                                return $ fileNameFromModSummary ms
          RSAlreadyLoaded -> do mfn <- getRefactFileName
@@ -424,7 +433,15 @@ writeRefactoredFiles verbosity files
      where
        modifyFile ((fileName,_),(ann,parsed)) = do
 
-           let source = exactPrint parsed ann
+           let rigidOptions :: PrintOptions Identity String
+               rigidOptions = printOptions (\_ b -> return b) return return RigidLayout
+
+               exactPrintRigid  ast as = runIdentity (exactPrintWithOptions rigidOptions ast as)
+               exactPrintNormal ast as = runIdentity (exactPrintWithOptions stringOptions ast as)
+
+           -- let source = exactPrint parsed ann
+           -- let source = exactPrintRigid parsed ann
+           let source = exactPrintNormal parsed ann
            let (baseFileName,ext) = splitExtension fileName
            seq (length source) (writeFile (baseFileName ++ ".refactored" ++ ext) source)
 
@@ -513,3 +530,15 @@ serverModsAndFiles m = do
 lookupAnns :: Anns -> GHC.SrcSpan -> Anns
 lookupAnns anns (GHC.RealSrcSpan span) = Map.filterWithKey isInSpan anns
   where isInSpan k@(AnnKey (GHC.RealSrcSpan annSpan) conN) v = GHC.containsSpan span annSpan
+
+-- ---------------------------------------------------------------------
+
+-- | In GHC 8 an error has an attached callstack. This is not always what we
+-- want, so this function strips it
+stripCallStack :: String -> String
+stripCallStack str = str'
+  where
+    s1 = init $ unlines $ takeWhile (\s -> s /= "CallStack (from HasCallStack):") $ lines str
+    str' = if last str == '\n'
+              then s1 ++ "\n"
+              else s1

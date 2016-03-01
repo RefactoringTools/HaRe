@@ -5,7 +5,7 @@ module ConstructorIn3 where
 --Any type variable can be renamed.
 
 --Rename tyoe variable 'a' in BTree to 'b'
- 
+
 data BTree a = Empty | T a (BTree a) (BTree a)
                deriving Show
 
@@ -20,4 +20,4 @@ insert val tree@(T tval left right)
    | otherwise = T tval (insert val left) right
 
 main :: BTree Int
-main = buildtree [3,1,2] 
+main = buildtree [3,1,2]
