@@ -53,6 +53,8 @@ doMaybeToPlus fileName pos@(row,col) funNm argNum = do
           doRewriteAsBind fileName pos funNm
       return ()
 
+      
+--Handles the case where the function can be rewritten with bind.
 doRewriteAsBind :: FilePath -> SimpPos -> String -> RefactGhc ()
 doRewriteAsBind fileName pos funNm = do
   parsed <- getRefactParsed
@@ -74,9 +76,9 @@ doRewriteAsBind fileName pos funNm = do
     new_rhs <- createBindGRHS newNm lam_par
     replaceGRHS funNm new_rhs newNm
     prsed <- getRefactParsed
-    logm $ "Final parsed: " ++ (SYB.showData SYB.Parser 3 prsed)
+    --logm $ "Final parsed: " ++ (SYB.showData SYB.Parser 3 prsed)
     currAnns <- fetchAnnsFinal
-    logm $ "Final anns: " ++ (show currAnns)
+    --logm $ "Final anns: " ++ (show currAnns)
     fixType funNm
     let monadModNm = GHC.mkModuleName "Control.Monad"
     finalParsed <- getRefactParsed
@@ -247,9 +249,6 @@ getHsBind pos funNm a =
 
 --This function takes in the name of a function and determines if the binding contains the case "Nothing = Nothing"
 --If the Nothing to Nothing case is found then it is removed from the parsed source.
---Assumptions
-  --The comparision will only work if the function is of type Maybe a -> Maybe a if there are any other arguments then the comparison will fail.
-  --
 containsNothingToNothing :: String -> Int -> SimpPos -> GHC.HsBind GHC.RdrName -> RefactGhc Bool
 containsNothingToNothing funNm argNum pos a = do
   dFlags <- GHC.getSessionDynFlags
@@ -299,33 +298,6 @@ containsNothingToNothing funNm argNum pos a = do
     isNothingVar :: GHC.HsExpr GHC.RdrName -> Bool
     isNothingVar (GHC.HsVar nm) = ((GHC.occNameString . GHC.rdrNameOcc) nm) == "Nothing"
     isNothingVar _ = False
-
-
-{-
-  (_, pRes) <- handleParseResult "containsNothingToNothing" $ parseDecl dFlags "MaybeToMonad.hs" nToNStr
-  let [match] = extractMatches pRes
-      c1 = constructComp match
-      matches = extractMatches a
-      comps = map constructComp matches
-      zipped = zip [0..] comps
-      filtered = filter (\(_,c2) -> c2 == c1) zipped
-  case filtered of
-    [] -> return False
-    [(i,_)] -> do
-      let newMatches = dropI i matches
-          oldMatch = matches !! i          
-      _ <- removeAnns oldMatch
-      let newMG = (GHC.fun_matches a) {GHC.mg_alts = newMatches}
-          newBind = a{GHC.fun_matches = newMG}
-      removeMatch pos newBind oldMatch
-      return True
-    where
-      extractMatches :: (Data (a b)) => a b -> [(GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))]
-      extractMatches = SYB.everything (++) ([] `SYB.mkQ` isMatch)
-      isMatch :: (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> [(GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))]
-      isMatch m@(GHC.L _ (GHC.Match _ _ _ _)) = [m]
-      dropI i lst = let (xs,ys) = splitAt i lst in xs ++ (tail ys)
--}
 
 -- Removes the given matches from the given binding. Uses the position to retrieve the rdrName.
 removeMatches :: SimpPos -> GHC.HsBind GHC.RdrName -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> RefactGhc ()
