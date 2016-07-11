@@ -486,10 +486,11 @@ hsFreeAndDeclaredRdr' nm t = do
           ltydecl (GHC.FamDecl fd) = hsFreeAndDeclaredRdr' nm fd
           ltydecl (GHC.SynDecl ln _bndrs _rhs _fvs)
               = return (FN [],DN [rdrName2NamePure nm ln])
-          ltydecl (GHC.DataDecl ln _bndrs defn _fvs) = do
 #if __GLASGOW_HASKELL__ <= 710
+          ltydecl (GHC.DataDecl ln _bndrs defn _fvs) = do
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
+          ltydecl (GHC.DataDecl ln _bndrs defn _c _fvs) = do
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
 #endif
               return (FN [],DN (rdrName2NamePure nm ln:dds))
@@ -608,10 +609,11 @@ getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
     (GHC.FamDecl (GHC.FamilyDecl _ ln _ _ _)) -> return [rdrName2NamePure nm ln]
 #endif
     (GHC.SynDecl ln  _ _ _) -> return [rdrName2NamePure nm ln]
-    (GHC.DataDecl ln _ defn _) -> do
 #if __GLASGOW_HASKELL__ <= 710
+    (GHC.DataDecl ln _ defn _) -> do
       let dds = concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
+    (GHC.DataDecl ln _ defn _ _) -> do
       let dds = concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
 #endif
       let ddns = map (rdrName2NamePure nm) dds
@@ -822,7 +824,11 @@ definingTyClDeclsNames nm pns t = defining t
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
+#if __GLASGOW_HASKELL__ <= 710
       defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _))
+#else
+      defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _ _))
+#endif
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 

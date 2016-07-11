@@ -3247,11 +3247,7 @@ spec = do
       -- ((o,e),_s) <- ctc $ runRefactGhc comp initialLogOnState testOptions
       (showGhcQual (o,e)) `shouldBe` "(Foo.Bar.bar, Foo.Bar.bar)"
       -- putStrLn( "(GHC.nameUnique o,GHC.nameUnique e)" ++ (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)))
-#if __GLASGOW_HASKELL__ <= 710
-      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
-#else
       (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
-#endif
 
     -- ---------------------------------
 
@@ -3274,11 +3270,7 @@ spec = do
       ((o,e,n),_s) <- ctc $ runRefactGhc comp initialState testOptions
       (showGhcQual (o,e,n)) `shouldBe` "(Foo.Bar.baz, Foo.Bar.baz, B.baz)"
       -- (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)) `shouldBe` ""
-#if __GLASGOW_HASKELL__ <= 710
-      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
-#else
       (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
-#endif
 
   -- ---------------------------------------------
 
