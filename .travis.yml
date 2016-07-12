@@ -29,6 +29,7 @@ addons:
     - happy-1.19.4
     - alex-3.1.3
     - ghc-7.10.3
+    - ghc-8.0.1
     - emacs24
 
 # matrix:
