@@ -125,7 +125,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.5.0.0
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , old-time
                                 , pretty
@@ -197,7 +197,7 @@ Executable ghc-hare
                                 , ghc-prim
                                 , ghc-syb-utils
                                 , gitrev >= 1.1
-                                , ghc-mod >= 5.5.0.0
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , optparse-applicative
                                 , optparse-simple
@@ -291,7 +291,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 5.5.0.0
+    , ghc-mod >= 5.6.0.0
     , hspec
     , mtl
     , old-time
