@@ -16,7 +16,8 @@ import qualified Language.Haskell.GhcMod as GM
 import qualified Paths_HaRe as Meta
 
 -- temporary until exposed by ghc-mod
-import           Options
+-- import           Options
+import           Language.Haskell.GhcMod.Options.Options
 
 main :: IO ()
 main = do
