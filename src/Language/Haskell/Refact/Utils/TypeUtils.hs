@@ -252,9 +252,21 @@ equivalentNameInNewMod :: GHC.Name -> RefactGhc [GHC.Name]
 equivalentNameInNewMod old = do
   -- we have to do it this way otherwise names imported qualified will not be
   -- detected
+
+  -- ghc-mod 5.6 introduced a funny whereby the packagekey for the inscopes is
+  -- "main@main" but for the current file is "main@main"
+  -- So ignore the packagekey for now
+  -- See https://github.com/DanielG/ghc-mod/issues/811
+  -- TODO: revisit this
+  let eqModules (GHC.Module pk1 mn1) (GHC.Module pk2 mn2) = mn1 == mn2
+
   gnames <- GHC.getNamesInScope
+  -- logm $ "equivalentNameInNewMod:gnames=" ++ showGhcQual (map (\n -> (GHC.nameModule n,n)) gnames)
   let clientModule = GHC.nameModule old
-  let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
+  -- logm $ "equivalentNameInNewMod:(old,clientModule)=" ++ showGhcQual (old,clientModule)
+  -- let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
+  let clientInscopes = filter (\n -> eqModules clientModule (GHC.nameModule n)) gnames
+  -- logm $ "equivalentNameInNewMod:clientInscopes=" ++ showGhcQual clientInscopes
   let newNames = filter (\n -> showGhcQual n == showGhcQual old) clientInscopes
   return newNames
 
