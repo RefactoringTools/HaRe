@@ -6,24 +6,24 @@
 
 module Language.Haskell.Refact.Refactoring.MoveDef
   ( liftToTopLevel
+  , compLiftToTopLevel
   , liftOneLevel
+  , compLiftOneLevel
   , demote
+  , compDemote
   -- ,liftingInClientMod
   ) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
+
 import qualified Data.Generics.Zipper as Z
 
 
 import qualified Exception             as GHC
-import qualified FastString            as GHC
 import qualified GHC                   as GHC
 import qualified Name                  as GHC
 import qualified RdrName               as GHC
-import qualified TyCon                 as GHC
-import qualified TypeRep               as GHC
-import qualified Var                   as Var
 
 import Control.Exception
 import Control.Monad.State
@@ -90,13 +90,13 @@ compLiftToTopLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftToTopLevel fileName (row,col) = do
       parseSourceFileGhc fileName
-      renamed <- getRefactRenamed
       parsed  <- getRefactParsed
+      nm <- getRefactNameMap
 
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (row, col) renamed
+      let maybePn = locToRdrName (row, col) parsed
       case maybePn of
-        Just pn -> liftToTopLevel' modName pn
+        Just ln@(GHC.L l _) -> liftToTopLevel' modName (GHC.L l (rdrName2NamePure nm ln))
         _       -> error "\nInvalid cursor position!\n"
 
 
@@ -136,9 +136,11 @@ liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
+  parsed  <- getRefactParsed
+  nm      <- getRefactNameMap
   targetModule <- getRefactTargetModule
   logm $ "liftToTopLevel':pn=" ++ (showGhc pn)
-  if isLocalFunOrPatName n renamed
+  if isLocalFunOrPatName nm n parsed
       then do
               (refactoredMod,declPns) <- applyRefac liftToMod RSAlreadyLoaded
 
@@ -153,19 +155,22 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
       else error "\nThe identifier is not a local function/pattern name!"
 
     where
-       {-step1: divide the module's top level declaration list into three parts:
-         'parent' is the top level declaration containing the lifted declaration,
-         'before' and `after` are those declarations before and after 'parent'.
+       {-step1: divide the module's top level declaration list into three parts: 'parent'
+                is the top level declaration containing the lifted declaration, 'before'
+                and `after` are those declarations before and after 'parent'.
          step2: get the declarations to be lifted from parent, bind it to liftedDecls
-         step3: remove the lifted declarations from parent and extra arguments may be introduce.
+         step3: remove the lifted declarations from parent and extra arguments
+                may be introduced.
          step4. test whether there are any names need to be renamed.
        -}
        liftToMod = do
-         renamed <- getRefactRenamed
-         parsed <- getRefactParsed
+         parsed' <- getRefactParsed
+         parsed  <- liftT $ balanceAllComments parsed'
+         nm      <- getRefactNameMap
+         logDataWithAnns "parsed after balanceAllComments" parsed
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
-         {- ++AZ++ : hsBinds does not return class or instance definitions
+         {- ++AZ++TODO: reinstate this, hsDecls does : hsBinds does not return class or instance definitions
          when (isClassDecl $ ghead "liftToMod" parent)
                $ error "Sorry, the refactorer cannot lift a definition from a class declaration!"
          when (isInstDecl $ ghead "liftToMod" parent)
@@ -185,7 +190,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          pns <- pnsNeedRenaming parsed parent liftedDecls declaredPns
          logm $ "liftToMod:(pns needing renaming)=" ++ (showGhc pns)
 
-         let dd = getDeclaredVars $ hsBinds renamed
+         decls <- liftT $ hsDecls parsed'
+         let dd = getDeclaredVarsRdr nm decls
          logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
          if pns == []
@@ -193,8 +199,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
 
              let defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
-             parsed' <- liftT $ replaceDecls parsed (before++parent'++after)
-             parsed2 <- moveDecl1 parsed' (Just defName) [GHC.unLoc pn] liftedDecls'
+             parsed1 <- liftT $ replaceDecls parsed (before++parent'++after)
+             parsed2 <- moveDecl1 parsed1 (Just defName) [GHC.unLoc pn] liftedDecls'
                                                             declaredPns mLiftedSigs'
              putRefactParsed parsed2 emptyAnns
 
@@ -216,14 +222,14 @@ compLiftOneLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftOneLevel fileName (row,col) = do
       parseSourceFileGhc fileName
-      renamed <- getRefactRenamed
       parsed  <- getRefactParsed
+      nm <- getRefactNameMap
 
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (row, col) renamed
+      let maybePn = locToRdrName (row, col) parsed
       case maybePn of
-        Just pn ->  do
-            rs <- liftOneLevel' modName pn
+        Just ln@(GHC.L l _) ->  do
+            rs <- liftOneLevel' modName (GHC.L l (rdrName2NamePure nm ln))
             logm $ "compLiftOneLevel:rs=" ++ (show $ (refactDone rs,map (\((_,d),_) -> d) rs))
             if (refactDone rs)
               then return rs
@@ -316,8 +322,10 @@ liftOneLevel' :: GHC.ModuleName
 
 liftOneLevel' modName pn@(GHC.L _ n) = do
   renamed <- getRefactRenamed
+  parsed  <- getRefactParsed
+  nm      <- getRefactNameMap
   targetModule <- getRefactTargetModule
-  if isLocalFunOrPatName n renamed
+  if isLocalFunOrPatName nm n parsed
         then do
                 (refactoredMod,(b,pns)) <- applyRefac doLiftOneLevel RSAlreadyLoaded
                 logm $ "liftOneLevel':main refactoring done:(p,pns)=" ++ showGhc (b,pns)
@@ -389,7 +397,7 @@ liftOneLevel' modName pn@(GHC.L _ n) = do
                           -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
                           -> Maybe (SYB.Stage -> Z.Zipper a -> RefactGhc (Z.Zipper a))
              liftToMatchQ nm ans (m@(GHC.L _ (GHC.Match _ _pats _mtyp (GHC.GRHSs _rhs ds)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
-                 | (nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans  ds) False False))
+                 | (nonEmptyList (definingDeclsRdrNames nm [n] (getHsDecls ans ds) False False))
                     = Just (doLiftZ m (getHsDecls ans  ds))
                  | otherwise = Nothing
 
@@ -559,15 +567,15 @@ compDemote ::FilePath -> SimpPos
          -> RefactGhc [ApplyRefacResult]
 compDemote fileName (row,col) = do
       parseSourceFileGhc fileName
-      renamed <- getRefactRenamed
       parsed  <- getRefactParsed
+      nm <- getRefactNameMap
 
       -- TODO: make the next one an API call, that also gets the
       -- parsed source
       let (Just (modName,_)) = getModuleName parsed
-      let maybePn = locToName (row, col) renamed
+      let maybePn = locToRdrName (row, col) parsed
       case maybePn of
-        Just pn -> demote' modName pn
+        Just pn@(GHC.L l _) -> demote' modName (GHC.L l (rdrName2NamePure nm pn))
         _       -> error "\nInvalid cursor position!\n"
 
 -- ---------------------------------------------------------------------
@@ -622,15 +630,16 @@ pnsNeedRenaming dest parent _liftedDecls pns
        = do
             logm $ "MoveDef.pnsNeedRenaming' entered"
             nm <- getRefactNameMap
-            (FN f,DN d) <- hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
-                                                      --d: declaread variables names that may clash with pn
+            let (FN f,DN d) = hsFDsFromInsideRdr nm dest --f: free variable names that may be shadowed by pn
+                                                         --d: declaread variables names that may clash with pn
             logm $ "MoveDef.pnsNeedRenaming':(f,d)=" ++ showGhc (f,d)
-            vs <- hsVisiblePNsRdr nm pn parent  --vs: declarad variables that may shadow pn
+            DN vs <- hsVisibleDsRdr nm pn parent  --vs: declarad variables that may shadow pn
             logm $ "MoveDef.pnsNeedRenaming':vs=" ++ showGhc vs
             let vars = map pNtoName (nub (f `union` d `union` vs) \\ [pn]) -- `union` inscpNames
             isInScope <- isInScopeAndUnqualifiedGhc (pNtoName pn) Nothing
             logm $ "MoveDef.pnsNeedRenaming:(f,d,vs,vars,isInScope)=" ++ (showGhc (f,d,vs,vars,isInScope))
-            if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
+            -- if elem (pNtoName pn) vars  || isInScope && findEntity pn dest
+            if elem (pNtoName pn) vars  || isInScope && findNameInRdr nm pn dest
                then return [pn]
                else return []
      pNtoName = showGhc
@@ -644,7 +653,11 @@ addParamsToParent  pn params t = do
   nm <- getRefactNameMap
   applyTP (full_buTP (idTP  `adhocTP` (inExp nm))) t
   where
+#if __GLASGOW_HASKELL__ <= 710
     inExp nm (e@(GHC.L l (GHC.HsVar n)) :: GHC.LHsExpr GHC.RdrName) = do
+#else
+    inExp nm (e@(GHC.L l (GHC.HsVar (GHC.L _ n))) :: GHC.LHsExpr GHC.RdrName) = do
+#endif
       let ne = rdrName2NamePure nm (GHC.L l n)
       if GHC.nameUnique ne == GHC.nameUnique pn
          then addActualParamsToRhs pn params e
@@ -720,7 +733,7 @@ willBeUnQualImportedBy modName = do
 -- |get the subset of 'pns', which need to be hided in the import
 -- declaration in module 'mod'
 -- Note: these are newly exported from the module, so we cannot use
--- the GHC name resolution i nthis case.
+-- the GHC name resolution in this case.
 namesNeedToBeHided :: GHC.Module -> [GHC.ModuleName] -> [GHC.Name]
    -> RefactGhc [GHC.Name]
 namesNeedToBeHided clientModule modNames pns = do
@@ -782,19 +795,18 @@ namesNeedToBeHided clientModule modNames pns = do
 
 -- ---------------------------------------------------------------------
 
+-- |When liftOneLevel is complete, identify whether any new declarations have
+-- been put at the top level
 liftedToTopLevel :: GHC.Located GHC.Name -> GHC.ParsedSource -> RefactGhc (Bool,[GHC.Name])
-liftedToTopLevel pnt@(GHC.L _ pn) parsed = do
-  -- logm $ "liftedToTopLevel entered"
+liftedToTopLevel (GHC.L _ pn) parsed = do
+  logm $ "liftedToTopLevel entered:pn=" ++ showGhc pn
   nm <- getRefactNameMap
-  -- logm $ "liftedToTopLevel:got nm"
   decls <- liftT $ hsDecls parsed
   let topDecs = definingDeclsRdrNames nm [pn] decls False False
   -- ++AZ++ :TODO: we are not updating the nameMap to reflect moved decls
   if nonEmptyList topDecs
      then do
-       (_, parent,_) <- divideDecls decls pnt
-       let declsp = parent
-       let liftedDecls = definingDeclsRdrNames nm [pn] declsp False False
+       let liftedDecls = definingDeclsRdrNames nm [pn] topDecs False False
            declaredPns  = nub $ concatMap (definedNamesRdr nm) liftedDecls
        return (True, declaredPns)
      else return (False, [])
@@ -841,7 +853,7 @@ addParamsToParentAndLiftedDecl pn dd parent liftedDecls mLiftedSigs
          else return (parent,liftedDecls,mLiftedSigs)
 
 -- ---------------------------------------------------------------------
-
+{-
 -- TODO: perhaps move this to TypeUtils
 addParamsToSigs :: [GHC.Name] -> GHC.LSig GHC.RdrName -> RefactGhc (GHC.LSig GHC.RdrName)
 addParamsToSigs [] ms = return ms
@@ -1033,6 +1045,7 @@ HsTyLit HsTyLit
 HsWrapTy HsTyWrapper (HsType name)
 -}
 
+-}
 
 --------------------------------End of Lifting-----------------------------------------
 
@@ -1060,11 +1073,13 @@ demote' ::
   -> RefactGhc [ApplyRefacResult]
 demote' modName (GHC.L _ pn) = do
   renamed <- getRefactRenamed
+  parsed  <- getRefactParsed
+  nm      <- getRefactNameMap
   targetModule <- getRefactTargetModule
-  if isFunOrPatName pn renamed
+  if isFunOrPatName nm pn parsed
     then do
        isTl <- isTopLevelPN pn
-       if isTl && isExplicitlyExported pn renamed
+       if isTl && isExplicitlyExported nm pn parsed
           then error "This definition can not be demoted, as it is explicitly exported by the current module!"
           else do
                   (refactoredMod,declaredPns) <- applyRefac (doDemoting pn) RSAlreadyLoaded
@@ -1097,10 +1112,11 @@ demotingInClientMod pns targetModule = do
 doDemotingInClientMod :: [GHC.Name] -> GHC.Module -> RefactGhc ()
 doDemotingInClientMod pns modName = do
   logm $ "doDemotingInClientMod:(pns,modName)=" ++ showGhc (pns,modName)
-  renamed@(_g,imps,exps,_docs) <- getRefactRenamed
-  if any (\pn->findPN pn (hsBinds renamed) || findPN pn (exps)) pns
+  (GHC.L _ p) <- getRefactParsed
+  nm <- getRefactNameMap
+  if any (\pn -> findNameInRdr nm pn (GHC.hsmodDecls p) || findNameInRdr nm pn (GHC.hsmodExports p)) pns
      then error $ "This definition can not be demoted, as it is used in the client module '"++(showGhc modName)++"'!"
-     else if any (\pn->findPN pn imps) pns
+     else if any (\pn->findNameInRdr nm pn (GHC.hsmodImports p)) pns
              -- TODO: reinstate this
              then do -- (mod',((ts',m),_))<-runStateT (rmItemsFromImport mod pns) ((ts,unmodified),(-1000,0))
                      return ()
@@ -1247,7 +1263,7 @@ doDemoting' t pn = do
 
                          logm $ "MoveDef:declaredPns=" ++ (showGhc declaredPns) -- ++AZ++
 
-                         dl <- mapM (flip declaredNamesInTargetPlace ds) declaredPns
+                         dl <- mapM (flip (declaredNamesInTargetPlace nm) ds) declaredPns
                          logm $ "mapM declaredNamesInTargetPlace done"
                          --make sure free variable in 'f' do not clash with variables in 'dl',
                          --otherwise do renaming.
@@ -1260,14 +1276,6 @@ doDemoting' t pn = do
                             else  --duplicate demoted declarations to the right place.
                                  do
                                     duplicateDecls declaredPns removedDecl demotedSigs t'
-                                    {-
-                                    logm $ "MoveDef: about to duplicateDecls"
-                                    dds <- liftT $ hsDecls t'
-                                    ds'' <- duplicateDecls declaredPns removedDecl demotedSigs dds
-                                    logm $ "MoveDef:duplicateDecls done"
-                                    t'' <- liftT $ replaceDecls t' ds''
-                                    return t''
-                                    -}
                   _ ->error "\nThis function/pattern binding is used by more than one friend bindings\n"
 
        else error "This function can not be demoted as it is used in current level!\n"
@@ -1282,7 +1290,11 @@ doDemoting' t pn = do
                 where
 
                   used :: GHC.LHsDecl GHC.RdrName -> [Int]
+#if __GLASGOW_HASKELL__ <= 710
                   used (GHC.L _ (GHC.ValD (GHC.FunBind _n _ (GHC.MG matches _ _ _) _ _ _)))
+#else
+                  used (GHC.L _ (GHC.ValD (GHC.FunBind _n (GHC.MG (GHC.L _ matches) _ _ _) _ _ _)))
+#endif
                      = concatMap (usedInMatch pns) matches
 
                   used (GHC.L _ (GHC.ValD (GHC.PatBind pat rhs _ _ _)))
@@ -1361,11 +1373,10 @@ doDemoting' t pn = do
           ---------------------------------------------------------------------
 
           declaredNamesInTargetPlace :: (SYB.Data t)
-                            => GHC.Name -> t
-                            -- -> RefactGhc [GHC.Name]
+                            => NameMap -> GHC.Name -> t
                             -> RefactGhc [GHC.Name]
 
-          declaredNamesInTargetPlace pn' t' = do
+          declaredNamesInTargetPlace nm pn' t' = do
              logm $ "declaredNamesInTargetPlace:pn=" ++ (showGhc pn')
              res <- applyTU (stop_tdTU (failTU
                                            `adhocTU` inMatch
@@ -1373,18 +1384,19 @@ doDemoting' t pn = do
              logm $ "declaredNamesInTargetPlace:res=" ++ (showGhc res)
              return res
                where
-                 inMatch ((GHC.Match _ _pats _ rhs) :: GHC.Match GHC.Name (GHC.LHsExpr GHC.Name))
-                    | findPN pn' rhs = do
+                 inMatch ((GHC.Match _ _pats _ rhs) :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+                    | findNameInRdr nm pn' rhs = do
                      logm $ "declaredNamesInTargetPlace:inMatch"
-                     fds <- hsFDsFromInside rhs
-                     return $ snd fds
+                     -- fds <- hsFDsFromInside rhs
+                     let (_,DN ds) = hsFDsFromInsideRdr nm rhs
+                     return ds
                  inMatch _ = return mzero
 
-                 inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.Name)
-                    |findPN pn' rhs = do
+                 inPat ((GHC.PatBind pat rhs _ _ _) :: GHC.HsBind GHC.RdrName)
+                    |findNameInRdr nm pn' rhs = do
                      logm $ "declaredNamesInTargetPlace:inPat"
-                     fds <- hsFDsFromInside pat
-                     return $ snd fds
+                     let (_,DN ds) = hsFDsFromInsideRdr nm pat
+                     return ds
                  inPat _=  return mzero
 
 -- ---------------------------------------------------------------------
@@ -1453,7 +1465,11 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
     where
 
        matchesInDecls :: GHC.LHsDecl GHC.RdrName -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)]
+#if __GLASGOW_HASKELL__ <= 710
        matchesInDecls (GHC.L _ (GHC.ValD (GHC.FunBind _ _ (GHC.MG matches _ _ _) _ _ _))) = matches
+#else
+       matchesInDecls (GHC.L _ (GHC.ValD (GHC.FunBind _ (GHC.MG (GHC.L _ matches) _ _ _) _ _ _))) = matches
+#endif
        matchesInDecls _x = []
 
        patsInMatch (GHC.L _ (GHC.Match _ pats' _ _)) = pats'
@@ -1469,7 +1485,11 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
           nm <- getRefactNameMap
           SYB.everywhereMStaged SYB.Parser (SYB.mkM (worker nm) `SYB.extM` (workerBind nm)) decls
           where
+#if __GLASGOW_HASKELL__ <= 710
           worker nm (match'@(GHC.L _ (GHC.FunBind ln _ (GHC.MG _matches _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
+#else
+          worker nm (match'@(GHC.L _ (GHC.FunBind ln (GHC.MG _matches _ _ _) _ _ _)) :: GHC.LHsBind GHC.RdrName)
+#endif
             = do
                 logm $ "foldInDemotedDecls:rdrName2NamePure nm ln=" ++ show (rdrName2NamePure nm ln)
                 if isJust (find (== rdrName2NamePure nm ln) pns')
@@ -1625,8 +1645,9 @@ foldParams pns match@(GHC.L l (GHC.Match _mfn _pats _mt rhs)) _decls demotedDecl
                        -> GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
                        -> RefactGhc [GHC.Name]
        getClashedNames nm oldNames newNames match'
-         = do  (_f,DN d) <- hsFDsFromInsideRdr nm match'
-               ds' <- mapM (flip (hsVisiblePNsRdr nm) match') oldNames
+         = do  let (_f,DN d) = hsFDsFromInsideRdr nm match'
+               ds'' <- mapM (flip (hsVisibleDsRdr nm) match') oldNames
+               let ds' = map (\(DN ds) -> ds) ds''
                -- return clashed names
                return (filter (\x->elem ({- pNtoName -} x) newNames)  --Attention: nub
                                    ( nub (d `union` (nub.concat) ds')))
@@ -1656,8 +1677,8 @@ replaceExpWithUpdToks  decls subst = do
   everywhereMStaged' SYB.Parser (SYB.mkM worker) decls
 
 -- | return True if pn is a local function/pattern name
-isLocalFunOrPatName :: SYB.Data t => GHC.Name -> t -> Bool
-isLocalFunOrPatName pn scope
- = isLocalPN pn && isFunOrPatName pn scope
+isLocalFunOrPatName :: SYB.Data t => NameMap -> GHC.Name -> t -> Bool
+isLocalFunOrPatName nm pn scope
+ = isLocalPN pn && isFunOrPatName nm pn scope
 
 -- EOF

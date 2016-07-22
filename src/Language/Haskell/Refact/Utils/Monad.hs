@@ -16,6 +16,7 @@ module Language.Haskell.Refact.Utils.Monad
        , RefactSettings(..)
        , RefactState(..)
        , RefactModule(..)
+       , RefacSource(..)
        , TargetModule
        , Targets
        , CabalGraph
@@ -145,6 +146,11 @@ annotation database.
 When HaRe needs a new SrcSpan, for this, it generates it from this
 field, to ensure uniqueness.
 -}
+
+data RefacSource = RSFile FilePath
+                 | RSTarget TargetModule
+                 | RSMod GHC.ModSummary
+                 | RSAlreadyLoaded
 
 type TargetModule = GM.ModulePath -- From ghc-mod
 

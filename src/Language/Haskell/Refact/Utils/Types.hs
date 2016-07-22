@@ -1,9 +1,9 @@
-{-# LANGUAGE TypeSynonymInstances, FlexibleInstances #-}
+{-# LANGUAGE TypeSynonymInstances #-}
+{-# LANGUAGE FlexibleInstances    #-}
 module Language.Haskell.Refact.Utils.Types
        (
         ApplyRefacResult
        , RefacResult(..)
-       , RefacSource(..)
        -- *
        , TreeId(..)
        , mainTid
@@ -14,9 +14,13 @@ module Language.Haskell.Refact.Utils.Types
 
        ) where
 
-import qualified GHC      as GHC
+import qualified GHC        as GHC
+-- import qualified Name       as GHC
+-- import qualified Outputable as GHC
 
 import Language.Haskell.GHC.ExactPrint
+-- import Language.Haskell.GHC.ExactPrint.Utils
+
 import qualified Data.Map as Map
 
 
@@ -27,11 +31,6 @@ type ApplyRefacResult = ((FilePath, RefacResult), (Anns,GHC.ParsedSource))
 
 data RefacResult = RefacModified | RefacUnmodifed
                  deriving (Show,Ord,Eq)
-
-
-data RefacSource = RSFile FilePath
-                 | RSMod GHC.ModSummary
-                 | RSAlreadyLoaded
 
 -- ---------------------------------------------------------------------
 
@@ -54,3 +53,7 @@ type SimpSpan = (SimpPos,SimpPos)
 
 type NameMap = Map.Map GHC.SrcSpan GHC.Name
 
+-- instance GHC.Outputable NameMap where
+--   ppr nm = GHC.text "NameMap" GHC.<+> GHC.hcat (map one $ Map.toList nm)
+--     where
+--       one (s,n) = GHC.text (showGhc (s,n,GHC.nameUnique n))

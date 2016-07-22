@@ -206,10 +206,6 @@ mkMatch varPat rhs = do
   return lMatch
 
 
-lookupAllAnns :: Anns -> [GHC.Located a] -> Anns
-lookupAllAnns anns [] = emptyAnns
-lookupAllAnns anns ((GHC.L l _):xs) = (lookupAnns anns l) `Map.union` (lookupAllAnns anns xs)
-
 --This generates a unique location and wraps the given ast chunk with that location
 locate :: a -> RefactGhc (GHC.Located a)
 locate ast = do

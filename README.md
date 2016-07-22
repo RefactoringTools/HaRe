@@ -1,4 +1,4 @@
-## <img src="https://rawgithub.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
+## <img src="https://rawgit.com/alanz/HaRe/master/HaReLogo.svg" width="40" height="30" /> HaRe : The Haskell Refactorer
 
 Home is now https://github.com/RefactoringTools/HaRe
 
@@ -10,6 +10,8 @@ execute identity transformation!
 [![Available on Hackage][badge-hackage]][hackage]
 [![License BSD3][badge-license]][license]
 [![Build Status][badge-travis]][travis]
+[![Stackage LTS](http://stackage.org/package/HaRe/badge/lts)](http://stackage.org/lts/package/HaRe)
+[![Stackage Nightly](http://stackage.org/package/HaRe/badge/nightly)](http://stackage.org/nightly/package/HaRe)
 
 [badge-travis]: https://travis-ci.org/RefactoringTools/HaRe.png?branch=master
 [travis]: https://travis-ci.org/RefactoringTools/HaRe
@@ -31,11 +33,12 @@ HaRe with 7.10.2 and then using it against projects using an earlier compiler
 will not work, as HaRe needs to be able to invoke GHC to the type checker stage
 on the project using GHC 7.10.2.
 
-See https://github.com/kazu-yamamoto/ghc-mod/issues/615
+See https://github.com/DanielG/ghc-mod/issues/615
 
 ### Getting Started
 
     cabal install HaRe
+    stack install HaRe --resolver=lts-4.0
 
 Check that it works from the command line
 
@@ -104,6 +107,9 @@ E.g., after renaming in Foo.hs, there will be two files
 This allows a sequence of refactorings to be undone manually if
 required. In theory.
 
+#### VIM integration
+
+See https://github.com/glittershark/vim-hare
 
 ### Development & Support
 
@@ -123,9 +129,9 @@ To run the test suite do:
 The `configure.sh` script simply makes sure that all the cabal projects used in
 the tests are also configured.
 
-See <http://hspec.github.com/> for details on hspec
+See <http://hspec.github.io/> for details on hspec
 
-see <http://travis-ci.org/#alanz/HaRe> for continuous build results
+see <https://travis-ci.org/#alanz/HaRe> for continuous build results
 
 ### Resources
 
@@ -162,5 +168,5 @@ Please put a pull request for this list if you are missing.
 width="400" height="300" />
 
 The logo was designed by Christi du Toit,
-<http://www.behance.net/christidutoit>
+<https://www.behance.net/christidutoit>
 
