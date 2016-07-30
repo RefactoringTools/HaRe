@@ -48,13 +48,14 @@ install:
  # - |
  #   git clone https://github.com/alanz/ghc-exactprint.git
  #   (cd ghc-exactprint && git checkout wip && cabal install)
- - |
-   git clone https://github.com/DanielG/cabal-helper.git
-   (cd cabal-helper && git checkout master && cabal install)
- - |
-   git clone https://github.com/alanz/ghc-mod.git
-   (cd ghc-mod && git checkout release && cabal install)
- - pwd
+ # - |
+ #   git clone https://github.com/DanielG/cabal-helper.git
+ #   (cd cabal-helper && git checkout master && cabal install)
+ # - |
+ #   git clone https://github.com/alanz/ghc-mod.git
+ #   (cd ghc-mod && git checkout release && cabal install)
+ # - pwd
+ - cabal install https://hackage.haskell.org/package/ghc-mod-5.6.0.0/candidate/ghc-mod-5.6.0.0.tar.gz
  - cabal install --dependencies-only --enable-tests
 
 # Here starts the actual work to be performed for the package under

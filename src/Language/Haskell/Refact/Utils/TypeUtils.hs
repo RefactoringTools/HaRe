@@ -258,15 +258,16 @@ equivalentNameInNewMod old = do
   -- So ignore the packagekey for now
   -- See https://github.com/DanielG/ghc-mod/issues/811
   -- TODO: revisit this
-  let eqModules (GHC.Module pk1 mn1) (GHC.Module pk2 mn2) = mn1 == mn2
+  -- let eqModules (GHC.Module pk1 mn1) (GHC.Module pk2 mn2) = mn1 == mn2
+  let eqModules (GHC.Module pk1 mn1) (GHC.Module pk2 mn2) = mn1 == mn2 && pk1 == pk2
 
   gnames <- GHC.getNamesInScope
-  -- logm $ "equivalentNameInNewMod:gnames=" ++ showGhcQual (map (\n -> (GHC.nameModule n,n)) gnames)
+  logm $ "equivalentNameInNewMod:gnames=" ++ showGhcQual (map (\n -> (GHC.nameModule n,n)) gnames)
   let clientModule = GHC.nameModule old
-  -- logm $ "equivalentNameInNewMod:(old,clientModule)=" ++ showGhcQual (old,clientModule)
-  -- let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
+  logm $ "equivalentNameInNewMod:(old,clientModule)=" ++ showGhcQual (old,clientModule)
+  let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
   let clientInscopes = filter (\n -> eqModules clientModule (GHC.nameModule n)) gnames
-  -- logm $ "equivalentNameInNewMod:clientInscopes=" ++ showGhcQual clientInscopes
+  logm $ "equivalentNameInNewMod:clientInscopes=" ++ showGhcQual clientInscopes
   let newNames = filter (\n -> showGhcQual n == showGhcQual old) clientInscopes
   return newNames
 

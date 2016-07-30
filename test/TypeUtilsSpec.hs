@@ -3243,8 +3243,8 @@ spec = do
           [equiv] <- equivalentNameInNewMod old
           return (old,equiv)
 
-      ((o,e),_s) <- ctc $ runRefactGhc comp initialState testOptions
-      -- ((o,e),_s) <- ctc $ runRefactGhc comp initialLogOnState testOptions
+      -- ((o,e),_s) <- ctc $ runRefactGhc comp initialState testOptions
+      ((o,e),_s) <- ctc $ runRefactGhc comp initialLogOnState testOptions
       (showGhcQual (o,e)) `shouldBe` "(Foo.Bar.bar, Foo.Bar.bar)"
       -- putStrLn( "(GHC.nameUnique o,GHC.nameUnique e)" ++ (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)))
       -- (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
