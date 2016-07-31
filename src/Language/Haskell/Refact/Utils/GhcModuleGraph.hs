@@ -190,6 +190,7 @@ msDeps s =
          ++ [ (m,False) | m <- ms_home_imps s ]
 -}
 
+{-
 home_imps :: [Located (ImportDecl RdrName)] -> [Located ModuleName]
 home_imps imps = [ ideclName i |  L _ i <- imps, isLocal (ideclPkgQual i) ]
   where isLocal Nothing = True
@@ -200,6 +201,7 @@ home_imps imps = [ ideclName i |  L _ i <- imps, isLocal (ideclPkgQual i) ]
         isLocal (Just pkg) | sl_fs pkg == fsLit "this" = True -- "this" is special
 #endif
         isLocal _ = False
+-}
 
 {-
 ms_home_allimps :: ModSummary -> [ModuleName]

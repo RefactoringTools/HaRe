@@ -578,7 +578,7 @@ hsFreeAndDeclaredRdr' nm t = do
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
-hsFreeAndDeclaredNameStrings::(SYB.Data t,GHC.Outputable t)
+hsFreeAndDeclaredNameStrings::(SYB.Data t)
   => t -> RefactGhc ([String],[String])
 hsFreeAndDeclaredNameStrings t = do
   (f1,d1) <- hsFreeAndDeclaredPNs t
@@ -1590,7 +1590,7 @@ locToRdrName (row,col) t = locToName' (row,col) t
 -- NOTE: provides for FunBind MatchGroups where only the first name is
 -- retained in the AST
 
-locToName':: forall a t.(SYB.Data t, SYB.Data a, Eq a)
+locToName':: forall a t.(SYB.Data t, SYB.Data a)
                     =>SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located a)  -- ^ The result

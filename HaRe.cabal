@@ -137,7 +137,7 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.5.0.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
                                 , Cabal >= 1.22
 
@@ -212,7 +212,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.5.0.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
                                 , Cabal >= 1.22
                                 -- , Paths_HaRe
@@ -306,7 +306,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , ghc-exactprint >= 0.5.0.1
+    , ghc-exactprint >= 0.5.2.1
     , monad-control
     , Cabal >= 1.22
     -- , Paths_HaRe

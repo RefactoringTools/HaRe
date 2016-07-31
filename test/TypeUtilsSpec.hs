@@ -1601,6 +1601,7 @@ spec = do
          return (newBinding,decl)
       ((nb,decl'),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((nb,decl'),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      -- putStrLn $ "nb[]\n" ++ showAnnDataItemFromState s nb ++ "\n]"
       (showGhcQual decl') `shouldBe` "sumSquares (x : xs)\n  = sq x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
       (showGhcQual n) `shouldBe` "sq"
       (showGhcQual nb) `shouldBe` "sumSquares (x : xs)\n  = (sq bar2) x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
@@ -3243,8 +3244,8 @@ spec = do
           [equiv] <- equivalentNameInNewMod old
           return (old,equiv)
 
-      -- ((o,e),_s) <- ctc $ runRefactGhc comp initialState testOptions
-      ((o,e),_s) <- ctc $ runRefactGhc comp initialLogOnState testOptions
+      ((o,e),_s) <- ctc $ runRefactGhc comp initialState testOptions
+      -- ((o,e),_s) <- ctc $ runRefactGhc comp initialLogOnState testOptions
       (showGhcQual (o,e)) `shouldBe` "(Foo.Bar.bar, Foo.Bar.bar)"
       -- putStrLn( "(GHC.nameUnique o,GHC.nameUnique e)" ++ (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)))
       -- (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?

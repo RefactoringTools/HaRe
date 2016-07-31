@@ -1412,11 +1412,10 @@ addParamsToDecls decls pn paramPNames = do
      newSpan <- uniqueSrcSpanT
 #if __GLASGOW_HASKELL__ <= 710
      let vn = (GHC.L newSpan (GHC.VarPat n))
-     addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
 #else
      let vn = (GHC.L newSpan (GHC.VarPat (GHC.L newSpan n)))
-     addSimpleAnnT (GHC.L newSpan n) (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
 #endif
+     addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
      return vn
 
 -- ---------------------------------------------------------------------
@@ -1605,11 +1604,10 @@ addActualParamsToRhs pn paramPNames rhs = do
          registerRdrName (GHC.L ss2 param)
 #if __GLASGOW_HASKELL__ <= 710
          let var   = GHC.L ss2 (GHC.HsVar param)
-         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #else
          let var   = GHC.L ss2 (GHC.HsVar (GHC.L ss2 param))
-         liftT $ addSimpleAnnT (GHC.L ss2 param) (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #endif
+         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
          let expr' = GHC.L ss1 (GHC.HsApp expr var)
          liftT $ addSimpleAnnT expr' (DP (0,0)) []
          return expr'
