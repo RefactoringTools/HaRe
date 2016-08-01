@@ -55,7 +55,7 @@ install:
  #   git clone https://github.com/alanz/ghc-mod.git
  #   (cd ghc-mod && git checkout release && cabal install)
  # - pwd
- - cabal install http://hackage.haskell.org/package/ghc-mod-5.6.0.0/candidate/ghc-mod-5.6.0.0.tar.gz
+ # - cabal install http://hackage.haskell.org/package/ghc-mod-5.6.0.0/candidate/ghc-mod-5.6.0.0.tar.gz
  - cabal install --dependencies-only --enable-tests
 
 # Here starts the actual work to be performed for the package under
