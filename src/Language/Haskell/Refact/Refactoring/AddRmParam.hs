@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.AddRmParam
        ( addOneParameter, compAddOneParameter
@@ -51,18 +52,18 @@ compAddOneParameter fileName paramName (row, col) = do
     then
       do
         parseSourceFileGhc fileName
-        renamed <- getRefactRenamed
         parsed  <- getRefactParsed
+        nm      <- getRefactNameMap
         logParsedSource "compAdd entry"
         targetModule <- getRefactTargetModule
         logm $ "AddRmParam.compAdd:got targetModule"
-        let maybePn = locToName (row, col) renamed
+        let maybePn = locToNameRdrPure nm (row, col) parsed
         case maybePn of
-          Just (GHC.L _ pn) ->
+          Just pn ->
             do
               logm $ "AddRmParam.compAdd:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
               -- make sure this name is defined in this module
-              if isFunOrPatName pn renamed
+              if isFunOrPatName nm pn parsed
                then do
                   exported <- isExported pn
                   if exported
@@ -116,8 +117,7 @@ doAddingParam pn newParam defaultArg isExported' = do
                     logm $ "doAddingParam.inMod doing it"
                     ds <- liftT $ hsDecls modu
                     modu' <- doAdding modu ds
-                    renamed <- getRefactRenamed
-                    if isExported' && isExplicitlyExported pn renamed
+                    if isExported' && isExplicitlyExported nm pn modu
                       then addItemsToExport modu' (Just pn) False (Left [GHC.unLoc (fromJust defaultArg)])
                       else return modu'
                 else mzero
@@ -150,7 +150,11 @@ doAddingParam pn newParam defaultArg isExported' = do
                    if not ( null (definingDeclsRdrNames nm [pn] decls False False))
                       then doAdding letExp decls
                       else mzero
+#if __GLASGOW_HASKELL__ <= 710
              inLet ((GHC.L l (GHC.HsDo ctx stmts ptt)) :: GHC.LHsExpr GHC.RdrName)
+#else
+             inLet ((GHC.L l (GHC.HsDo ctx (GHC.L ls stmts) ptt)) :: GHC.LHsExpr GHC.RdrName)
+#endif
                = do
                    nm <- getRefactNameMap
                    -- logm $ "doAddingParam.inHsDo:stmts=" ++ showGhc stmts
@@ -166,7 +170,11 @@ doAddingParam pn newParam defaultArg isExported' = do
                                                                `adhocTP` inLetStmt
                                                          )
                                                         `choiceTP` failure) stmts'
+#if __GLASGOW_HASKELL__ <= 710
                            return (GHC.L l (GHC.HsDo ctx stmts2 ptt))
+#else
+                           return (GHC.L l (GHC.HsDo ctx (GHC.L ls stmts2) ptt))
+#endif
                       else mzero
              inLet _ = mzero
 
@@ -235,7 +243,11 @@ paramNameOk nm pn newParam t
    decl _ = mzero
 
    bind :: GHC.LHsBind GHC.RdrName -> Maybe Bool
+#if __GLASGOW_HASKELL__ <= 710
    bind (GHC.L _ (GHC.FunBind n _i (GHC.MG matches _a _ptt _o) _co _fvs _))
+#else
+   bind (GHC.L _ (GHC.FunBind n (GHC.MG matches _a _ptt _o) _co _fvs _))
+#endif
     | rdrName2NamePure nm n == pn
     = do results' <- mapM checkInMatch matches
          Just (all (==True) results')
@@ -312,7 +324,11 @@ addDefaultActualArg recursion pn argPName t = do
                                                 `adhocTP` (funApp nm)))) t
        where
          inDecl :: NameMap -> GHC.LHsDecl GHC.RdrName -> RefactGhc (GHC.LHsDecl GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
          inDecl nm fun@(GHC.L _ (GHC.ValD (GHC.FunBind n _i _ _co _fvs _)))
+#else
+         inDecl nm fun@(GHC.L _ (GHC.ValD (GHC.FunBind n _ _co _fvs _)))
+#endif
            | rdrName2NamePure nm n == pn
            = return fun -- Stop the recursion by not returning mzero
 
@@ -322,7 +338,11 @@ addDefaultActualArg recursion pn argPName t = do
          inDecl _ _ = mzero
 
          funApp :: NameMap -> GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
          funApp nm (expr@(GHC.L l (GHC.HsVar n))::GHC.LHsExpr GHC.RdrName)
+#else
+         funApp nm (expr@(GHC.L l (GHC.HsVar (GHC.L _ n)))::GHC.LHsExpr GHC.RdrName)
+#endif
           | rdrName2NamePure nm (GHC.L l n) == pn = do
             logm $ "addDefaultActualArg.funApp:expr=" ++ showGhc expr
             addParamToExp expr (GHC.unLoc argPName)
@@ -339,9 +359,15 @@ addParamToExp (expr@(GHC.L _ (GHC.HsVar _))) argPName = do
   lp <- liftT uniqueSrcSpanT
   la <- liftT uniqueSrcSpanT
   lv <- liftT uniqueSrcSpanT
+#if __GLASGOW_HASKELL__ <= 710
   let e2 = GHC.L lv (GHC.HsVar argPName)
-  let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr e2)))
   liftT $ addSimpleAnnT e2  (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+#else
+  let lname = GHC.L lv argPName
+  let e2 = GHC.L lv (GHC.HsVar lname)
+  liftT $ addSimpleAnnT e2 (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+#endif
+  let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr e2)))
   liftT $ addSimpleAnnT ret (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
   liftT $ transferEntryDPT expr ret
   liftT $ setEntryDPT expr (DP (0,0))
@@ -363,16 +389,33 @@ addArgToSig pn decls = do
 
     where
        addArgToSig' :: [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
+#if __GLASGOW_HASKELL__ <= 710
        addArgToSig' sig@[(GHC.L l (GHC.SigD (GHC.TypeSig is tp pr)))] = do
+#else
+       addArgToSig' sig@[(GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.HsIB ivs (GHC.HsWC wcs mwc tp)))))] = do
+#endif
               nm <- getRefactNameMap
               let tVar = mkNewTypeVarName sig
+#if __GLASGOW_HASKELL__ <= 710
               typeVar <- newTypeVar tVar tp
+#else
+              typeVar' <- newTypeVar tVar tp
+              let typeVar = GHC.HsIB ivs (GHC.HsWC wcs mwc typeVar')
+#endif
               let newSig=if length is==1
+#if __GLASGOW_HASKELL__ <= 710
                            then  --the type sig only defines the type for pn
                                 [GHC.L l (GHC.SigD (GHC.TypeSig is typeVar pr))]
                            else  --otherwise, seperate it into two type signatures.
                                [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) tp pr)),
                                 GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) typeVar pr))]
+#else
+                           then  --the type sig only defines the type for pn
+                                [GHC.L l (GHC.SigD (GHC.TypeSig is typeVar))]
+                           else  --otherwise, seperate it into two type signatures.
+                               [GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x/=pn) is) typ)),
+                                GHC.L l (GHC.SigD (GHC.TypeSig (filter (\x->rdrName2NamePure nm x==pn) is) typeVar))]
+#endif
               return newSig
        addArgToSig' sig = do
          logm $ "addArgToSig':not processing " ++ showGhc sig
@@ -384,9 +427,15 @@ addArgToSig pn decls = do
        newTypeVar tVar tp = do
          ls <- liftT $ uniqueSrcSpanT
          lv <- liftT $ uniqueSrcSpanT
+#if __GLASGOW_HASKELL__ <= 710
          let tv = GHC.L lv (GHC.HsTyVar (mkRdrName tVar))
-         let typ = GHC.L ls (GHC.HsFunTy tv tp)
          liftT $ addSimpleAnnT tv  (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+#else
+         let lname = GHC.L lv (mkRdrName tVar)
+         let tv = GHC.L lv (GHC.HsTyVar lname)
+         liftT $ addSimpleAnnT lname  (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+#endif
+         let typ = GHC.L ls (GHC.HsFunTy tv tp)
          liftT $ addSimpleAnnT typ (DP (0,1)) [((G GHC.AnnRarrow),DP (0,1))]
          return typ
 
@@ -435,7 +484,11 @@ addDefaultActualArgInClientMod pn argPName t = do
   r <- applyTP (stop_tdTP (failTP `adhocTP` (funApp nm))) t
   return r
   where
+#if __GLASGOW_HASKELL__ <= 710
     funApp nm (expr@((GHC.L l (GHC.HsVar pname )))::GHC.LHsExpr GHC.RdrName)
+#else
+    funApp nm (expr@((GHC.L l (GHC.HsVar (GHC.L _ pname) )))::GHC.LHsExpr GHC.RdrName)
+#endif
       | GHC.nameUnique (rdrName2NamePure nm (GHC.L l pname)) == GHC.nameUnique pn
        = do
             logm $ "addDefaultActualArgInClientMod:hit"
@@ -469,7 +522,7 @@ rmOneParameter settings opts fileName (row,col) = do
 compRmOneParameter :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
 compRmOneParameter fileName (row, col) = do
   parseSourceFileGhc fileName
-  logParsedSource "compRm entry"
+  -- logParsedSource "compRm entry"
   -- pn is the function names.
   -- nth is the nth paramter of pn is to be removed,index starts from 0.
   mp <- getParam (row,col)
@@ -511,6 +564,7 @@ doRmParam pn nTh = do
                   `choiceTP` failure) parsed
     logm $ "doRmParam after applyTP"
     putRefactParsed r emptyAnns
+    logParsedSource "doRmParam:parsed after"
     return ()
       where
              --1. pn is declared in top level.
@@ -519,7 +573,11 @@ doRmParam pn nTh = do
 
              -- --2. pn is declared locally in the where clause of a match.
              inMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+#if __GLASGOW_HASKELL__ <= 710
              inMatch match@(GHC.L _ (GHC.Match (Just (_fun,_)) _pats _mtyp (GHC.GRHSs _rhs _ds)))
+#else
+             inMatch match@(GHC.L _ (GHC.Match (GHC.FunBindMatch _fun _) _pats _mtyp (GHC.GRHSs _rhs _ds)))
+#endif
                = doRemoving' match
              inMatch _ = mzero
 
@@ -532,13 +590,21 @@ doRmParam pn nTh = do
              inLet :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
              inLet letExp@(GHC.L _ (GHC.HsLet _bs _e))
                = doRemoving' letExp
+#if __GLASGOW_HASKELL__ <= 710
              inLet (GHC.L l (GHC.HsDo ctx stmts ptt))
+#else
+             inLet (GHC.L l (GHC.HsDo ctx (GHC.L ls stmts) ptt))
+#endif
                = do
                    nm <- getRefactNameMap
                    if not ( null (definingDeclsRdrNames' nm [pn] stmts))
                       then do
                            stmts' <- doRemovingStmts stmts
+#if __GLASGOW_HASKELL__ <= 710
                            return (GHC.L l (GHC.HsDo ctx stmts' ptt))
+#else
+                           return (GHC.L l (GHC.HsDo ctx (GHC.L ls stmts') ptt))
+#endif
                       else mzero
              inLet _ = mzero
 
@@ -590,17 +656,20 @@ doRmParam pn nTh = do
              rmFormalArg :: (SYB.Data t) => GHC.Name -> Int -> Bool -> Bool -> t -> RefactGhc t
              rmFormalArg pn' nTh' updateToks checking t = do
                logm $ "rmFormalArg:(pn,nTh,updateToks,checking)=" ++ showGhc (pn',nTh',updateToks,checking)
-               logDataWithAnns "rmFormalArg:t=" t
+               -- logDataWithAnns "rmFormalArg:t=" t
                nm <- getRefactNameMap
                applyTP (stop_tdTP (failTP `adhocTP` (rmInMatch nm))) t
 
                where
                  -- a formal parameter only exists in a match
+#if __GLASGOW_HASKELL__ <= 710
                  rmInMatch nm (match@(GHC.L l (GHC.Match (Just (fun,b)) pats typ (GHC.GRHSs rhs decls)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+#else
+                 rmInMatch nm (match@(GHC.L l (GHC.Match (GHC.FunBindMatch fun b) pats typ (GHC.GRHSs rhs decls)))::GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+#endif
                    | rdrName2NamePure nm fun == pn' =
                        let  pat = pats!!nTh'     --get the nth formal parameter
                             pats' = take nTh' pats ++ drop (nTh' + 1) pats
-                            -- pNames = hsPNs pat  --get all the names in this pat. (the pat may be just be a variable)
                             pNames = map (rdrName2NamePure nm) $ hsNamessRdr pat  --get all the names in this pat. (the pat may be just be a variable)
                        in if checking && not ( all (==False) ((map (flip (findNameInRdr nm) rhs) pNames)) && --not used in rhs
                                                all (==False) ((map (flip (findNameInRdr nm) decls) pNames))) --not used in the where clause
@@ -613,7 +682,11 @@ doRmParam pn nTh = do
                                 dp <- liftT $ getEntryDPT (ghead "rmFormalArg" pats)
                                 logm $ "rmFormalArg.rmInMatch:dp=" ++ show dp
                                 liftT $ setAnnKeywordDP match (G GHC.AnnEqual) dp
+#if __GLASGOW_HASKELL__ <= 710
                               return (GHC.L l (GHC.Match (Just (fun,b)) pats' typ (GHC.GRHSs rhs decls)))
+#else
+                              return (GHC.L l (GHC.Match (GHC.FunBindMatch fun b) pats' typ (GHC.GRHSs rhs decls)))
+#endif
                  rmInMatch _ _ = mzero
 
 -- ---------------------------------------------------------------------
@@ -669,25 +742,44 @@ rmNthArgInSig pn nTh decls = do
                 return (before++newSig++(tail after))
 
    where
+#if __GLASGOW_HASKELL__ <= 710
          rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.L lt (GHC.HsForAllTy ex wc bnd ctx tp)) c))]
+#else
+         -- rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lt (GHC.HsForAllTy bnd tp))))))]
+         rmNthArgInSig' nm [GHC.L l (GHC.SigD (GHC.TypeSig is typ@(GHC.HsIB ivs (GHC.HsWC wcs mwc tp))))]
+#endif
           =do
               ed <- liftT $ getEntryDPT tp
               let (GHC.L lp tp') = rmNth tp
               lp' <- liftT uniqueSrcSpanT
               liftT $ modifyAnnsT $ copyAnn (GHC.L lp tp') (GHC.L lp' tp')
               liftT $ setEntryDPT (GHC.L lp' tp') ed
+#if __GLASGOW_HASKELL__ <= 710
               let typ' = GHC.L lt (GHC.HsForAllTy ex wc bnd ctx (GHC.L lp' tp'))
+#else
+              -- let typ' = GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lt (GHC.HsForAllTy bnd (GHC.L lp' tp'))))
+              let typ' = GHC.HsIB ivs (GHC.HsWC wcs mwc (GHC.L lp' tp'))
+#endif
               newSig <- liftT $ if length is ==1
                 then --this type signature only defines the type of pn
+#if __GLASGOW_HASKELL__ <= 710
                      return [GHC.L l (GHC.SigD (GHC.TypeSig is typ' c))]
+#else
+                     return [GHC.L l (GHC.SigD (GHC.TypeSig is typ'))]
+#endif
                 else do --this type signature also defines the type of other ids.
                      let otherNames = filter (\x->rdrName2NamePure nm x/=pn) is
                          [thisName] = filter (\x->rdrName2NamePure nm x==pn) is
                      removeTrailingCommaT thisName
                      removeTrailingCommaT (last otherNames)
                      ls <- uniqueSrcSpanT
-                     let otherSig = GHC.L l (GHC.SigD (GHC.TypeSig otherNames typ  c))
+#if __GLASGOW_HASKELL__ <= 710
+                     let otherSig = GHC.L l  (GHC.SigD (GHC.TypeSig otherNames typ  c))
                          thisSig  = GHC.L ls (GHC.SigD (GHC.TypeSig [thisName] typ' c))
+#else
+                     let otherSig = GHC.L l  (GHC.SigD (GHC.TypeSig otherNames typ))
+                         thisSig  = GHC.L ls (GHC.SigD (GHC.TypeSig [thisName] typ'))
+#endif
                      modifyAnnsT $ copyAnn otherSig thisSig
                      clearPriorComments thisSig
                      setEntryDPT thisSig (DP (2,0))
@@ -722,7 +814,11 @@ getParam pos = do
     Nothing     -> return Nothing
     Just (ln,i) -> return $ Just (rdrName2NamePure nm ln,i)
     where
+#if __GLASGOW_HASKELL__ <= 710
        inMatch ((GHC.Match (Just (fun,_)) pats _mtyp _grhs)::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+#else
+       inMatch ((GHC.Match (GHC.FunBindMatch fun _) pats _mtyp _grhs)::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+#endif
          = case locToRdrName pos pats of
              Nothing  -> Nothing
              Just _ln -> if isNothing element

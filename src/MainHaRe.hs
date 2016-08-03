@@ -9,13 +9,15 @@ import           Data.Version
 import           Development.GitRev (gitCommitCount)
 import           Distribution.System (buildArch)
 import           Distribution.Text (display)
+import           Language.Haskell.Refact.API
 import           Language.Haskell.Refact.HaRe
 import           Options.Applicative.Simple
 import qualified Language.Haskell.GhcMod as GM
 import qualified Paths_HaRe as Meta
 
 -- temporary until exposed by ghc-mod
-import           Options
+-- import           Options
+import           Language.Haskell.GhcMod.Options.Options
 
 main :: IO ()
 main = do
@@ -307,4 +309,4 @@ catchException f = do
   return res
   where
     handler:: SomeException -> IO (Either String t)
-    handler e = return (Left (show e))
+    handler e = return (Left (stripCallStack $ show e))

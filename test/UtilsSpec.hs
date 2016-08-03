@@ -582,11 +582,11 @@ spec = do
     it "loads a file from a sub directory" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
       fileName <- canonicalizePath "./test/testdata/FreeAndDeclared/DeclareS.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
       let
         comp = do
           parseSourceFileGhc fileName
-          r <- hsFreeAndDeclaredPNs renamed
+          r <- hsFreeAndDeclaredPNs parsed
           return r
       ((res),_s) <- cdAndDo "./test/testdata/FreeAndDeclared" $
                      runRefactGhc comp initialState testOptions
@@ -597,5 +597,19 @@ spec = do
       -- Declared Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd res)) `shouldBe` "[(FreeAndDeclared.DeclareS.c, (6, 1))]"
 
--- ---------------------------------------------------------------------
+  -- -------------------------------------------------------------------
 
+  describe "stripCallStack" $ do
+    it "strips a call stack from the end of an error string" $ do
+      let s = "\nThe identifier is not a local function/pattern name!\nCallStack (from HasCallStack):\n  error, called at ../src/Language/Haskell/Refact/Refactoring/MoveDef.hs:155:12 in main:Language.Haskell.Refact.Refactoring.MoveDef"
+      (stripCallStack s) `shouldBe` "\nThe identifier is not a local function/pattern name!"
+
+    it "noops if no call stack from the end of an error string" $ do
+      let s = "\nThe identifier is not a local function/pattern name!"
+      (stripCallStack s) `shouldBe` "\nThe identifier is not a local function/pattern name!"
+
+    it "noops if no call stack from the end of an error string, trailing nl" $ do
+      let s = "\nThe identifier is not a local function/pattern name!\n"
+      (stripCallStack s) `shouldBe` "\nThe identifier is not a local function/pattern name!\n"
+
+-- ---------------------------------------------------------------------

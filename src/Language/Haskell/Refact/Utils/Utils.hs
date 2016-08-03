@@ -28,6 +28,8 @@ module Language.Haskell.Refact.Utils.Utils
        , modifiedFiles
        , writeRefactoredFiles
 
+       , stripCallStack
+
        ) where
 
 -- import Control.Exception
@@ -443,3 +445,15 @@ serverModsAndFiles m = do
                  $ map summaryNodeSummary $ GHC.reachableG mg modNode
 
   return serverMods
+
+-- ---------------------------------------------------------------------
+
+-- | In GHC 8 an error has an attached callstack. This is not always what we
+-- want, so this function strips it
+stripCallStack :: String -> String
+stripCallStack str = str'
+  where
+    s1 = init $ unlines $ takeWhile (\s -> s /= "CallStack (from HasCallStack):") $ lines str
+    str' = if last str == '\n'
+              then s1 ++ "\n"
+              else s1

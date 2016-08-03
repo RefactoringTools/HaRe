@@ -32,13 +32,16 @@ module TestUtils
        , parseDeclToAnnotated
        , ss2span
        , PosToken
+       , getHsDecls
+       , showNameMap
        ) where
 
 
+import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
--- import qualified Outputable    as GHC
+import qualified Outputable    as GHC
 import qualified Unique        as GHC
 
 import Data.Algorithm.Diff
@@ -242,7 +245,7 @@ catchException f = do
   return res
   where
     handler:: SomeException -> IO (Maybe String)
-    handler e = return (Just (show e))
+    handler e = return (Just (stripCallStack $ show e))
 
 -- ---------------------------------------------------------------------
 
@@ -384,6 +387,23 @@ parseDeclToAnnotated df fp src = (ast,anns)
 
 ss2span :: GHC.SrcSpan -> (Pos,Pos)
 ss2span ss = (ss2pos ss,ss2posEnd ss)
+
+-- ---------------------------------------------------------------------
+
+-- | call ghc-excactprint hsDecls in a Transform context
+getHsDecls :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName]
+getHsDecls t = decls
+  where
+    -- runTransform :: Anns -> Transform a -> (a, (Anns, Int), [String])
+    (decls,_,_) = runTransform mempty (hsDecls t)
+-- ---------------------------------------------------------------------
+
+showNameMap :: NameMap -> String
+showNameMap  nm = GHC.showSDocDebug GHC.unsafeGlobalDynFlags doc
+    where
+      doc = GHC.text "NameMap" GHC.<+> GHC.vcat (map one $ Map.toList nm)
+      -- one (s,n) = GHC.parens $ GHC.text (showGhc (s,n,GHC.nameUnique n)) GHC.<+> GHC.ppr n
+      one (s,n) = GHC.parens $ GHC.hsep [GHC.ppr s, GHC.comma, GHC.ppr n]
 
 -- ---------------------------------------------------------------------
 -- EOF

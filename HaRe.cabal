@@ -112,7 +112,7 @@ extra-source-files:             ChangeLog
 
 Library
         -- GHC 7.10.2 ships with base 4.8.1.0
-        Build-Depends:          base >= 4.8.1.0  && < 4.9
+        Build-Depends:          base >= 4.8.1.0  && < 5
                                 , containers
                                 , directory
 
@@ -125,7 +125,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.5.0.0
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , old-time
                                 , pretty
@@ -137,7 +137,7 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.5.0.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
                                 , Cabal >= 1.22
 
@@ -155,7 +155,6 @@ Library
            , Language.Haskell.Refact.Refactoring.RoundTrip
            , Language.Haskell.Refact.Refactoring.Simple
            , Language.Haskell.Refact.Refactoring.SwapArgs
-           , Language.Haskell.Refact.Utils.Binds
            , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -183,7 +182,7 @@ Executable ghc-hare
           ./src
 
         -- GHC 7.10.2 ships with base 4.8.1.0
-        Build-Depends:          base >= 4.8.1.0  && < 4.9
+        Build-Depends:          base >= 4.8.1.0  && < 5
                                 , array
                                 , containers
                                 , directory
@@ -198,7 +197,7 @@ Executable ghc-hare
                                 , ghc-prim
                                 , ghc-syb-utils
                                 , gitrev >= 1.1
-                                , ghc-mod >= 5.5.0.0
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , optparse-applicative
                                 , optparse-simple
@@ -213,7 +212,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.5.0.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
                                 , Cabal >= 1.22
                                 -- , Paths_HaRe
@@ -260,7 +259,6 @@ test-suite spec
     -- , Language.Haskell.Refact.Refactoring.AddRmParam
     -- , Language.Haskell.Refact.Refactoring.Case
     -- , Language.Haskell.Refact.Refactoring.RoundTrip
-    -- , Language.Haskell.Refact.Utils.Binds
     -- , Language.Haskell.Refact.Utils.ExactPrint
     -- , Language.Haskell.Refact.Utils.GhcModuleGraph
     -- , Language.Haskell.Refact.Utils.GhcUtils
@@ -276,7 +274,7 @@ test-suite spec
     -- , Paths_HaRe
   build-depends:
       -- GHC 7.10.2 ships with base 4.8.1.0
-      base        >= 4.8.1.0  && < 4.9
+      base        >= 4.8.1.0  && < 5
     , Diff >= 0.3.0
     , HUnit
     , QuickCheck  >= 2.5
@@ -293,7 +291,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 5.5.0.0
+    , ghc-mod >= 5.6.0.0
     , hspec
     , mtl
     , old-time
@@ -308,7 +306,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , ghc-exactprint >= 0.5.0.1
+    , ghc-exactprint >= 0.5.2.1
     , monad-control
     , Cabal >= 1.22
     -- , Paths_HaRe

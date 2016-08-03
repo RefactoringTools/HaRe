@@ -291,7 +291,7 @@ spec = do
 
     it "renames in ConstructorIn3 9 12" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/ConstructorIn3.hs" "b" (9,13)
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/ConstructorIn3.hs" "b" (9,13)
+     -- ct $ rename logTestSettings testOptions "./Renaming/ConstructorIn3.hs" "b" (9,13)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/ConstructorIn3.hs"
                   ]
@@ -366,7 +366,7 @@ spec = do
     -- ---------------------------------
 
     it "naming clash IdIn5" $ do
-     -- rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1)
+     -- ct $ rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1))
      (show res) `shouldBe` "Just \"Name 'y' already exists, or renaming 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
 

@@ -1,4 +1,5 @@
 {-# LANGUAGE PatternGuards #-}
+{-# LANGUAGE CPP #-}
 
 module Language.Haskell.Refact.Utils.GhcModuleGraph
   (
@@ -7,11 +8,15 @@ module Language.Haskell.Refact.Utils.GhcModuleGraph
   ) where
 
 -- GHC imports
+#if __GLASGOW_HASKELL__ > 710
+import BasicTypes
+#endif
 import Digraph
 import FastString
 import GHC
 import HscTypes
 import Panic
+
 
 -- Other imports
 import qualified Data.Map as Map
@@ -185,11 +190,13 @@ msDeps s =
          ++ [ (m,False) | m <- ms_home_imps s ]
 -}
 
+#if __GLASGOW_HASKELL__ <= 710
 home_imps :: [Located (ImportDecl RdrName)] -> [Located ModuleName]
 home_imps imps = [ ideclName i |  L _ i <- imps, isLocal (ideclPkgQual i) ]
   where isLocal Nothing = True
         isLocal (Just pkg) | pkg == fsLit "this" = True -- "this" is special
         isLocal _ = False
+#endif
 
 {-
 ms_home_allimps :: ModSummary -> [ModuleName]
@@ -197,9 +204,17 @@ ms_home_allimps ms = map unLoc (ms_home_srcimps ms ++ ms_home_imps ms)
 -}
 
 ms_home_srcimps :: ModSummary -> [Located ModuleName]
+#if __GLASGOW_HASKELL__ <= 710
 ms_home_srcimps = home_imps . ms_srcimps
+#else
+ms_home_srcimps ms = map snd $ ms_srcimps ms
+#endif
 
 ms_home_imps :: ModSummary -> [Located ModuleName]
+#if __GLASGOW_HASKELL__ <= 710
 ms_home_imps = home_imps . ms_imps
+#else
+ms_home_imps ms = map snd $ ms_imps ms
+#endif
 
 -- GHC source end

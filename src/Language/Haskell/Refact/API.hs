@@ -42,6 +42,8 @@ module Language.Haskell.Refact.API
        , clientModsAndFiles
        , serverModsAndFiles
 
+       , stripCallStack
+
 
  -- * from `Language.Haskell.Refact.Utils.MonadFunctions`
 
@@ -116,40 +118,33 @@ module Language.Haskell.Refact.API
     , isClassName
     , isInstanceName
     , hsTypeVbls
-    , hsPNs, hsNamess, hsNamessRdr
-    , hsBinds
-    , HsValBinds(..)
-    ,isDeclaredIn,isDeclaredInRdr
-    ,FreeNames(..),DeclaredNames(..)
-    ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
-    ,hsFreeAndDeclaredRdr
-    ,hsFreeAndDeclaredPNs
-    ,hsFreeAndDeclaredGhc
-    ,getDeclaredTypes
-    ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
+    , hsNamessRdr
+    , isDeclaredInRdr
+    , FreeNames(..),DeclaredNames(..)
+    , hsFreeAndDeclaredNameStrings
+    , hsFreeAndDeclaredRdr
+    , hsFreeAndDeclaredPNs
+    , getDeclaredVarsRdr
 
-    ,hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
-    ,hsVisibleNamesRdr
-    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
-    ,hsFDsFromInside, hsFDNamesFromInside
-    ,hsVisibleDs
-    ,rdrName2Name, rdrName2NamePure
+    , hsVisibleNamesRdr
+    , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
+    , hsVisibleDsRdr
+    , rdrName2Name, rdrName2NamePure
 
     -- *** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
     ,isQualifiedPN, isFunOrPatName,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,isSimplePatDecl
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
-    ,usedWithoutQualR,isUsedInRhs
+    ,usedWithoutQualR
     ,findNameInRdr
-    ,findPNT,findPN,findAllNameOccurences
-    ,findPNs, findNamesRdr, findEntity, findEntity'
+    ,findNamesRdr, findEntity, findEntity'
     ,sameOccurrence
     , findIdForName
     , getTypeForName
-    , definesTypeSig,definesTypeSigRdr,definesSigDRdr
-    ,sameBind,sameBindRdr
-    ,UsedByRhs(..)
+    , definesTypeSigRdr,definesSigDRdr
+    , sameBindRdr
+    , UsedByRhs(..)
 
     -- *** Modules and files
     , isMainModule
@@ -158,7 +153,9 @@ module Language.Haskell.Refact.API
     -- *** Locations
     ,defineLoc, useLoc, locToExp
     ,findLRdrName
-    ,locToName, locToRdrName
+    -- ,locToName
+    ,locToNameRdrPure
+    ,locToRdrName
     ,getName
 
  -- * Program transformation
@@ -171,18 +168,16 @@ module Language.Haskell.Refact.API
 
     -- *** Updating
     -- ,Update(update)
-    ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
+    ,rmQualifier,qualifyToplevelName,renamePN, HowToQual(..), autoRenameLocalVar
 
     -- *** Identifiers, expressions, patterns and declarations
-    ,ghcToPN,lghcToPN, expToName, expToNameRdr
-    ,patToNameRdr
-    ,nameToString
-    ,patToPNT ,pNtoPat
-    , definedPNs, definedPNsRdr,definedNamesRdr
+    , expToNameRdr
+    , patToNameRdr
+    , nameToString
+    , pNtoPat
+    , definedPNsRdr,definedNamesRdr
     , definingDeclsRdrNames, definingDeclsRdrNames', definingSigsRdrNames
-    , definingDeclsNames, definingDeclsNames', definingSigsNames
     , definingTyClDeclsNames
-    , allNames
 
     -- *** Others
     , divideDecls
@@ -197,18 +192,11 @@ module Language.Haskell.Refact.API
     -- ** Typed AST traversals (added by CMB)
     -- ** Miscellous
 
-    -- ** Debug stuff
-    , getParsedForRenamedLPat
-    , getParsedForRenamedName
-    , getParsedForRenamedLocated
-    , stripLeadingSpaces
-
  -- ** from `Language.Haskell.Refact.Utils.GhcUtils`
     -- ** SYB versions
     , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
-    , onelayerStaged
     , listifyStaged
 
     -- ** Scrap Your Zipper versions
@@ -244,7 +232,6 @@ module Language.Haskell.Refact.API
 
  ) where
 
-import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific

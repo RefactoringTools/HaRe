@@ -4,6 +4,7 @@
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 
 -- |
 
@@ -81,6 +82,9 @@ import qualified GhcMonad      as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
 import qualified Unique        as GHC
+#if __GLASGOW_HASKELL__ > 710
+import qualified Var
+#endif
 
 import qualified Data.Generics as SYB
 
@@ -451,6 +455,9 @@ initRdrNameMap tm = r
   where
     parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
     renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
+#if __GLASGOW_HASKELL__ > 710
+    typechecked = GHC.tm_typechecked_source tm
+#endif
 
     checkRdr :: GHC.Located GHC.RdrName -> Maybe [(GHC.SrcSpan,GHC.RdrName)]
     checkRdr (GHC.L l n@(GHC.Unqual _)) = Just [(l,n)]
@@ -461,7 +468,25 @@ initRdrNameMap tm = r
     checkName ln = Just [ln]
 
     rdrNames = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkRdr ) parsed
+#if __GLASGOW_HASKELL__ <= 710
     names    = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
+#else
+    names1   = gfromJust "initRdrNameMap" $ SYB.everything mappend (nameSybQuery checkName) renamed
+    names2 = names1 ++ SYB.everything (++) ([] `SYB.mkQ` fieldOcc
+                                              `SYB.extQ` hsRecFieldN) renamed
+    names  = names2 ++ SYB.everything (++) ([] `SYB.mkQ` hsRecFieldT) typechecked
+
+    fieldOcc :: GHC.FieldOcc GHC.Name -> [GHC.Located GHC.Name]
+    fieldOcc (GHC.FieldOcc (GHC.L l _) n) = [(GHC.L l n)]
+
+    hsRecFieldN :: GHC.LHsExpr GHC.Name -> [GHC.Located GHC.Name]
+    hsRecFieldN (GHC.L _ (GHC.HsRecFld (GHC.Unambiguous (GHC.L l _) n) )) = [GHC.L l n]
+    hsRecFieldN _ = []
+
+    hsRecFieldT :: GHC.LHsExpr GHC.Id -> [GHC.Located GHC.Name]
+    hsRecFieldT (GHC.L _ (GHC.HsRecFld (GHC.Ambiguous (GHC.L l _) n) )) = [GHC.L l (Var.varName n)]
+    hsRecFieldT _ = []
+#endif
 
     nameMap = Map.fromList $ map (\(GHC.L l n) -> (l,n)) names
 
@@ -471,7 +496,11 @@ initRdrNameMap tm = r
       Just v -> v
       Nothing -> case n of
                    GHC.Unqual u -> mkNewGhcNamePure 'h' i Nothing  (GHC.occNameString u)
+#if __GLASGOW_HASKELL__ <= 710
                    GHC.Qual q u -> mkNewGhcNamePure 'h' i (Just (GHC.Module (GHC.stringToPackageKey "") q)) (GHC.occNameString u)
+#else
+                   GHC.Qual q u -> mkNewGhcNamePure 'h' i (Just (GHC.Module (GHC.stringToUnitId "") q)) (GHC.occNameString u)
+#endif
                    _            -> error "initRdrNameMap:should not happen"
 
     r = Map.fromList $ map (\((l,n),i) -> (l,lookupName l n i)) $ zip rdrNames [1..]
@@ -493,15 +522,18 @@ nameSybTransform :: (Monad m,SYB.Typeable t)
 nameSybTransform changer = q
   where
     q = SYB.mkM  worker
+#if __GLASGOW_HASKELL__ <= 710
         `SYB.extM` workerBind
         `SYB.extM` workerExpr
         `SYB.extM` workerLIE
         `SYB.extM` workerHsTyVarBndr
         `SYB.extM` workerLHsType
+#endif
 
     worker (pnt :: (GHC.Located GHC.RdrName))
       = changer pnt
 
+#if __GLASGOW_HASKELL__ <= 710
     workerBind (GHC.L l (GHC.VarPat name))
       = do
         (GHC.L _ n) <- changer (GHC.L l name)
@@ -531,6 +563,7 @@ nameSybTransform changer = q
           (GHC.L _ n) <- changer (GHC.L l name)
           return (GHC.L l (GHC.HsTyVar n))
     workerLHsType x = return x
+#endif
 
 -- ---------------------------------------------------------------------
 
@@ -539,15 +572,18 @@ nameSybQuery :: (SYB.Typeable a, SYB.Typeable t)
 nameSybQuery checker = q
   where
     q = Nothing `SYB.mkQ`  worker
+#if __GLASGOW_HASKELL__ <= 710
                 `SYB.extQ` workerBind
                 `SYB.extQ` workerExpr
                 -- `SYB.extQ` workerLIE
                 `SYB.extQ` workerHsTyVarBndr
                 `SYB.extQ` workerLHsType
+#endif
 
     worker (pnt :: (GHC.Located a))
       = checker pnt
 
+#if __GLASGOW_HASKELL__ <= 710
     workerBind (GHC.L l (GHC.VarPat name))
       = checker (GHC.L l name)
     workerBind _ = Nothing
@@ -567,6 +603,7 @@ nameSybQuery checker = q
     workerLHsType ((GHC.L l (GHC.HsTyVar name)))
       = checker (GHC.L l name)
     workerLHsType _ = Nothing
+#endif
 
 -- ---------------------------------------------------------------------
 
