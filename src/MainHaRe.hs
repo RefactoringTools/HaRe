@@ -147,7 +147,7 @@ rmOneParamCmdOpts =
 
 addOneParamCmdOpts :: Parser HareParams
 addOneParamCmdOpts =
-    DupDefCmd
+    AddOneParam
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"
@@ -167,7 +167,7 @@ addOneParamCmdOpts =
 
 renameCmdOpts :: Parser HareParams
 renameCmdOpts =
-    DupDefCmd
+    RenameCmd
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"
