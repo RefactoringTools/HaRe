@@ -338,6 +338,7 @@ fixType funNm = do
       strTy = exactPrint iType currAnns
       tyStr = funNm ++ " :: (MonadPlus m) => m" ++ strTy ++ " -> m" ++ strTy
       pRes = parseDecl dFlags "MaybeToMonadPlus.hs" tyStr
+  logm $ "Parsed: " ++ (showData Parser 3 parsed)
   logm $ "Type string: " ++ tyStr
   (anns, newSig) <- handleParseResult "MaybeToMonadPlus.fixType" pRes
   newParsed <- replaceAtLocation sigL newSig
