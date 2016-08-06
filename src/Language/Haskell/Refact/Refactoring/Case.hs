@@ -1,5 +1,9 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE StandaloneDeriving #-}
-module Language.Haskell.Refact.Refactoring.Case(ifToCase) where
+module Language.Haskell.Refact.Refactoring.Case
+  ( ifToCase
+  , compIfToCase
+  ) where
 
 import qualified Data.Generics         as SYB
 import qualified GHC.SYB.Utils         as SYB
@@ -25,14 +29,14 @@ import qualified Data.Map as Map
 ifToCase :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> SimpPos -> IO [FilePath]
 ifToCase settings opts fileName beginPos endPos = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts (comp absFileName beginPos endPos)
+  runRefacSession settings opts (compIfToCase absFileName beginPos endPos)
 
-comp :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName beginPos endPos = do
+compIfToCase :: FilePath -> SimpPos -> SimpPos -> RefactGhc [ApplyRefacResult]
+compIfToCase fileName beginPos endPos = do
        parseSourceFileGhc fileName
        parsed <- getRefactParsed
        oldAnns <- liftT getAnnsT
-       logm $ "Case.comp:parsed=" ++ (showAnnData oldAnns 0 parsed) -- ++AZ++
+       logm $ "Case.compIfToCase:parsed=" ++ (showAnnData oldAnns 0 parsed) -- ++AZ++
        let expr = locToExp beginPos endPos parsed
        case expr of
          Just exp1@(GHC.L _ (GHC.HsIf _ _ _ _))
@@ -79,13 +83,26 @@ ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
   falseLoc       <- liftT uniqueSrcSpanT -- HaRe:-1:7
   falseMatchLoc  <- liftT uniqueSrcSpanT -- HaRe:-1:8
   falseRhsLoc    <- liftT uniqueSrcSpanT -- HaRe:-1:9
+#if __GLASGOW_HASKELL__ > 710
+  matchesLoc     <- liftT uniqueSrcSpanT -- HaRe:-1:10
+  lbTrueLoc      <- liftT uniqueSrcSpanT -- HaRe:-1:11
+  lbFalseLoc     <- liftT uniqueSrcSpanT -- HaRe:-1:11
+#endif
   let trueName  = mkRdrName "True"
   let falseName = mkRdrName "False"
   let ret = GHC.L caseLoc (GHC.HsCase e1
              (GHC.MG
+              (
+#if __GLASGOW_HASKELL__ > 710
+              GHC.L matchesLoc
+#endif
               [
                 (GHC.L trueMatchLoc $ GHC.Match
+#if __GLASGOW_HASKELL__ <= 710
                  Nothing
+#else
+                 GHC.NonFunBindMatch
+#endif
                  [
                    GHC.L trueLoc1 $ GHC.ConPatIn (GHC.L trueLoc trueName) (GHC.PrefixCon [])
                  ]
@@ -93,10 +110,19 @@ ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                  (GHC.GRHSs
                    [
                      GHC.L trueRhsLoc $ GHC.GRHS [] e2
-                   ] GHC.EmptyLocalBinds)
+                   ]
+                   (
+#if __GLASGOW_HASKELL__ > 710
+                    GHC.L lbTrueLoc
+#endif
+                   GHC.EmptyLocalBinds))
                 )
               , (GHC.L falseMatchLoc $ GHC.Match
-                 Nothing
+#if __GLASGOW_HASKELL__ <= 710
+                  Nothing
+#else
+                  GHC.NonFunBindMatch
+#endif
                  [
                    GHC.L falseLoc1 $ GHC.ConPatIn (GHC.L falseLoc falseName) (GHC.PrefixCon [])
                  ]
@@ -104,9 +130,14 @@ ifToCaseTransform li@(GHC.L _ (GHC.HsIf _se e1 e2 e3)) = do
                  (GHC.GRHSs
                    [
                      GHC.L falseRhsLoc $ GHC.GRHS [] e3
-                   ] GHC.EmptyLocalBinds)
+                   ]
+                   (
+#if __GLASGOW_HASKELL__ > 710
+                   GHC.L lbFalseLoc
+#endif
+                   GHC.EmptyLocalBinds))
                 )
-              ] [] GHC.placeHolderType GHC.FromSource))
+              ]) [] GHC.placeHolderType GHC.FromSource))
 
   oldAnns <- liftT $ getAnnsT
   let annIf   = gfromJust "Case.annIf"   $ getAnnotationEP li oldAnns
@@ -144,4 +175,3 @@ ifToCaseTransform x = return x
 
 
 -- EOF
-

@@ -19,7 +19,6 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
-    , onelayerStaged
     , listifyStaged
     , everywhereButMStaged
       
@@ -157,7 +156,7 @@ everythingStaged stage k z f x
 -}
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Perform a query on the immediate subterms only, avoiding holes
 onelayerStaged :: SYB.Stage -> r -> SYB.GenericQ r -> SYB.GenericQ [r]
 onelayerStaged _stage _z f t = gmapQ stagedF t
@@ -168,7 +167,7 @@ onelayerStaged _stage _z f t = gmapQ stagedF t
       | checkItemStage stage x = z
 #endif
       | otherwise = f x
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Staged variation of SYB.listify

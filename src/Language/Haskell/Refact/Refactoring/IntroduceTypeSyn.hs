@@ -37,13 +37,13 @@ comp fileName (row,col) newName typeRep = do
     RefacUnmodifed -> error "Introduce type synonym failed"
     RefacModified -> return ()
   return [refRes]
-      
+
 
 addSyn :: SimpPos -> String -> String -> FilePath -> RefactGhc ()
 addSyn (row, col) newName typeRep fileName = do
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
-  let maybePn = locToName (row,col) renamed
+  maybePn <- locToNameRdr (row,col) parsed
   case maybePn of
     Just _ -> error "Introduce type synonym failed value already defined at given source location"
     Nothing -> do

@@ -33,7 +33,7 @@ unwrapTypeSyn settings opts fileName pos synName = do
 comp :: FilePath -> SimpPos -> String -> RefactGhc [ApplyRefacResult]
 comp fileName (row,col) synName = do
   parseSourceFileGhc fileName
-  (rdrName, decl, relevantAnns) <- getTypeAndAnns fileName (row,col) synName                      
+  (rdrName, decl, relevantAnns) <- getTypeAndAnns fileName (row,col) synName
   (refRes@((fp,ismod), _),isExported) <- applyRefac' False (doReplace rdrName decl relevantAnns) (RSFile fileName)
   case ismod of
     RefacUnmodifed -> error "Unwrap type synonym failed"
@@ -47,7 +47,7 @@ doReplace synName lDecl@(GHC.L l dec) tyAnns = do
   parsed <- getRefactParsed
   newParsed <- everywhereMStaged Parser (SYB.mkM replaceSig) parsed
   currAnns <- fetchAnnsFinal
-  let rhsAnns = lookupAllAnns currAnns l
+  let rhsAnns = lookupAllAnns currAnns [lDecl]
       diffAnns = (Map.difference currAnns rhsAnns)
   putRefactParsed newParsed diffAnns
   setRefactAnns diffAnns
@@ -94,7 +94,7 @@ getTypeAndAnns fileName (row,col) synName = do
     Just name@(GHC.L _ nm) -> do
       synRhs@(GHC.L l _) <- getRhs name
       anns <- fetchAnnsFinal
-      let rhsAnns = lookupAllAnns anns l
+      let rhsAnns = lookupAllAnns anns [synRhs]
       return (nm, synRhs, rhsAnns)
 
 getRhs :: (GHC.Located GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
@@ -117,3 +117,8 @@ compareNames :: (GHC.HasOccName a, GHC.HasOccName b) => a -> b -> Bool
 compareNames nm1 nm2 = let occ1 = GHC.occName nm1
                            occ2 = GHC.occName nm2 in
                        occ1 == occ2
+
+-- ++AZ++: Pretty sure we should not have to do this
+lookupAllAnns :: Anns -> [GHC.Located a] -> Anns
+lookupAllAnns anns [] = emptyAnns
+lookupAllAnns anns ((GHC.L l _):xs) = (lookupAnns anns l) `Map.union` (lookupAllAnns anns xs)

@@ -1,4 +1,4 @@
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE ScopedTypeVariables, FlexibleContexts #-}
 module Language.Haskell.Refact.Refactoring.MaybeToMonadPlus where
 
 import Language.Haskell.Refact.API
@@ -21,6 +21,7 @@ import qualified OccName as GHC
 import qualified RdrName as GHC
 import qualified BasicTypes as GHC
 import qualified ApiAnnotation as GHC
+import qualified Type as GHC
 import Data.Maybe
 
 maybeToMonadPlus :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> Int -> IO [FilePath]
@@ -45,15 +46,50 @@ doMaybeToPlus fileName pos@(row,col) funNm argNum = do
   case mBind of
     Nothing -> error "Function bind not found"
     Just funBind -> do
-      hasNtoN <- containsNothingToNothing funNm argNum pos funBind
-      logm $ "Result of searching for nothing to nothing: " ++ (show hasNtoN)
-      case hasNtoN of
-        False -> return ()
+      canReplaceConstructors <- isOutputType funNm argNum pos funBind
+      case canReplaceConstructors of
         True -> do
-          doRewriteAsBind fileName pos funNm
-      return ()
+          logm $ "Can replace constructors"
+          replaceConstructors pos funNm argNum
+        False -> do
+          hasNtoN <- containsNothingToNothing funNm argNum pos funBind
+          logm $ "Result of searching for nothing to nothing: " ++ (show hasNtoN)
+          case hasNtoN of
+            False -> return ()
+            True -> do
+              doRewriteAsBind fileName pos funNm
+          return ()
 
-      
+--This checks if the argument to be refactored is the output type
+--If this is true then the refactoring will just consist of replacing all RHS calls to the Maybe type with their MPlus equivalents
+--I need some way of checking if the type 
+isOutputType :: String -> Int -> SimpPos -> GHC.HsBind GHC.RdrName -> RefactGhc Bool
+isOutputType funNm argNum pos funBind = do
+  renamed <- getRefactRenamed
+  parsed <- getRefactParsed
+  (Just name) <- locToNameRdr pos parsed
+  (Just ty) <- getTypeForName name
+  let depth = typeDepth ty
+  return $ depth == argNum
+    where typeDepth :: GHC.Type -> Int
+          typeDepth ty = case (GHC.isFunTy ty) of
+            True -> 1 + typeDepth (GHC.funResultTy ty)
+            False -> 1
+
+--This handles the case where only the output type of the function is being modified so calls to
+--Nothing and Just can be replaced with mzero and return respectively in GRHSs
+replaceConstructors :: SimpPos -> String -> Int -> RefactGhc ()
+replaceConstructors pos funNm argNum = do
+  parsed <- getRefactParsed
+  let (Just bind) = getHsBind pos funNm parsed
+  return ()
+    where applyInGRHSs :: (Data a) => GHC.ParsedSource -> (a -> RefactGhc a) -> RefactGhc GHC.ParsedSource
+          applyInGRHSs parsed fun = applyTP (stop_tdTP (failTP `adhocTP` (runGRHSFun fun))) parsed
+          runGRHSFun :: (Data a) => (a -> RefactGhc a) -> ParsedGRHSs -> RefactGhc ParsedGRHSs
+          runGRHSFun fun grhss@(GHC.GRHSs _ _) = SYB.everywhereM (SYB.mkM fun) grhss
+
+type ParsedGRHSs = GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+
 --Handles the case where the function can be rewritten with bind.
 doRewriteAsBind :: FilePath -> SimpPos -> String -> RefactGhc ()
 doRewriteAsBind fileName pos funNm = do
@@ -111,11 +147,11 @@ replaceGRHS funNm new_rhs lhs_name = do
               final_matches <- fix_lhs new_matches
               return $ fb{GHC.fun_matches = final_matches}
           worker bind = return bind
-          worker' :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) 
+          worker' :: ParsedGRHSs -> RefactGhc ParsedGRHSs
           worker' (GHC.GRHSs _ _) = do
             logm "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! worker'!!!!!!!!!!!!!!!!!!!!!!"
             return new_rhs
-          fix_lhs :: GHC.MatchGroup GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.MatchGroup GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+          fix_lhs :: ParsedMatchGroup -> RefactGhc ParsedMatchGroup
           fix_lhs mg = do
             let [(GHC.L _ match)] = GHC.mg_alts mg
                 new_pat = GHC.VarPat lhs_name
@@ -126,10 +162,12 @@ replaceGRHS funNm new_rhs lhs_name = do
             new_l_match <- locate newMatch
             addAnn new_l_match mAnn
             return $ mg {GHC.mg_alts = [new_l_match]}
-                        
+
+type ParsedMatchGroup = GHC.MatchGroup GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+              
 --Takes in a lhs pattern and a rhs. Wraps those in a lambda and adds the annotations associated with the lambda. Returns the new located lambda expression
 
-wrapInLambda :: String -> GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+wrapInLambda :: String -> GHC.LPat GHC.RdrName -> ParsedGRHSs -> RefactGhc (GHC.LHsExpr GHC.RdrName)
 wrapInLambda funNm varPat rhs = do
   let gen_rhs = justToReturn rhs
   match@(GHC.L l match') <- mkMatch varPat gen_rhs
@@ -206,10 +244,6 @@ mkMatch varPat rhs = do
   return lMatch
 
 
-lookupAllAnns :: Anns -> [GHC.Located a] -> Anns
-lookupAllAnns anns [] = emptyAnns
-lookupAllAnns anns ((GHC.L l _):xs) = (lookupAnns anns l) `Map.union` (lookupAllAnns anns xs)
-
 --This generates a unique location and wraps the given ast chunk with that location
 locate :: a -> RefactGhc (GHC.Located a)
 locate ast = do
@@ -229,7 +263,7 @@ zeroDP ast = do
 --Takes a single match and returns a tuple containing the grhs and the pattern
 --Assumptions:
   -- Only a single pattern will be returned. Which pattern is returned depends on the behaviour of SYB.something. 
-getVarAndRHS :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LPat GHC.RdrName, GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName))
+getVarAndRHS :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LPat GHC.RdrName, ParsedGRHSs)
 getVarAndRHS match = do
   let (Just pat) = SYB.something (Nothing `SYB.mkQ` varPat) (GHC.m_pats match)
   return (pat , GHC.m_grhss match)
@@ -246,6 +280,7 @@ getHsBind pos funNm a =
     where isBind (bnd@(GHC.FunBind (GHC.L _ name) _ _ _ _ _) :: GHC.HsBind GHC.RdrName)
             | name == rNm = (Just bnd)
           isBind _ = Nothing
+
 
 --This function takes in the name of a function and determines if the binding contains the case "Nothing = Nothing"
 --If the Nothing to Nothing case is found then it is removed from the parsed source.
@@ -269,14 +304,14 @@ containsNothingToNothing funNm argNum pos a = do
     removeMatches pos newBind oldMatches
     return True
   where
-    isNtoNMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)]
+    isNtoNMatch :: ParsedLMatch -> [ParsedLMatch]
     isNtoNMatch lm@(GHC.L _ m) =
       let rhsCheck = checkGRHS $ GHC.m_grhss m
           lhsCheck = checkPats $ GHC.m_pats m in
       if (rhsCheck && lhsCheck)
         then [lm]
         else []
-    checkGRHS :: GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> Bool
+    checkGRHS :: ParsedGRHSs -> Bool
     checkGRHS (GHC.GRHSs [(GHC.L _ (GHC.GRHS _ (GHC.L _ body)))] _)  = isNothingVar body 
     checkGRHS _ = False
     checkPats :: [GHC.LPat GHC.RdrName] -> Bool
@@ -285,9 +320,9 @@ containsNothingToNothing funNm argNum pos a = do
       then let (GHC.L _ pat) = patLst !! (argNum - 1) in
       isNothingPat pat
       else False
-    filterMatch :: GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)]
+    filterMatch :: ParsedLMatch -> [ParsedLMatch] -> [ParsedLMatch]
     filterMatch (GHC.L l1 _) = filter (\(GHC.L l2 _) -> l1 /= l2)
-    getNewMs :: [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)]
+    getNewMs :: [ParsedLMatch] -> [ParsedLMatch] -> [ParsedLMatch]
     getNewMs [] lst = lst
     getNewMs (m:ms) lst = let newLst = filterMatch m lst in
       getNewMs ms newLst
@@ -298,6 +333,8 @@ containsNothingToNothing funNm argNum pos a = do
     isNothingVar :: GHC.HsExpr GHC.RdrName -> Bool
     isNothingVar (GHC.HsVar nm) = ((GHC.occNameString . GHC.rdrNameOcc) nm) == "Nothing"
     isNothingVar _ = False
+
+type ParsedLMatch = GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)
 
 -- Removes the given matches from the given binding. Uses the position to retrieve the rdrName.
 removeMatches :: SimpPos -> GHC.HsBind GHC.RdrName -> [GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)] -> RefactGhc ()
@@ -327,6 +364,7 @@ handleParseResult msg e = case e of
 --Assumptions:
   --Assumes the function is of type Maybe a -> Maybe a
   --
+  -- Should refactor to take in the argNum parameter and fix the type depending on that
 fixType :: String -> RefactGhc ()
 fixType funNm = do
   parsed <- getRefactParsed

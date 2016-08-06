@@ -2,8 +2,8 @@ module Renaming.D4 where
 
 {-Rename instance name 'isSame'' to 'sameOrNot'.
   This refactoring affects module `D4', 'B4' and 'C4' -}
-   
-data Tree a = Leaf a | Branch (Tree a) (Tree a) 
+
+data Tree a = Leaf a | Branch (Tree a) (Tree a)
 
 fringe :: Tree a -> [a]
 fringe (Leaf x ) = [x]
@@ -18,7 +18,7 @@ instance SameOrNot Int where
    isNotSame a b = a /= b
 
 sumSquares (x:xs) = sq x + sumSquares xs
-    where sq x = x ^pow 
+    where sq x = x ^pow
           pow = 2
 
 sumSquares [] = 0
