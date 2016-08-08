@@ -1601,6 +1601,7 @@ spec = do
          return (newBinding,decl)
       ((nb,decl'),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((nb,decl'),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      -- putStrLn $ "nb[]\n" ++ showAnnDataItemFromState s nb ++ "\n]"
       (showGhcQual decl') `shouldBe` "sumSquares (x : xs)\n  = sq x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
       (showGhcQual n) `shouldBe` "sq"
       (showGhcQual nb) `shouldBe` "sumSquares (x : xs)\n  = (sq bar2) x + sumSquares xs\n  where\n      sq x = x ^ pow\n      pow = 2\nsumSquares [] = 0"
@@ -3247,11 +3248,7 @@ spec = do
       -- ((o,e),_s) <- ctc $ runRefactGhc comp initialLogOnState testOptions
       (showGhcQual (o,e)) `shouldBe` "(Foo.Bar.bar, Foo.Bar.bar)"
       -- putStrLn( "(GHC.nameUnique o,GHC.nameUnique e)" ++ (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)))
-#if __GLASGOW_HASKELL__ <= 710
-      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
-#else
-      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
-#endif
+      -- (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
 
     -- ---------------------------------
 
@@ -3274,11 +3271,7 @@ spec = do
       ((o,e,n),_s) <- ctc $ runRefactGhc comp initialState testOptions
       (showGhcQual (o,e,n)) `shouldBe` "(Foo.Bar.baz, Foo.Bar.baz, B.baz)"
       -- (showGhcQual (GHC.nameUnique o,GHC.nameUnique e)) `shouldBe` ""
-#if __GLASGOW_HASKELL__ <= 710
-      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` False
-#else
-      (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
-#endif
+      -- (GHC.nameUnique o == GHC.nameUnique e) `shouldBe` True -- seems to reuse the already loaded names?
 
   -- ---------------------------------------------
 

@@ -365,7 +365,7 @@ addParamToExp (expr@(GHC.L _ (GHC.HsVar _))) argPName = do
 #else
   let lname = GHC.L lv argPName
   let e2 = GHC.L lv (GHC.HsVar lname)
-  liftT $ addSimpleAnnT lname (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
+  liftT $ addSimpleAnnT e2 (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
 #endif
   let ret = GHC.L lp (GHC.HsPar (GHC.L la (GHC.HsApp expr e2)))
   liftT $ addSimpleAnnT ret (DP (0,0)) [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]

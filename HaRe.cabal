@@ -1,7 +1,7 @@
 Name:                           HaRe
-Version:                        0.8.2.3
+Version:                        0.8.3.0
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
-Maintainer:                     Alan Zimmerman
+Maintainer:                     Alan Zimmerman (alan/zimm@gmail.com)
 Stability:                      Alpha
 Bug-Reports:                    http://github.com/RefactoringTools/HaRe/issues
 License:                        BSD3
@@ -17,7 +17,9 @@ Description:
    .
    From version 0.8.0.0, GHC 7.10.2 is supported.
    .
-   It is tested against GHC 7.10.2 (via travis-ci.org)
+   From version 0.8.3.0, GHC 8.0.1 is supported.
+   .
+   It is tested against GHC 7.10.3 and GHC 8.0.1 (via travis-ci.org)
    .
    It currently only has emacs integration built in, community input
    welcome for others.
@@ -40,7 +42,7 @@ Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 
-tested-with:                    GHC == 7.10.2, GHC == 7.10.3
+tested-with:                    GHC == 7.10.3, GHC == 8.0.1
 
 data-files:                     elisp/*.el
                                 configure.sh
@@ -124,7 +126,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim  
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.5.0.0
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , old-time
                                 , pretty
@@ -136,7 +138,7 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.5.0.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
                                 , syb-with-class
                                 , Cabal >= 1.22
@@ -202,7 +204,7 @@ Executable ghc-hare
                                 , ghc-prim
                                 , ghc-syb-utils
                                 , gitrev >= 1.1
-                                , ghc-mod >= 5.5.0.0
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , optparse-applicative
                                 , optparse-simple
@@ -217,7 +219,7 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.5.0.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
                                 , Cabal >= 1.22
                                 , syb-with-class
@@ -300,7 +302,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 5.5.0.0
+    , ghc-mod >= 5.6.0.0
     , hspec
     , mtl
     , old-time
@@ -315,7 +317,7 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , ghc-exactprint >= 0.5.0.1
+    , ghc-exactprint >= 0.5.2.1
     , monad-control
     , Cabal >= 1.22
     , syb-with-class

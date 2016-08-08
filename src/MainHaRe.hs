@@ -16,7 +16,8 @@ import qualified Language.Haskell.GhcMod as GM
 import qualified Paths_HaRe as Meta
 
 -- temporary until exposed by ghc-mod
-import           Options
+-- import           Options
+import           Language.Haskell.GhcMod.Options.Options
 
 main :: IO ()
 main = do
@@ -144,7 +145,7 @@ rmOneParamCmdOpts =
 
 addOneParamCmdOpts :: Parser HareParams
 addOneParamCmdOpts =
-    DupDefCmd
+    AddOneParam
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"
@@ -164,7 +165,7 @@ addOneParamCmdOpts =
 
 renameCmdOpts :: Parser HareParams
 renameCmdOpts =
-    DupDefCmd
+    RenameCmd
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"

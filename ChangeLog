@@ -1,3 +1,6 @@
+2016-08-03 v0.8.3.0
+	* Update for GHC 8.0.1
+	* Use ghc-mod version to 5.6 now it is released
 2016-01-20 v0.8.2.3
 	* Use ghc-mod version to 5.5 now it is released
 	* Expose commands working in RefactGhc, so the ghc-mod session can

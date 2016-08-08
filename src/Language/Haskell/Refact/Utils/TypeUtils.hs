@@ -252,9 +252,22 @@ equivalentNameInNewMod :: GHC.Name -> RefactGhc [GHC.Name]
 equivalentNameInNewMod old = do
   -- we have to do it this way otherwise names imported qualified will not be
   -- detected
+
+  -- ghc-mod 5.6 introduced a funny whereby the packagekey for the inscopes is
+  -- "main@main" but for the current file is "main@main"
+  -- So ignore the packagekey for now
+  -- See https://github.com/DanielG/ghc-mod/issues/811
+  -- TODO: revisit this
+  -- let eqModules (GHC.Module pk1 mn1) (GHC.Module pk2 mn2) = mn1 == mn2
+  let eqModules (GHC.Module pk1 mn1) (GHC.Module pk2 mn2) = mn1 == mn2 && pk1 == pk2
+
   gnames <- GHC.getNamesInScope
+  logm $ "equivalentNameInNewMod:gnames=" ++ showGhcQual (map (\n -> (GHC.nameModule n,n)) gnames)
   let clientModule = GHC.nameModule old
+  logm $ "equivalentNameInNewMod:(old,clientModule)=" ++ showGhcQual (old,clientModule)
   let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
+  let clientInscopes = filter (\n -> eqModules clientModule (GHC.nameModule n)) gnames
+  logm $ "equivalentNameInNewMod:clientInscopes=" ++ showGhcQual clientInscopes
   let newNames = filter (\n -> showGhcQual n == showGhcQual old) clientInscopes
   return newNames
 
@@ -1399,11 +1412,10 @@ addParamsToDecls decls pn paramPNames = do
      newSpan <- uniqueSrcSpanT
 #if __GLASGOW_HASKELL__ <= 710
      let vn = (GHC.L newSpan (GHC.VarPat n))
-     addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
 #else
      let vn = (GHC.L newSpan (GHC.VarPat (GHC.L newSpan n)))
-     addSimpleAnnT (GHC.L newSpan n) (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
 #endif
+     addSimpleAnnT vn (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
      return vn
 
 -- ---------------------------------------------------------------------
@@ -1592,11 +1604,10 @@ addActualParamsToRhs pn paramPNames rhs = do
          registerRdrName (GHC.L ss2 param)
 #if __GLASGOW_HASKELL__ <= 710
          let var   = GHC.L ss2 (GHC.HsVar param)
-         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #else
          let var   = GHC.L ss2 (GHC.HsVar (GHC.L ss2 param))
-         liftT $ addSimpleAnnT (GHC.L ss2 param) (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #endif
+         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
          let expr' = GHC.L ss1 (GHC.HsApp expr var)
          liftT $ addSimpleAnnT expr' (DP (0,0)) []
          return expr'

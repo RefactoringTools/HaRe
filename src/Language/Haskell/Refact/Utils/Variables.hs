@@ -486,10 +486,11 @@ hsFreeAndDeclaredRdr' nm t = do
           ltydecl (GHC.FamDecl fd) = hsFreeAndDeclaredRdr' nm fd
           ltydecl (GHC.SynDecl ln _bndrs _rhs _fvs)
               = return (FN [],DN [rdrName2NamePure nm ln])
-          ltydecl (GHC.DataDecl ln _bndrs defn _fvs) = do
 #if __GLASGOW_HASKELL__ <= 710
+          ltydecl (GHC.DataDecl ln _bndrs defn _fvs) = do
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
+          ltydecl (GHC.DataDecl ln _bndrs defn _c _fvs) = do
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
 #endif
               return (FN [],DN (rdrName2NamePure nm ln:dds))
@@ -577,7 +578,7 @@ hsFreeAndDeclaredRdr' nm t = do
 
 -- |The same as `hsFreeAndDeclaredPNs` except that the returned
 -- variables are in the String format.
-hsFreeAndDeclaredNameStrings::(SYB.Data t,GHC.Outputable t)
+hsFreeAndDeclaredNameStrings::(SYB.Data t)
   => t -> RefactGhc ([String],[String])
 hsFreeAndDeclaredNameStrings t = do
   (f1,d1) <- hsFreeAndDeclaredPNs t
@@ -608,10 +609,11 @@ getDeclaredTypesRdr (GHC.L _ (GHC.TyClD decl)) = do
     (GHC.FamDecl (GHC.FamilyDecl _ ln _ _ _)) -> return [rdrName2NamePure nm ln]
 #endif
     (GHC.SynDecl ln  _ _ _) -> return [rdrName2NamePure nm ln]
-    (GHC.DataDecl ln _ defn _) -> do
 #if __GLASGOW_HASKELL__ <= 710
+    (GHC.DataDecl ln _ defn _) -> do
       let dds = concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
+    (GHC.DataDecl ln _ defn _ _) -> do
       let dds = concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
 #endif
       let ddns = map (rdrName2NamePure nm) dds
@@ -822,7 +824,11 @@ definingTyClDeclsNames nm pns t = defining t
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
+#if __GLASGOW_HASKELL__ <= 710
       defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _))
+#else
+      defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _ _))
+#endif
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | otherwise = []
 
@@ -1594,7 +1600,7 @@ locToRdrName (row,col) t = locToName' (row,col) t
 -- NOTE: provides for FunBind MatchGroups where only the first name is
 -- retained in the AST
 
-locToName':: forall a t.(SYB.Data t, SYB.Data a, Eq a)
+locToName':: forall a t.(SYB.Data t, SYB.Data a)
                     =>SimpPos          -- ^ The row and column number
                     ->t                -- ^ The syntax phrase
                     -> Maybe (GHC.Located a)  -- ^ The result
