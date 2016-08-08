@@ -23,6 +23,7 @@ import qualified BasicTypes as GHC
 import qualified ApiAnnotation as GHC
 import qualified Type as GHC
 import Data.Maybe
+import FastString
 
 maybeToMonadPlus :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> String -> Int -> IO [FilePath]
 maybeToMonadPlus settings cradle fileName pos funNm argNum = do
@@ -112,6 +113,7 @@ replaceBind pos newBind = do
       newParsed <- SYB.everywhereM (SYB.mkM (worker rNm)) oldParsed
       --logm $ SYB.showData SYB.Parser 3 newParsed
       (liftT getAnnsT) >>= putRefactParsed newParsed
+      addMonadImport
   where worker rNm (funBnd@(GHC.FunBind (GHC.L _ name) _ matches _ _ _) :: GHC.HsBind GHC.RdrName)
           | name == rNm = return newBind
           | otherwise = return funBnd
@@ -152,13 +154,17 @@ doRewriteAsBind fileName pos funNm = do
     currAnns <- fetchAnnsFinal
     --logm $ "Final anns: " ++ (show currAnns)
     fixType funNm
-    let monadModNm = GHC.mkModuleName "Control.Monad"
-    finalParsed <- getRefactParsed
-    newP <- addImportDecl finalParsed monadModNm Nothing False False False Nothing False []
-    currAnns <- fetchAnnsFinal
-    putRefactParsed newP currAnns
+    addMonadImport
       where mkNewNm rdr = let str = GHC.occNameString $ GHC.rdrNameOcc rdr in
               GHC.Unqual $ GHC.mkVarOcc ("m_" ++ str)
+
+addMonadImport :: RefactGhc ()
+addMonadImport = do
+  let monadModNm = GHC.mkModuleName "Control.Monad"
+  finalParsed <- getRefactParsed
+  newP <- addImportDecl finalParsed monadModNm Nothing False False False Nothing False []
+  currAnns <- fetchAnnsFinal
+  putRefactParsed newP currAnns
 
 --This function finds the function binding and replaces the pattern match.
 --The LHS is replaced with the provided name (3rd argument)
@@ -401,12 +407,51 @@ handleParseResult msg e = case e of
   --Assumes the function is of type Maybe a -> Maybe a
   --
   -- Should refactor to take in the argNum parameter and fix the type depending on that
+
+fixType' :: String -> Int -> RefactGhc ()
+fixType' funNm argPos = do
+  parsed <- getRefactParsed
+  let m_sig = getSigD funNm parsed
+      (GHC.L sigL (GHC.SigD sig)) = fromJust m_sig
+  fixedClass <- fixTypeClass sig
+  return ()
+  where fixTypeClass :: GHC.Sig GHC.RdrName -> RefactGhc (GHC.Sig GHC.RdrName)
+        fixTypeClass sig@(GHC.TypeSig names (GHC.L _ hsType) p) =
+          case hsType of
+            (GHC.HsForAllTy f m b context ty) -> do
+              newContext <- case context of
+                              (GHC.L _ []) -> do
+                                tyCls <- genMonadPlusClass
+                                parTy <- locate (GHC.HsParTy tyCls)
+                                lList <- locate [parTy]
+                                return lList
+                              (GHC.L _ [(GHC.L _ (GHC.HsParTy innerTy))]) -> do
+                                tyCls <- genMonadPlusClass
+                                lList <- locate [innerTy,tyCls]
+                                return lList                              
+                              (GHC.L _ lst) -> do
+                                tyCls <- genMonadPlusClass
+                                lList <- locate (tyCls:lst)
+                                return lList
+              newForAll <- locate (GHC.HsForAllTy f m b newContext ty)
+              return (GHC.TypeSig names newForAll p)
+              
+        genMonadPlusClass :: RefactGhc (GHC.LHsType GHC.RdrName)
+        genMonadPlusClass = do
+        let mPlusNm = GHC.mkVarUnqual (fsLit "MonadPlus")
+            mNm = GHC.mkVarUnqual (fsLit "m")
+        lPlus <- locate (GHC.HsTyVar mPlusNm)
+        lM <- locate (GHC.HsTyVar mNm)
+        lApp <- locate (GHC.HsAppTy lPlus lM)
+        return lApp
+
+  
 fixType :: String -> RefactGhc ()
 fixType funNm = do
   parsed <- getRefactParsed
   currAnns <- fetchAnnsFinal
   dFlags <- GHC.getSessionDynFlags
-  let m_sig = getSigD parsed
+  let m_sig = getSigD funNm parsed
       (GHC.L sigL (GHC.SigD sig)) = fromJust m_sig
       iType = fromJust $ getInnerType sig
       strTy = exactPrint iType currAnns
@@ -419,20 +464,21 @@ fixType funNm = do
   let newAnns = Map.union currAnns anns
   putRefactParsed newParsed newAnns
   addNewLines 2 newSig
-    where getSigD :: (Data a) => a -> Maybe (GHC.LHsDecl GHC.RdrName)
-          getSigD = SYB.something (Nothing `SYB.mkQ` isSigD)
-          isSigD :: GHC.LHsDecl GHC.RdrName -> Maybe (GHC.LHsDecl GHC.RdrName)
-          isSigD s@(GHC.L _ (GHC.SigD sig)) = if isSig sig
-                                              then Just s
-                                              else Nothing
-          isSigD _ = Nothing
-          isSig :: GHC.Sig GHC.RdrName -> Bool
-          isSig sig@(GHC.TypeSig [(GHC.L _ nm)] _ _) = (compNames funNm nm)
-          isSig _ = False
-          compNames :: String -> GHC.RdrName -> Bool
-          compNames s rdr = let sRdr = (GHC.occNameString . GHC.rdrNameOcc) rdr in
-            sRdr == s
 
+getSigD :: (Data a) => String -> a -> Maybe (GHC.LHsDecl GHC.RdrName)
+getSigD funNm = SYB.something (Nothing `SYB.mkQ` isSigD)
+  where
+    isSigD :: GHC.LHsDecl GHC.RdrName -> Maybe (GHC.LHsDecl GHC.RdrName)
+    isSigD s@(GHC.L _ (GHC.SigD sig)) = if isSig sig
+                                        then Just s
+                                        else Nothing
+    isSigD _ = Nothing
+    isSig :: GHC.Sig GHC.RdrName -> Bool
+    isSig sig@(GHC.TypeSig [(GHC.L _ nm)] _ _) = (compNames funNm nm)
+    isSig _ = False
+    compNames :: String -> GHC.RdrName -> Bool
+    compNames s rdr = let sRdr = (GHC.occNameString . GHC.rdrNameOcc) rdr in
+      sRdr == s
 
 getInnerType :: GHC.Sig GHC.RdrName -> Maybe (GHC.LHsType GHC.RdrName)
 getInnerType = SYB.everything (<|>) (Nothing `SYB.mkQ` getTy)
