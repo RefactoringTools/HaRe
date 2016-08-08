@@ -82,13 +82,49 @@ replaceConstructors :: SimpPos -> String -> Int -> RefactGhc ()
 replaceConstructors pos funNm argNum = do
   parsed <- getRefactParsed
   let (Just bind) = getHsBind pos funNm parsed
-  return ()
-    where applyInGRHSs :: (Data a) => GHC.ParsedSource -> (a -> RefactGhc a) -> RefactGhc GHC.ParsedSource
+  newBind <- applyInGRHSs bind replaceNothingAndJust
+  replaceBind pos newBind
+    where applyInGRHSs :: (Data a) => UnlocParsedHsBind -> (a -> RefactGhc a) -> RefactGhc UnlocParsedHsBind
           applyInGRHSs parsed fun = applyTP (stop_tdTP (failTP `adhocTP` (runGRHSFun fun))) parsed
           runGRHSFun :: (Data a) => (a -> RefactGhc a) -> ParsedGRHSs -> RefactGhc ParsedGRHSs
           runGRHSFun fun grhss@(GHC.GRHSs _ _) = SYB.everywhereM (SYB.mkM fun) grhss
+          mzeroOcc = GHC.mkVarOcc "mzero"
+          nothingOcc = GHC.mkVarOcc "Nothing"
+          returnOcc = GHC.mkVarOcc "return"
+          justOcc = GHC.mkVarOcc "Just"
+          replaceNothingAndJust :: GHC.OccName -> RefactGhc GHC.OccName
+          replaceNothingAndJust nm
+            | (GHC.occNameString nm) == "Nothing" = do
+                logm "Replacing nothing"
+                return mzeroOcc
+            | (GHC.occNameString nm) == "Just" = do
+                logm "Replace just"
+                return returnOcc            
+            | otherwise = return nm
 
+replaceBind :: SimpPos -> UnlocParsedHsBind -> RefactGhc ()
+replaceBind pos newBind = do
+  oldParsed <- getRefactParsed
+  let rdrNm = locToRdrName pos oldParsed
+  case rdrNm of
+    Nothing -> return ()
+    (Just (GHC.L _ rNm)) -> do
+      newParsed <- SYB.everywhereM (SYB.mkM (worker rNm)) oldParsed
+      --logm $ SYB.showData SYB.Parser 3 newParsed
+      (liftT getAnnsT) >>= putRefactParsed newParsed
+  where worker rNm (funBnd@(GHC.FunBind (GHC.L _ name) _ matches _ _ _) :: GHC.HsBind GHC.RdrName)
+          | name == rNm = return newBind
+          | otherwise = return funBnd
+        
+type UnlocParsedHsBind = GHC.HsBindLR GHC.RdrName GHC.RdrName
 type ParsedGRHSs = GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)
+
+exactPrintParsed :: RefactGhc ()
+exactPrintParsed = do
+  parsed <- getRefactParsed
+  anns <- fetchAnnsFinal
+  let str = exactPrint parsed anns
+  logm str
 
 --Handles the case where the function can be rewritten with bind.
 doRewriteAsBind :: FilePath -> SimpPos -> String -> RefactGhc ()
