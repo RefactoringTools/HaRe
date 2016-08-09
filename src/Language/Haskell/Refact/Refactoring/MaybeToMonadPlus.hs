@@ -85,6 +85,9 @@ replaceConstructors pos funNm argNum = do
   let (Just bind) = getHsBind pos funNm parsed
   newBind <- applyInGRHSs bind replaceNothingAndJust
   replaceBind pos newBind
+  fixType' funNm argNum
+--  p <- getRefactParsed
+ -- logm $ "Post type fix ast: \n" ++ (SYB.showData SYB.Parser 3 p)
     where applyInGRHSs :: (Data a) => UnlocParsedHsBind -> (a -> RefactGhc a) -> RefactGhc UnlocParsedHsBind
           applyInGRHSs parsed fun = applyTP (stop_tdTP (failTP `adhocTP` (runGRHSFun fun))) parsed
           runGRHSFun :: (Data a) => (a -> RefactGhc a) -> ParsedGRHSs -> RefactGhc ParsedGRHSs
@@ -287,10 +290,14 @@ mkMatch varPat rhs = do
 
 
 --This generates a unique location and wraps the given ast chunk with that location
-locate :: a -> RefactGhc (GHC.Located a)
+--Also adds an empty annotation at that location
+locate :: (Data a) => a -> RefactGhc (GHC.Located a)
 locate ast = do
   loc <- liftT uniqueSrcSpanT
-  return (GHC.L loc ast)
+  anns <- fetchAnnsFinal
+  let res = (GHC.L loc ast)
+  addEmptyAnn res
+  return res
 
 --Resets the given AST chunk's delta position to zero.
 zeroDP :: (Data a) => GHC.Located a -> RefactGhc ()
@@ -410,40 +417,66 @@ handleParseResult msg e = case e of
 
 fixType' :: String -> Int -> RefactGhc ()
 fixType' funNm argPos = do
+  logm "Fixing type"
   parsed <- getRefactParsed
   let m_sig = getSigD funNm parsed
       (GHC.L sigL (GHC.SigD sig)) = fromJust m_sig
   fixedClass <- fixTypeClass sig
-  return ()
-  where fixTypeClass :: GHC.Sig GHC.RdrName -> RefactGhc (GHC.Sig GHC.RdrName)
-        fixTypeClass sig@(GHC.TypeSig names (GHC.L _ hsType) p) =
-          case hsType of
-            (GHC.HsForAllTy f m b context ty) -> do
-              newContext <- case context of
-                              (GHC.L _ []) -> do
-                                tyCls <- genMonadPlusClass
-                                parTy <- locate (GHC.HsParTy tyCls)
-                                lList <- locate [parTy]
-                                return lList
-                              (GHC.L _ [(GHC.L _ (GHC.HsParTy innerTy))]) -> do
-                                tyCls <- genMonadPlusClass
-                                lList <- locate [innerTy,tyCls]
-                                return lList                              
-                              (GHC.L _ lst) -> do
-                                tyCls <- genMonadPlusClass
-                                lList <- locate (tyCls:lst)
-                                return lList
-              newForAll <- locate (GHC.HsForAllTy f m b newContext ty)
-              return (GHC.TypeSig names newForAll p)
+  --This needs to be fixed to replace only the correct argument and output type
+  replacedMaybe <- replaceMaybeWithVariable fixedClass
+  newSig <- locate (GHC.SigD replacedMaybe)
+  addNewDP ((G GHC.AnnDcolon), DP (0,1)) newSig
+  logm $ "Span: " ++ show sigL
+  newParsed <- replaceAtLocation sigL newSig
+  synthesizeAnns newSig
+  addNewLines 2 newSig
+  anns <- liftT getAnnsT
+  logm $ showAnnData anns 3 newParsed
+  putRefactParsed newParsed anns
+    where replaceMaybeWithVariable :: GHC.Sig GHC.RdrName -> RefactGhc (GHC.Sig GHC.RdrName)
+          replaceMaybeWithVariable sig = SYB.everywhereM (SYB.mkM worker) sig
+            where worker tyVar@(GHC.HsTyVar rdrName)
+                    | compNames "Maybe" rdrName = let newRdr = (GHC.mkVarUnqual . fsLit) "m" in
+                        return (GHC.HsTyVar newRdr)
+                    | otherwise = return tyVar
+                  worker var = return var
+          fixTypeClass :: GHC.Sig GHC.RdrName -> RefactGhc (GHC.Sig GHC.RdrName)
+          fixTypeClass sig@(GHC.TypeSig names (GHC.L _ hsType) p) =
+            case hsType of
+              (GHC.HsForAllTy f m b context ty) -> do
+                newContext <- case context of
+                                (GHC.L _ []) -> do
+                                  tyCls <- genMonadPlusClass
+                                  parTy <- locate (GHC.HsParTy tyCls)
+                                  addNewDP ((G GHC.AnnCloseP),DP (0,0)) parTy
+                                  liftT $ setPrecedingLinesT parTy 0 (-1)
+                                  lList <- locate [parTy]
+                                  addNewDPs [((G GHC.AnnOpenP), DP (0,0)),((G GHC.AnnCloseP), DP (0,-1)),((G GHC.AnnDarrow), DP (0,1))] lList
+                                  return lList
+                                (GHC.L _ [(GHC.L _ (GHC.HsParTy innerTy))]) -> do
+                                  tyCls <- genMonadPlusClass
+                                  lList <- locate [innerTy,tyCls]
+                                  return lList                              
+                                (GHC.L _ lst) -> do
+                                  tyCls <- genMonadPlusClass
+                                  lList <- locate (tyCls:lst)
+                                  return lList
+                newForAll <- locate (GHC.HsForAllTy f m b newContext ty)
+                liftT $ setPrecedingLinesT ty 0 1
+                liftT $ setPrecedingLinesT newForAll 0 1
+                return (GHC.TypeSig names newForAll p)
               
-        genMonadPlusClass :: RefactGhc (GHC.LHsType GHC.RdrName)
-        genMonadPlusClass = do
-        let mPlusNm = GHC.mkVarUnqual (fsLit "MonadPlus")
-            mNm = GHC.mkVarUnqual (fsLit "m")
-        lPlus <- locate (GHC.HsTyVar mPlusNm)
-        lM <- locate (GHC.HsTyVar mNm)
-        lApp <- locate (GHC.HsAppTy lPlus lM)
-        return lApp
+          genMonadPlusClass :: RefactGhc (GHC.LHsType GHC.RdrName)
+          genMonadPlusClass = do
+            let mPlusNm = GHC.mkVarUnqual (fsLit "MonadPlus")
+                mNm = GHC.mkVarUnqual (fsLit "m")
+            lPlus <- locate (GHC.HsTyVar mPlusNm)
+            addAnnVal lPlus
+            liftT $ setPrecedingLinesT lPlus 0 0
+            lM <- locate (GHC.HsTyVar mNm)
+            addAnnVal lM
+            lApp <- locate (GHC.HsAppTy lPlus lM)
+            return lApp
 
   
 fixType :: String -> RefactGhc ()
@@ -476,9 +509,10 @@ getSigD funNm = SYB.something (Nothing `SYB.mkQ` isSigD)
     isSig :: GHC.Sig GHC.RdrName -> Bool
     isSig sig@(GHC.TypeSig [(GHC.L _ nm)] _ _) = (compNames funNm nm)
     isSig _ = False
-    compNames :: String -> GHC.RdrName -> Bool
-    compNames s rdr = let sRdr = (GHC.occNameString . GHC.rdrNameOcc) rdr in
-      sRdr == s
+
+compNames :: String -> GHC.RdrName -> Bool
+compNames s rdr = let sRdr = (GHC.occNameString . GHC.rdrNameOcc) rdr in
+  sRdr == s
 
 getInnerType :: GHC.Sig GHC.RdrName -> Maybe (GHC.LHsType GHC.RdrName)
 getInnerType = SYB.everything (<|>) (Nothing `SYB.mkQ` getTy)
@@ -554,9 +588,25 @@ removeAnns = generic `SYB.ext2M` located
             return b
           Nothing -> return b
          
-            
+--This takes in a located ast chunk and adds the provided keyword and delta position into the annsDP list
+--If there is not annotation associated with the chunk nothing happens
+addNewDP :: (Data a) => (KeywordId, DeltaPos) -> GHC.Located a -> RefactGhc ()
+addNewDP entry a = do
+  anns <- liftT getAnnsT
+  let key = mkAnnKey a
+      mAnn = Map.lookup key anns
+  case mAnn of
+    Nothing -> return ()
+    (Just ann) -> do
+      let newAnn = ann{annsDP = (entry:(annsDP ann))}
+      setRefactAnns $ Map.insert key newAnn anns
+
+addNewDPs :: (Data a) => [(KeywordId, DeltaPos)] -> GHC.Located a -> RefactGhc ()
+addNewDPs entries a = mapM_ ((flip addNewDP) a) entries
+           
 replaceAtLocation :: (Data a) => GHC.SrcSpan -> GHC.Located a -> RefactGhc (GHC.ParsedSource)
 replaceAtLocation span new = do
+  logm $ "Span: " ++ (show span)
   parsed <- getRefactParsed
   newParsed <- SYB.everywhereM (SYB.mkM findLoc) parsed
   return newParsed
