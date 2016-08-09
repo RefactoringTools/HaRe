@@ -4,83 +4,84 @@ Author: Alan Zimmerman
 Maintainer: Alan Zimmerman
 Cabal-Version: >= 1.10
 Build-Type: Simple
+-- Other-Extensions: CPP
 
 Executable bcpp
   Main-Is: BCpp.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable foo
   Main-Is: TokenTest.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable dd2
   Main-Is: DupDef/Dd2.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable dd3
   Main-Is: DupDef/Dd3.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 Executable m
   Main-Is: M.hs
   Hs-Source-Dirs:       .
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable a1
   Main-Is: Renaming/A1.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable a2
   Main-Is: Renaming/A2.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable a3
   Main-Is: Renaming/A3.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable a4
   Main-Is: Renaming/A4.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable a5
   Main-Is: Renaming/A5.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable c7
   Main-Is: Renaming/C7.hs
   Other-Modules : Renaming.D7
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable qualclient
   Main-Is: Renaming/QualClient.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
   default-language:    Haskell2010
 
 Executable th
   Main-Is: TH/Main.hs
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
                         , syb
                         , template-haskell
   default-language:    Haskell2010
@@ -92,7 +93,7 @@ Executable ltta1
   Main-Is: LiftToToplevel/A1.hs
   Other-Modules : LiftToToplevel.C1
                   LiftToToplevel.D1
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 
@@ -101,7 +102,7 @@ Executable ltta2
   Main-Is: LiftToToplevel/A2.hs
   Other-Modules : LiftToToplevel.C2
                   LiftToToplevel.D2
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 -- ---------------------------------------------------------------------
@@ -110,7 +111,7 @@ Executable lola1
   Main-Is: LiftOneLevel/A1.hs
   Other-Modules : LiftOneLevel.C1
                   LiftOneLevel.D1
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 
@@ -118,7 +119,7 @@ Executable lola2
   Main-Is: LiftOneLevel/A2.hs
   Other-Modules : LiftOneLevel.C2
                   LiftOneLevel.D2
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 
@@ -126,7 +127,7 @@ Executable lola3
   Main-Is: LiftOneLevel/A3.hs
   Other-Modules : LiftOneLevel.C3
                   LiftOneLevel.D3
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 -- ---------------------------------------------------------------------
@@ -135,7 +136,7 @@ Executable demotea1
   Main-Is: Demote/A1.hs
   Other-Modules : Demote.C1
                   Demote.D1
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 
@@ -143,7 +144,7 @@ Executable demotea2
   Main-Is: Demote/A2.hs
   Other-Modules : Demote.C2
                   Demote.D2
-  Build-Depends:          base >= 4.0  && < 4.9
+  Build-Depends:          base >= 4.0  && < 5
   default-language:    Haskell2010
 
 -- ---------------------------------------------------------------------
@@ -151,5 +152,51 @@ Executable demotea2
 Executable qualified
   Main-Is: TypeUtils/Qualified.hs
   Other-Modules : TypeUtils.C
+  Build-Depends:          base >= 4.0  && < 5
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------
+
+Executable deldef2
+  Main-Is: DeleteDef/Dd2Client.hs
+  Other-Modules : DeleteDef.Dd2
   Build-Depends:          base >= 4.0  && < 4.9
   default-language:    Haskell2010
+
+Executable addoneparama1
+  Main-Is: AddOneParameter/A1.hs
+  Other-Modules : AddOneParameter.C1
+  Other-Modules : AddOneParameter.D1
+  Build-Depends:          base >= 4.0  && < 5
+  default-language:    Haskell2010
+
+Executable addoneparama2
+  Main-Is: AddOneParameter/A2.hs
+  Other-Modules : AddOneParameter.C2
+  Other-Modules : AddOneParameter.D2
+  Build-Depends:          base >= 4.0  && < 5
+  default-language:    Haskell2010
+
+Executable addoneparama3
+  Main-Is: AddOneParameter/A3.hs
+  Other-Modules : AddOneParameter.D3
+  Build-Depends:          base >= 4.0  && < 5
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------
+
+Executable rmoneparama1
+  Main-Is: RmOneParameter/A1.hs
+  Other-Modules : RmOneParameter.D1
+  Build-Depends:          base >= 4.0  && < 5
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------
+
+Executable rmoneparama2
+  Main-Is: RmOneParameter/A2.hs
+  Other-Modules : RmOneParameter.D2
+  Build-Depends:          base >= 4.0  && < 5
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------

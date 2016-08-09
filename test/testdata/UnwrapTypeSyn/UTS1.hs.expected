@@ -1,0 +1,4 @@
+module UTS1 where
+
+fooLen :: String -> Int
+fooLen = length

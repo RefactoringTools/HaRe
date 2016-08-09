@@ -1,5 +1,6 @@
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE CPP #-}
 
 -- | This is a legacy module from the pre-GHC HaRe, and will disappear
 -- eventually.
@@ -83,12 +84,13 @@ instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
                                           GHC.<+> GHC.ppr name
                                           GHC.<+> GHC.ppr typ
                                           GHC.<+> GHC.ppr doc
-
+#if __GLASGOW_HASKELL__ <= 710
 instance GHC.Outputable (GHC.TyFamEqn GHC.Name (GHC.LHsTyVarBndrs GHC.Name)) where
   ppr (GHC.TyFamEqn name pats rhs) = GHC.text "TyFamEqn"
                                           GHC.<+> GHC.ppr name
                                           GHC.<+> GHC.ppr pats
                                           GHC.<+> GHC.ppr rhs
+#endif
 
 -- ---------------------------------------------------------------------
 

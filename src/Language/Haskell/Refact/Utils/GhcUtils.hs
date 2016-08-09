@@ -19,9 +19,9 @@ module Language.Haskell.Refact.Utils.GhcUtils (
     , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
-    , onelayerStaged
     , listifyStaged
-
+    , everywhereButMStaged
+      
     -- ** SYB Utility
     -- , checkItemRenamer
 
@@ -81,6 +81,19 @@ everywhereM' f x
        gmapM (everywhereM' f) x'
 
 -- ---------------------------------------------------------------------
+
+-- Monadic everywhereBut
+-- Traversal ceases if q holds for x
+
+everywhereButMStaged :: Monad m => SYB.Stage -> SYB.GenericQ Bool -> SYB.Generic m -> SYB.GenericM m
+everywhereButMStaged stage q f x
+#if __GLASGOW_HASKELL__ <= 708
+  | checkItemStage stage x = return x
+#endif
+  | q x = return x
+  | otherwise = do
+      x' <- f x
+      gmapM (everywhereButMStaged stage q f) x'
 
 -- | Bottom-up transformation
 everywhereStaged ::  SYB.Stage -> (forall a. Data a => a -> a) -> forall a. Data a => a -> a
@@ -143,7 +156,7 @@ everythingStaged stage k z f x
 -}
 
 -- ---------------------------------------------------------------------
-
+{-
 -- |Perform a query on the immediate subterms only, avoiding holes
 onelayerStaged :: SYB.Stage -> r -> SYB.GenericQ r -> SYB.GenericQ [r]
 onelayerStaged _stage _z f t = gmapQ stagedF t
@@ -154,7 +167,7 @@ onelayerStaged _stage _z f t = gmapQ stagedF t
       | checkItemStage stage x = z
 #endif
       | otherwise = f x
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Staged variation of SYB.listify

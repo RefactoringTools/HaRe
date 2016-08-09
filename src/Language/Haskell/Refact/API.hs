@@ -20,6 +20,8 @@ module Language.Haskell.Refact.API
 
        , logm
        , logDataWithAnns
+       , logExactprint
+       , logParsedSource
 
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
@@ -29,7 +31,9 @@ module Language.Haskell.Refact.API
 
        -- ** The bits that do the work
        , runRefacSession
+       , runMultRefacSession
        , applyRefac
+       , applyRefac'
        , refactDone
        , ApplyRefacResult
        , RefacSource(..)
@@ -39,6 +43,9 @@ module Language.Haskell.Refact.API
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
+       , lookupAnns  
+
+       , stripCallStack
 
 
  -- * from `Language.Haskell.Refact.Utils.MonadFunctions`
@@ -74,6 +81,10 @@ module Language.Haskell.Refact.API
 
        , setStateStorage
        , getStateStorage
+       , fetchAnnsFinal
+
+       -- * Parsing source
+       , parseDeclWithAnns
 
        -- , logm
 
@@ -88,7 +99,9 @@ module Language.Haskell.Refact.API
                      , getLocatedEnd
                      , getStartEndLoc
                      , startEndLocGhc
-                     , emptyList, nonEmptyList
+                     , emptyList
+                     , nonEmptyList
+
 
  -- * from `Language.Haskell.Refact.Utils.TypeSyn`
     , InScopes
@@ -104,45 +117,40 @@ module Language.Haskell.Refact.API
    , inScopeInfo, isInScopeAndUnqualified, isInScopeAndUnqualifiedGhc, inScopeNames
    , isExported, isExplicitlyExported, modIsExported
    , equivalentNameInNewMod
+   , hsQualifier
 
     -- *** Variable analysis
     , isFieldName
     , isClassName
     , isInstanceName
-    , hsPNs
-    , hsBinds
-    , HsValBinds(..)
-    ,isDeclaredIn,isDeclaredInRdr
-    ,FreeNames(..),DeclaredNames(..)
-    ,hsFreeAndDeclaredPNsOld, hsFreeAndDeclaredNameStrings
-    ,hsFreeAndDeclaredRdr
-    ,hsFreeAndDeclaredPNs
-    ,hsFreeAndDeclaredGhc
-    ,getDeclaredTypes
-    ,getFvs, getFreeVars, getDeclaredVars -- These two should replace hsFreeAndDeclaredPNs
+    , hsTypeVbls
+    , hsNamessRdr
+    , isDeclaredInRdr
+    , FreeNames(..),DeclaredNames(..)
+    , hsFreeAndDeclaredNameStrings
+    , hsFreeAndDeclaredRdr
+    , hsFreeAndDeclaredPNs
+    , getDeclaredVarsRdr
 
-    ,hsVisiblePNs, hsVisiblePNsRdr, hsVisibleNames
-    ,hsVisibleNamesRdr
-    ,hsFDsFromInsideRdr, hsFDNamesFromInsideRdr
-    ,hsFDsFromInside, hsFDNamesFromInside
-    ,hsVisibleDs
-    ,rdrName2Name, rdrName2NamePure
+    , hsVisibleNamesRdr
+    , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
+    , hsVisibleDsRdr
+    , rdrName2Name, rdrName2NamePure
 
     -- *** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT
     ,isQualifiedPN, isFunOrPatName,isTypeSig
     ,isFunBindP,isFunBindR,isPatBindP,isPatBindR,isSimplePatBind,isSimplePatDecl
     ,isComplexPatBind,isComplexPatDecl,isFunOrPatBindP,isFunOrPatBindR
-    ,usedWithoutQualR,isUsedInRhs
+    ,usedWithoutQualR
     ,findNameInRdr
-    ,findPNT,findPN,findAllNameOccurences
-    ,findPNs, findNamesRdr, findEntity, findEntity'
+    ,findNamesRdr, findEntity, findEntity'
     ,sameOccurrence
     , findIdForName
     , getTypeForName
-    ,defines, definesP,definesTypeSig
-    ,sameBind,sameBindRdr
-    ,UsedByRhs(..)
+    , definesTypeSigRdr,definesSigDRdr
+    , sameBindRdr
+    , UsedByRhs(..)
 
     -- *** Modules and files
     , isMainModule
@@ -150,34 +158,37 @@ module Language.Haskell.Refact.API
 
     -- *** Locations
     ,defineLoc, useLoc, locToExp
-    ,locToName, locToRdrName
+    ,findLRdrName
+    ,locToNameRdr
+    ,locToNameRdrPure
+    ,locToRdrName
     ,getName
 
  -- * Program transformation
     -- *** Adding
     ,addDecl, addItemsToImport, addItemsToExport, addHiding
-    ,addParamsToDecls, addActualParamsToRhs, addImportDecl, duplicateDecl -- , moveDecl
+    ,addParamsToDecls, addParamsToSigs, addActualParamsToRhs, addImportDecl, duplicateDecl
+
     -- *** Removing
     ,rmDecl, rmTypeSig, rmTypeSigs
 
     -- *** Updating
     -- ,Update(update)
-    ,rmQualifier,qualifyToplevelName,renamePN,autoRenameLocalVar
+    ,rmQualifier,qualifyToplevelName,renamePN, HowToQual(..), autoRenameLocalVar
 
     -- *** Identifiers, expressions, patterns and declarations
-    ,ghcToPN,lghcToPN, expToName, expToNameRdr
-    ,patToNameRdr
-    ,nameToString
-    ,patToPNT ,pNtoPat
-    , definedPNs, definedPNsRdr,definedNamesRdr
+    , expToNameRdr
+    , patToNameRdr
+    , nameToString
+    , pNtoPat
+    , definedPNsRdr,definedNamesRdr
     , definingDeclsRdrNames, definingDeclsRdrNames', definingSigsRdrNames
-    , definingDeclsNames, definingDeclsNames', definingSigsNames
     , definingTyClDeclsNames
-    , allNames
 
     -- *** Others
     , divideDecls
-    , mkRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , mkRdrName,mkQualifiedRdrName,mkNewGhcName,mkNewName,mkNewToplevelName
+    , registerRdrName
 
     -- The following functions are not in the the API yet.
     , causeNameClashInExports
@@ -187,19 +198,13 @@ module Language.Haskell.Refact.API
     -- ** Typed AST traversals (added by CMB)
     -- ** Miscellous
 
-    -- ** Debug stuff
-    , getParsedForRenamedLPat
-    , getParsedForRenamedName
-    , getParsedForRenamedLocated
-    , stripLeadingSpaces
-
  -- ** from `Language.Haskell.Refact.Utils.GhcUtils`
     -- ** SYB versions
     , everywhereMStaged'
     , everywhereStaged
     , everywhereStaged'
-    , onelayerStaged
     , listifyStaged
+    , everywhereButMStaged
 
     -- ** Scrap Your Zipper versions
     , zeverywhereStaged
@@ -225,12 +230,19 @@ module Language.Haskell.Refact.API
   , NameMap
 
  -- * from `Language.Haskell.Refact.Utils.ExactPrint'`
- , replace
- , setRefactAnns
+  , replace
+  , setRefactAnns
+  , setAnnKeywordDP
+  , copyAnn
+  , clearPriorComments
+  , balanceAllComments
 
+ -- * from `Language.Haskell.Refact.Utils.Compare`
+ , constructComp
+-- , Compare
+   
  ) where
 
-import Language.Haskell.Refact.Utils.Binds
 import Language.Haskell.Refact.Utils.ExactPrint
 import Language.Haskell.Refact.Utils.GhcUtils
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
@@ -244,3 +256,4 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.Refact.Utils.Compare

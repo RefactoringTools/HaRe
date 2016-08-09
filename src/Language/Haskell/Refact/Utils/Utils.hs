@@ -16,8 +16,8 @@ module Language.Haskell.Refact.Utils.Utils
 
        -- * The bits that do the work
        , runRefacSession
-       , runRefactGhcCd
        , applyRefac
+       , applyRefac'
        , refactDone
 
        -- , Update(..)
@@ -25,15 +25,25 @@ module Language.Haskell.Refact.Utils.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
+       , lookupAnns
+       , runMultRefacSession
+
+       , modifiedFiles
+       , writeRefactoredFiles
+
+       , stripCallStack
 
        ) where
 
-import Control.Exception
+-- import Control.Exception
+import Control.Monad.Identity
 import Control.Monad.State
 import Data.List
 
-import Language.Haskell.GHC.ExactPrint
+-- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
+import Language.Haskell.GHC.ExactPrint.Print
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Language.Haskell.GhcMod          as GM
@@ -50,6 +60,7 @@ import System.FilePath.Posix
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
+import qualified SrcLoc        as GHC
 -- import qualified Outputable    as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
@@ -98,7 +109,6 @@ setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (
 
 setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
 setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
--- setDynFlags df = return df
 
 -- ---------------------------------------------------------------------
 
@@ -195,7 +205,7 @@ runRefacSession settings opt comp = do
         , rsModule        = Nothing
         }
 
-  (refactoredMods,_s) <- runRefactGhcCd comp initialState opt
+  (refactoredMods,_s) <- runRefactGhc comp initialState opt
 
   let verbosity = rsetVerboseLevel (rsSettings initialState)
   writeRefactoredFiles verbosity refactoredMods
@@ -203,21 +213,44 @@ runRefacSession settings opt comp = do
 
 -- ---------------------------------------------------------------------
 
-runRefactGhcCd ::
-  RefactGhc a -> RefactState -> GM.Options -> IO (a, RefactState)
-runRefactGhcCd comp initialState opt = do
+-- | Like runRefacSession but instead takes an ordered list of RefactGhc computations and runs all of them threading the state through all of the computations
 
+runMultRefacSession :: RefactSettings -> GM.Options -> [RefactGhc [ApplyRefacResult]] -> IO [FilePath]
+runMultRefacSession settings opt comps = do
   let
-    runMain :: IO a -> IO a
-    runMain progMain = do
-      catches progMain [
-        Handler $ \(GM.GMEWrongWorkingDirectory projDir _curDir) -> do
-          cdAndDo projDir progMain
-        ]
+    initialState = RefSt
+        { rsSettings      = settings
+        , rsUniqState     = 1
+        , rsSrcSpanCol    = 1
+        , rsFlags         = RefFlags False
+        , rsStorage       = StorageNone
+        , rsCurrentTarget = Nothing
+        , rsModule        = Nothing
+        }
+  results <- threadState opt initialState comps
+  let (_, finState) = last results
+      verbosity = rsetVerboseLevel (rsSettings finState)
+      refResults = map fst results
+      merged = mergeRefResults refResults
+  writeRefactoredFiles verbosity merged
+  return $ modifiedFiles merged
 
-    fullComp = runRefactGhc comp initialState opt
+mergeRefResults :: [[ApplyRefacResult]] -> [ApplyRefacResult]
+mergeRefResults lst = Map.elems $ mergeHelp lst Map.empty
+  where mergeHelp []  mp = mp
+        mergeHelp (x:xs) mp = mergeHelp xs (foldl insertRefRes mp x)
+        insertRefRes mp res@((fp,RefacModified), _) = Map.insert fp res mp
+        insertRefRes mp _ = mp
 
-  runMain fullComp
+threadState :: GM.Options -> RefactState -> [RefactGhc [ApplyRefacResult]] -> IO [([ApplyRefacResult], RefactState)]
+threadState _ _ [] = return []
+threadState opt currState (rGhc : rst) = do
+  res@(refMods, newState) <- runRefactGhc rGhc currState opt
+  let (Just mod) = rsModule newState
+      newMod = mod {rsStreamModified = RefacUnmodifed}
+      nextState = newState {rsModule = Just newMod }
+  rest <- threadState opt nextState rst
+  return (res : rest)
 
 -- ---------------------------------------------------------------------
 
@@ -244,12 +277,17 @@ canonicalizeTargets tgts = do
 -- afresh each time.
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
-applyRefac
-    :: RefactGhc a       -- ^ The refactoring
+
+applyRefac = applyRefac' True
+
+applyRefac'
+    ::
+       Bool               -- ^ Boolean that determines if the state should be cleared
+    -> RefactGhc a        -- ^ The refactoring
     -> RefacSource        -- ^ where to get the module and toks
     -> RefactGhc (ApplyRefacResult,a)
 
-applyRefac refac source = do
+applyRefac' clearSt refac source = do
 
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
@@ -258,6 +296,8 @@ applyRefac refac source = do
     fileName <- case source of
          RSFile fname    -> do parseSourceFileGhc fname
                                return fname
+         RSTarget tgt    -> do getTargetGhc tgt
+                               return (GM.mpPath tgt)
          RSMod  ms       -> do parseSourceFileGhc $ fileNameFromModSummary ms
                                return $ fileNameFromModSummary ms
          RSAlreadyLoaded -> do mfn <- getRefactFileName
@@ -272,8 +312,9 @@ applyRefac refac source = do
     m    <- getRefactStreamModified
 
     -- Clear the refactoring state
-    clearParsedModule
-
+    if clearSt
+      then clearParsedModule
+      else return ()
     absFileName <- liftIO $ canonicalizePath fileName
     return (((absFileName,m),(anns, mod')),res)
 
@@ -374,7 +415,15 @@ writeRefactoredFiles verbosity files
      where
        modifyFile ((fileName,_),(ann,parsed)) = do
 
-           let source = exactPrint parsed ann
+           let rigidOptions :: PrintOptions Identity String
+               rigidOptions = printOptions (\_ b -> return b) return return RigidLayout
+
+               exactPrintRigid  ast as = runIdentity (exactPrintWithOptions rigidOptions ast as)
+               exactPrintNormal ast as = runIdentity (exactPrintWithOptions stringOptions ast as)
+
+           -- let source = exactPrint parsed ann
+           -- let source = exactPrintRigid parsed ann
+           let source = exactPrintNormal parsed ann
            let (baseFileName,ext) = splitExtension fileName
            seq (length source) (writeFile (baseFileName ++ ".refactored" ++ ext) source)
 
@@ -457,3 +506,21 @@ serverModsAndFiles m = do
 
   return serverMods
 
+-- ---------------------------------------------------------------------
+
+-- | Finds all anotations that are contained within the given source span
+lookupAnns :: Anns -> GHC.SrcSpan -> Anns
+lookupAnns anns (GHC.RealSrcSpan span) = Map.filterWithKey isInSpan anns
+  where isInSpan k@(AnnKey (GHC.RealSrcSpan annSpan) conN) v = GHC.containsSpan span annSpan
+
+-- ---------------------------------------------------------------------
+
+-- | In GHC 8 an error has an attached callstack. This is not always what we
+-- want, so this function strips it
+stripCallStack :: String -> String
+stripCallStack str = str'
+  where
+    s1 = init $ unlines $ takeWhile (\s -> s /= "CallStack (from HasCallStack):") $ lines str
+    str' = if last str == '\n'
+              then s1 ++ "\n"
+              else s1

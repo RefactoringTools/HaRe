@@ -1,6 +1,6 @@
 module TS2 where
 
-type Foo = (String, Int)
+type Foo = (String,Int)
 
 getInt :: Foo -> Int
 getInt (_, i) = i

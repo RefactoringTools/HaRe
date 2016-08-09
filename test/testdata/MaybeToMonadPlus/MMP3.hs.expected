@@ -1,0 +1,6 @@
+module MMP3 where
+
+dv :: (MonadPlus m) => Int -> m Int -> m Int
+dv i mv = mv >>= (case i of
+  0 -> mzero
+  n -> (return (v `div` n)))

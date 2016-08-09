@@ -1,6 +1,5 @@
 module TestUtils
        ( compareFiles
-       , compareStrings
        , parsedFileGhc
        , parsedFileGhcCd
        , parseSourceFileTest
@@ -33,16 +32,20 @@ module TestUtils
        , parseDeclToAnnotated
        , ss2span
        , PosToken
+       , getHsDecls
+       , showNameMap
        ) where
 
 
+import qualified DynFlags      as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
--- import qualified Outputable    as GHC
+import qualified Outputable    as GHC
 import qualified Unique        as GHC
 
 import Data.Algorithm.Diff
+import Data.Algorithm.DiffOutput
 import Data.Data
 import Exception
 import Language.Haskell.GHC.ExactPrint
@@ -81,18 +84,15 @@ hex v = "0x" ++ showHex v ""
 
 -- ---------------------------------------------------------------------
 
-compareFiles :: FilePath -> FilePath -> IO [Diff [String]]
+compareFiles :: FilePath -> FilePath -> IO String
 compareFiles fileA fileB = do
   astr <- readFile fileA
   bstr <- readFile fileB
-  -- return $ filter (\c -> not( isBoth c)) $ getGroupedDiff (lines astr) (lines bstr)
-  return $ compareStrings astr bstr
-
-compareStrings :: String -> String -> [Diff [String]]
-compareStrings astr bstr = filter (\c -> not( isBoth c)) $ getGroupedDiff (lines astr) (lines bstr)
-    where
-      isBoth (Both _ _) = True
-      isBoth _        = False
+  let
+    diffToString ds = case ppDiff ds of
+      "\n" -> ""
+      s    -> s
+  return $ diffToString $ getGroupedDiff (lines astr) (lines bstr)
 
 -- ---------------------------------------------------------------------
 
@@ -105,7 +105,7 @@ parsedFileGhc fileName = do
        -- logm $ "parsedFileGhc:done"
        return res
   (parseResult,_s) <- runRefactGhcStateLog comp Normal
-  -- (parseResult,_s) <- runRefactGhcStateLog comp fileName Debug
+  -- (parseResult,_s) <- runRefactGhcStateLog comp Debug
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -245,7 +245,7 @@ catchException f = do
   return res
   where
     handler:: SomeException -> IO (Maybe String)
-    handler e = return (Just (show e))
+    handler e = return (Just (stripCallStack $ show e))
 
 -- ---------------------------------------------------------------------
 
@@ -387,6 +387,23 @@ parseDeclToAnnotated df fp src = (ast,anns)
 
 ss2span :: GHC.SrcSpan -> (Pos,Pos)
 ss2span ss = (ss2pos ss,ss2posEnd ss)
+
+-- ---------------------------------------------------------------------
+
+-- | call ghc-excactprint hsDecls in a Transform context
+getHsDecls :: (HasDecls t) => t -> [GHC.LHsDecl GHC.RdrName]
+getHsDecls t = decls
+  where
+    -- runTransform :: Anns -> Transform a -> (a, (Anns, Int), [String])
+    (decls,_,_) = runTransform mempty (hsDecls t)
+-- ---------------------------------------------------------------------
+
+showNameMap :: NameMap -> String
+showNameMap  nm = GHC.showSDocDebug GHC.unsafeGlobalDynFlags doc
+    where
+      doc = GHC.text "NameMap" GHC.<+> GHC.vcat (map one $ Map.toList nm)
+      -- one (s,n) = GHC.parens $ GHC.text (showGhc (s,n,GHC.nameUnique n)) GHC.<+> GHC.ppr n
+      one (s,n) = GHC.parens $ GHC.hsep [GHC.ppr s, GHC.comma, GHC.ppr n]
 
 -- ---------------------------------------------------------------------
 -- EOF

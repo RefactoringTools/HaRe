@@ -1,7 +1,7 @@
 Name:                           HaRe
-Version:                        0.8.2.1
+Version:                        0.8.3.0
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
-Maintainer:                     Alan Zimmerman
+Maintainer:                     Alan Zimmerman (alan/zimm@gmail.com)
 Stability:                      Alpha
 Bug-Reports:                    http://github.com/RefactoringTools/HaRe/issues
 License:                        BSD3
@@ -17,7 +17,9 @@ Description:
    .
    From version 0.8.0.0, GHC 7.10.2 is supported.
    .
-   It is tested against GHC 7.10.2 (via travis-ci.org)
+   From version 0.8.3.0, GHC 8.0.1 is supported.
+   .
+   It is tested against GHC 7.10.3 and GHC 8.0.1 (via travis-ci.org)
    .
    It currently only has emacs integration built in, community input
    welcome for others.
@@ -40,12 +42,14 @@ Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 
-tested-with:                    GHC == 7.10.2
+tested-with:                    GHC == 7.10.3, GHC == 8.0.1
 
 data-files:                     elisp/*.el
                                 configure.sh
                                 test/testdata/*.cabal
                                 test/testdata/*.hs
+                                test/testdata/AddOneParameter/*.hs
+                                test/testdata/AddOneParameter/*.expected.hs
                                 test/testdata/Case/*.hs
                                 test/testdata/Case/*.hs.expected
                                 test/testdata/Case/*.hs.expected.dd
@@ -72,6 +76,8 @@ data-files:                     elisp/*.el
                                 test/testdata/Renaming/*.expected.hs
                                 test/testdata/Renaming/*.hs
                                 test/testdata/Renaming/*.hs.expected
+                                test/testdata/RmOneParameter/*.expected.hs
+                                test/testdata/RmOneParameter/*.hs
                                 test/testdata/Simple/*.hs
                                 test/testdata/Simple/*.hs.expected
                                 test/testdata/SwapArgs/*.hs
@@ -108,7 +114,7 @@ extra-source-files:             ChangeLog
 
 Library
         -- GHC 7.10.2 ships with base 4.8.1.0
-        Build-Depends:          base >= 4.8.1.0  && < 4.9
+        Build-Depends:          base >= 4.8.1.0  && < 5
                                 , containers
                                 , directory
 
@@ -120,7 +126,7 @@ Library
                                 , ghc-paths
                                 , ghc-prim  
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.4
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , old-time
                                 , pretty
@@ -132,8 +138,9 @@ Library
                                 , time
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.4.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
+                                , syb-with-class
                                 , Cabal >= 1.22
 
         GHC-Options:            -O0
@@ -150,9 +157,10 @@ Library
            , Language.Haskell.Refact.Refactoring.RoundTrip
            , Language.Haskell.Refact.Refactoring.Simple
            , Language.Haskell.Refact.Refactoring.SwapArgs
---           , Language.Haskell.Refact.Refactoring.DeleteDef
---           , Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
-           , Language.Haskell.Refact.Utils.Binds
+           , Language.Haskell.Refact.Refactoring.MultiRename
+           , Language.Haskell.Refact.Refactoring.DeleteDef
+           , Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
+           , Language.Haskell.Refact.Refactoring.UnwrapTypeSyn
            , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -166,6 +174,7 @@ Library
            , Language.Haskell.Refact.Utils.Types
            , Language.Haskell.Refact.Utils.Utils
            , Language.Haskell.Refact.Utils.Variables
+           , Language.Haskell.Refact.Utils.Compare
            , Paths_HaRe
         if impl (ghc < 7.10.2)
             buildable: False
@@ -180,7 +189,7 @@ Executable ghc-hare
           ./src
 
         -- GHC 7.10.2 ships with base 4.8.1.0
-        Build-Depends:          base >= 4.8.1.0  && < 4.9
+        Build-Depends:          base >= 4.8.1.0  && < 5
                                 , array
                                 , containers
                                 , directory
@@ -194,8 +203,11 @@ Executable ghc-hare
                                 , ghc-paths
                                 , ghc-prim
                                 , ghc-syb-utils
-                                , ghc-mod >= 5.4
+                                , gitrev >= 1.1
+                                , ghc-mod >= 5.6.0.0
                                 , mtl
+                                , optparse-applicative
+                                , optparse-simple
                                 , old-time
                                 , parsec >= 3.1.6
                                 , pretty
@@ -207,9 +219,10 @@ Executable ghc-hare
                                 , hslogger
                                 , Strafunski-StrategyLib
                                 , syz
-                                , ghc-exactprint >= 0.4.1
+                                , ghc-exactprint >= 0.5.2.1
                                 , monad-control
                                 , Cabal >= 1.22
+                                , syb-with-class
                                 -- , Paths_HaRe
                                 , HaRe >= 0.8.2.1
         Extensions:      CPP
@@ -234,7 +247,8 @@ test-suite spec
     src
     test
   other-modules:
-      CaseSpec
+      AddRmParamSpec
+    , CaseSpec
     , DupDefSpec
     , GhcUtilsSpec
     , LocUtilsSpec
@@ -247,13 +261,15 @@ test-suite spec
     , TestUtils
     , TypeUtilsSpec
     , UtilsSpec
+    , DeleteDefSpec
+    , IntroduceTypeSynSpec
+    , UnwrapTypeSynSpec
 
     -- , Language.Haskell.Refact.API
     -- , Language.Haskell.Refact.HaRe
     -- , Language.Haskell.Refact.Refactoring.AddRmParam
     -- , Language.Haskell.Refact.Refactoring.Case
     -- , Language.Haskell.Refact.Refactoring.RoundTrip
-    -- , Language.Haskell.Refact.Utils.Binds
     -- , Language.Haskell.Refact.Utils.ExactPrint
     -- , Language.Haskell.Refact.Utils.GhcModuleGraph
     -- , Language.Haskell.Refact.Utils.GhcUtils
@@ -269,7 +285,7 @@ test-suite spec
     -- , Paths_HaRe
   build-depends:
       -- GHC 7.10.2 ships with base 4.8.1.0
-      base        >= 4.8.1.0  && < 4.9
+      base        >= 4.8.1.0  && < 5
     , Diff >= 0.3.0
     , HUnit
     , QuickCheck  >= 2.5
@@ -286,7 +302,7 @@ test-suite spec
     , ghc-paths
     , ghc-prim
     , ghc-syb-utils
-    , ghc-mod >= 5.4
+    , ghc-mod >= 5.6.0.0
     , hspec
     , mtl
     , old-time
@@ -301,9 +317,10 @@ test-suite spec
     , hslogger
     , Strafunski-StrategyLib
     , syz
-    , ghc-exactprint >= 0.4.1
+    , ghc-exactprint >= 0.5.2.1
     , monad-control
     , Cabal >= 1.22
+    , syb-with-class
     -- , Paths_HaRe
     , HaRe >= 0.8.2.1
   Extensions:      CPP

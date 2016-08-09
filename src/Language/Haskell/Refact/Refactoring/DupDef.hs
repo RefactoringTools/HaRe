@@ -3,7 +3,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 
-module Language.Haskell.Refact.Refactoring.DupDef(duplicateDef) where
+module Language.Haskell.Refact.Refactoring.DupDef
+  ( duplicateDef
+  , compDuplicateDef ) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -30,25 +32,28 @@ import System.Directory
 duplicateDef :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 duplicateDef settings opts fileName newName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings opts (comp absFileName newName (row,col))
+  runRefacSession settings opts (compDuplicateDef absFileName newName (row,col))
 
-comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName newName (row, col) = do
+compDuplicateDef :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
+compDuplicateDef fileName newName (row, col) = do
   if isVarId newName
     then
       do
         parseSourceFileGhc fileName
         renamed <- getRefactRenamed
         parsed  <- getRefactParsed
+        nm <- getRefactNameMap
         targetModule <- getRefactTargetModule
-        logm $ "DupDef.comp:got targetModule"
+        logm $ "DupDef.compDuplicateDef:got targetModule"
 
         let (Just (modName,_)) = getModuleName parsed
-        let maybePn = locToName (row, col) renamed
+        let maybePn = locToRdrName (row,col) parsed
+        -- let maybePn = locToNameRdrPure nm (row, col) parsed
         case maybePn of
-          Just pn ->
+          Just lr@(GHC.L l _) ->
             do
-              logm $ "DupDef.comp:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
+              let pn = GHC.L l (rdrName2NamePure nm lr)
+              logm $ "DupDef.compDuplicateDef:about to applyRefac for:pn=" ++ SYB.showData SYB.Parser 0 pn
               (refactoredMod,(isDone,nn)) <- applyRefac (doDuplicating pn newName) (RSFile fileName)
               logm $ "DupDef.com:isDone=" ++ show isDone
               case isDone of
@@ -58,7 +63,7 @@ comp fileName newName (row, col) = do
                   if modIsExported modName renamed
                    then
                     do
-                       logm $ "DupDef.comp:about to clientMods"
+                       logm $ "DupDef.compDuplicateDef:about to clientMods"
                        clients <- clientModsAndFiles targetModule
                        logm ("DupDef: clients=" ++ (showGhc clients)) -- ++AZ++ debug
                        refactoredClients <- mapM (refactorInClientMod (GHC.unLoc pn) modName nn)
@@ -75,9 +80,9 @@ data DupDefResult = DupDefFailed | DupDefTopLevel | DupDefLowerLevel
 doDuplicating :: GHC.Located GHC.Name -> String
               -> RefactGhc (DupDefResult,GHC.Name)
 doDuplicating pn newName = do
-   logm $ "DupDef.comp:doDuplicating entered"
+   logm $ "DupDef.compDuplicateDef:doDuplicating entered"
    inscopes <- getRefactInscopes
-   logm $ "DupDef.comp:doDuplicating got inscopes"
+   logm $ "DupDef.compDuplicateDef:doDuplicating got inscopes"
    reallyDoDuplicating pn newName inscopes
 
 
@@ -169,7 +174,7 @@ reallyDoDuplicating pn newName _inscopes = do
         doDuplicating'' :: (SYB.Data t) => GHC.Name -> t -> GHC.Located GHC.Name
                        -> RefactGhc t
         doDuplicating'' newNameGhc parentr ln = do
-          logm $ "doDuplicating'':parentr=" ++ SYB.showData SYB.Parser 0 parentr
+          -- logm $ "doDuplicating'':parentr=" ++ SYB.showData SYB.Parser 0 parentr
           r <- hasDeclsSybTransform workerHsDecls workerBind parentr
           logm $ "doDuplicating'':done"
           return r
@@ -206,13 +211,13 @@ reallyDoDuplicating pn newName _inscopes = do
                     --d: names that might clash with the new name
 
                 logm $ "doDuplicating'':(f,d)=" ++ show (f,d)
-                dv <- hsVisiblePNsRdr nm ln declsp --dv: names may shadow new name
+                DN dv <- hsVisibleDsRdr nm n declsp --dv: names may shadow new name
                 let vars        = nub (f `union` d `union` map showGhc dv)
 
                 -- TODO: Where definition is of form tup@(h,t), test each element of it for clashes, or disallow
                 nameAlreadyInScope <- isInScopeAndUnqualifiedGhc newName Nothing
 
-                if elem newName vars || (nameAlreadyInScope && findEntity ln duplicatedDecls)
+                if elem newName vars || (nameAlreadyInScope && findNameInRdr nm n duplicatedDecls)
                    then error ("The new name'"++newName++"' will cause name clash/capture or ambiguity problem after "
                                ++ "duplicating, please select another name!")
                    else do
@@ -231,17 +236,17 @@ refactorInClientMod :: GHC.Name -> GHC.ModuleName -> GHC.Name -> TargetModule
 refactorInClientMod oldPN serverModName newPName targetModule
   = do
        logm ("refactorInClientMod: (oldPN,serverModName,newPName)=" ++ (showGhc (oldPN,serverModName,newPName)))
-       -- void $ activateModule targetModule
        getTargetGhc targetModule
 
        let fileName = GM.mpPath targetModule
        renamed <- getRefactRenamed
-       parsed <- getRefactParsed
+       parsed  <- getRefactParsed
 
+       logm $ "refactorInClientMod:got newPName:" ++ showGhcQual newPName
        let modNames = willBeUnQualImportedBy serverModName renamed
        logm ("refactorInClientMod: (modNames)=" ++ (showGhc (modNames))) -- ++AZ++ debug
 
-       mustHide <- needToBeHided newPName renamed parsed
+       mustHide <- needToBeHided newPName parsed
        logm ("refactorInClientMod: (mustHide)=" ++ (showGhc (mustHide))) -- ++AZ++ debug
        if isJust modNames && mustHide
         then do
@@ -249,11 +254,15 @@ refactorInClientMod oldPN serverModName newPName targetModule
                 return refactoredMod
         else return ((fileName,RefacUnmodifed),(emptyAnns,parsed))
    where
-     needToBeHided :: GHC.Name -> GHC.RenamedSource -> GHC.ParsedSource -> RefactGhc Bool
-     needToBeHided name exps parsed = do
+     needToBeHided :: GHC.Name -> GHC.ParsedSource -> RefactGhc Bool
+     needToBeHided name parsed = do
+         -- logDataWithAnns "refactorInClientMod.needToBeHided:parsed" parsed
+         -- logm $ "refactorInClientMod.needToBeHided:name=" ++ showGhcQual name
+         nm <- getRefactNameMap
+         logm $ "refactorInClientMod.needToBeHided:nm=" ++ showGhcQual nm
          let usedUnqual = usedWithoutQualR name parsed
          logm ("refactorInClientMod: (usedUnqual)=" ++ (showGhc (usedUnqual))) -- ++AZ++ debug
-         return $ usedUnqual || causeNameClashInExports oldPN name serverModName exps
+         return $ usedUnqual || causeNameClashInExports nm oldPN name serverModName parsed
 
 doDuplicatingClient :: GHC.ModuleName -> [GHC.Name]
               -> RefactGhc ()
@@ -286,4 +295,3 @@ willBeUnQualImportedBy modName (_,imps,_,_)
          where getModName (GHC.L _ (GHC.ImportDecl _ _modName1 _qualify _source _safe _isQualified _isImplicit as _h))
                  = if isJust as then (fromJust as)
                                 else modName
-
