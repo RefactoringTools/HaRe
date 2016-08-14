@@ -236,11 +236,34 @@ module Language.Haskell.Refact.API
   , copyAnn
   , clearPriorComments
   , balanceAllComments
-
+  , exactPrintParsed
+  , zeroDP
+  , handleParseResult
+  , getAllAnns
+  , removeAnns
+  , synthesizeAnns
+  , addNewKeyword
+  , addNewKeywords
  -- * from `Language.Haskell.Refact.Utils.Compare`
- , constructComp
+  , constructComp
+  , locate
+  , addEmptyAnn
+  , addAnnVal
+  , addAnn
 -- , Compare
-   
+
+   -- from Language.Haskell.Refact.Utils.Synonyms
+ , UnlocParsedHsBind
+ , ParsedGRHSs
+ , ParsedMatchGroup
+ , ParsedLMatch
+
+ -- from Language.Haskell.Refact.Utils.Transform
+  , addSimpleImportDecl
+  , wrapInLambda
+  , wrapInPars
+  , addNewLines
+  , locate
  ) where
 
 import Language.Haskell.Refact.Utils.ExactPrint
@@ -254,6 +277,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
-
+import Language.Haskell.Refact.Utils.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Compare
+import Language.Haskell.Refact.Utils.Synonyms
