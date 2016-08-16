@@ -264,6 +264,9 @@ module Language.Haskell.Refact.API
   , wrapInPars
   , addNewLines
   , locate
+-- from Language.Haskell.Refact.Utils.Query
+  , getVarAndRHS
+  , getHsBind
  ) where
 
 import Language.Haskell.Refact.Utils.ExactPrint
@@ -281,3 +284,4 @@ import Language.Haskell.Refact.Utils.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Utils.Compare
 import Language.Haskell.Refact.Utils.Synonyms
+import Language.Haskell.Refact.Utils.Query

@@ -179,6 +179,7 @@ Library
            , Language.Haskell.Refact.Utils.Compare
            , Language.Haskell.Refact.Utils.Synonyms
            , Language.Haskell.Refact.Utils.Transform
+           , Language.Haskell.Refact.Utils.Query
            , Paths_HaRe
         if impl (ghc < 7.10.2)
             buildable: False

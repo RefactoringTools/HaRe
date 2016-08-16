@@ -219,27 +219,6 @@ justToReturn ast = SYB.everywhere (SYB.mkT worker) ast
           then GHC.mkDataOcc "return"
           else nm
 
---Takes a single match and returns a tuple containing the grhs and the pattern
---Assumptions:
-  -- Only a single pattern will be returned. Which pattern is returned depends on the behaviour of SYB.something. 
-getVarAndRHS :: GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LPat GHC.RdrName, ParsedGRHSs)
-getVarAndRHS match = do
-  let (Just pat) = SYB.something (Nothing `SYB.mkQ` varPat) (GHC.m_pats match)
-  return (pat , GHC.m_grhss match)
-    where varPat lPat@(GHC.L _ (GHC.VarPat _ )) = Just lPat
-          varPat _ = Nothing
-
---Looks up the function binding at the given position. Returns nothing if the position does not contain a binding.
-getHsBind :: (Data a) => SimpPos -> String -> a -> Maybe (GHC.HsBind GHC.RdrName)
-getHsBind pos funNm a =
-  let rdrNm = locToRdrName pos a in
-  case rdrNm of
-  Nothing -> Nothing
-  (Just (GHC.L _ rNm)) -> SYB.everythingStaged SYB.Parser (<|>) Nothing (Nothing `SYB.mkQ` isBind) a
-    where isBind (bnd@(GHC.FunBind (GHC.L _ name) _ _ _ _ _) :: GHC.HsBind GHC.RdrName)
-            | name == rNm = (Just bnd)
-          isBind _ = Nothing
-
 
 --This function takes in the name of a function and determines if the binding contains the case "Nothing = Nothing"
 --If the Nothing to Nothing case is found then it is removed from the parsed source.
