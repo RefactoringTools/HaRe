@@ -394,7 +394,7 @@ spec = do
     -- ---------------------------------
 
     it "cannot rename main Main" $ do
-     -- rename logTestSettings testOptions Nothing "./Renaming/Main.hs" "main1" (11,1)
+     -- rename logTestSettings testOptions "./Renaming/Main.hs" "main1" (11,1)
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Main.hs" "main1" (11,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
 
@@ -408,7 +408,7 @@ spec = do
     -- ---------------------------------
 
     it "rename with default main Main2" $ do
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/Main2.hs" "baz" (6,1)
+     -- ct $ rename logTestSettings testOptions "./Renaming/Main2.hs" "baz" (6,1)
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Main2.hs" "baz" (6,1)
 
      r' <- ct $ mapM makeRelativeToCurrentDirectory r

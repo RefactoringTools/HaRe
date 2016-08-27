@@ -1,4 +1,4 @@
-module FunIn6 where
+module AddOneParameter.FunIn6 where
 
 --Default parameters can be added to definition of functions and simple constants.
 

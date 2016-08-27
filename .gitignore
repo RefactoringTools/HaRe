@@ -4,6 +4,7 @@
 *.swp
 *.*_out
 *.refactored.hs
+*.stack-work
 /.hpc/
 /debug.log
 /hareview/.vagrant
@@ -454,3 +455,4 @@ testing/addCon/Case2.hs.temp.hs
 /.travis.yaml.old2
 /hcar/HaReTheHaskellRefactorer-AH.out
 /hcar/HaReTheHaskellRefactorer-AH.pdf
+TAGS
