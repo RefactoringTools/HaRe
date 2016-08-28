@@ -51,6 +51,7 @@ import Distribution.Helper
 import Exception
 import qualified Language.Haskell.GhcMod             as GM
 import qualified Language.Haskell.GhcMod.Internal    as GM
+import qualified Language.Haskell.GhcMod.Monad.Out   as GM
 import qualified Language.Haskell.GhcMod.Monad.Types as GM
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
@@ -216,6 +217,10 @@ runRefactGhc comp initState opt = do
 -- ---------------------------------------------------------------------
 
 instance GM.GmOut (StateT RefactState IO) where
+  gmoAsk = lift GM.gmoAsk
+
+instance GM.GmOut IO where
+  gmoAsk = GM.gmoAsk
 
 instance GM.MonadIO (StateT RefactState IO) where
   liftIO = liftIO
