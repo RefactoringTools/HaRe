@@ -1,4 +1,4 @@
-module Demote.D2 where
+module Demote.D2a where
 
 sq x = x ^pow
 
