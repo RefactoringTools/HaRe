@@ -311,6 +311,8 @@ test-suite spec
     , ghc-exactprint >= 0.5.2.1
     , monad-control
     , Cabal >= 1.22
+    , turtle
+    , foldl
     -- , Paths_HaRe
     , HaRe >= 0.8.2.1
   Extensions:      CPP
