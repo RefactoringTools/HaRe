@@ -236,7 +236,7 @@ test-suite spec
   cpp-options:
       -DTEST
   main-is:
-      Spec.hs
+      Main.hs
   Hs-Source-Dirs:
     src
     test

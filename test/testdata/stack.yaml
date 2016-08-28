@@ -1,5 +1,0 @@
-# resolver: lts-6.13
-resolver: nightly-2016-08-25
-packages:
-- '.'
-extra-deps: []

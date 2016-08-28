@@ -456,3 +456,9 @@ testing/addCon/Case2.hs.temp.hs
 /hcar/HaReTheHaskellRefactorer-AH.out
 /hcar/HaReTheHaskellRefactorer-AH.pdf
 TAGS
+./test/testdata/stack.yaml
+./test/testdata/cabal/cabal3/stack.yaml
+./test/testdata/cabal/foo/stack.yaml
+./test/testdata/cabal/cabal4/stack.yaml
+./test/testdata/cabal/cabal1/stack.yaml
+./test/testdata/cabal/cabal2/stack.yaml
