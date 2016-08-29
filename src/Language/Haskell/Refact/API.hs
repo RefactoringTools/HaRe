@@ -257,6 +257,9 @@ module Language.Haskell.Refact.API
  , ParsedGRHSs
  , ParsedMatchGroup
  , ParsedLMatch
+ , ParsedExpr
+ , ParsedLStmt
+ , ParsedLExpr
 
  -- from Language.Haskell.Refact.Utils.Transform
   , addSimpleImportDecl
@@ -267,6 +270,7 @@ module Language.Haskell.Refact.API
 -- from Language.Haskell.Refact.Utils.Query
   , getVarAndRHS
   , getHsBind
+  , isHsVar
  ) where
 
 import Language.Haskell.Refact.Utils.ExactPrint
