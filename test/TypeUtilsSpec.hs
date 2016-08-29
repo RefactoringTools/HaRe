@@ -18,6 +18,7 @@ import Data.Maybe
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Utils
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -3363,7 +3364,8 @@ spec = do
       -- new name is "Renaming.ConflictExport.fringe"
       let newName = mkTestGhcName 1 (Just modu) "fringe"
 
-      (showGhcQual modu) `shouldBe` "main@main:Renaming.ConflictExport"
+      -- (showGhcQual modu) `shouldBe` "main@main:Renaming.ConflictExport"
+      (showGhc modu) `shouldBe` "Renaming.ConflictExport"
       (showGhcQual newName) `shouldBe` "Renaming.ConflictExport.fringe"
 
       (showGhcQual $ GHC.localiseName newName) `shouldBe` "fringe"
@@ -3388,7 +3390,8 @@ spec = do
       -- new name is "Renaming.ConflictExport.fringe"
       let newName = mkTestGhcName 1 (Just modu) "fringeOk"
 
-      (showGhcQual modu) `shouldBe` "main@main:Renaming.ConflictExport"
+      -- (showGhcQual modu) `shouldBe` "main@main:Renaming.ConflictExport"
+      (showGhc modu) `shouldBe` "Renaming.ConflictExport"
       (showGhcQual newName) `shouldBe` "Renaming.ConflictExport.fringeOk"
 
       (showGhcQual $ GHC.localiseName newName) `shouldBe` "fringeOk"

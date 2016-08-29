@@ -25,7 +25,7 @@ spec = do
 
   describe "swapArgs" $ do
     it "checks for that an identifier is selected" $ do
-     res <- catchException (swapArgs defaultTestSettings testOptions ["./test/testdata/SwapArgs/B.hs","4","1"])
+     res <- catchException (ct $ swapArgs defaultTestSettings testOptions ["./SwapArgs/B.hs","4","1"])
      -- let res = "foo"
      (show res) `shouldBe` "Just \"Incorrect identifier selected!\""
 
