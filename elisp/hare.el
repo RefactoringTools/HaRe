@@ -22,7 +22,7 @@
 ;; (require 'erlang)
 ;; (require 'distel)
 (require 'read-char-spec)
-;;(require 'haskell-emacs)
+
 (if (eq (substring emacs-version 0 4) "22.2")
     (require 'ediff-init1)
   (require 'ediff-init))

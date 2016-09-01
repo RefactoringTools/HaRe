@@ -77,7 +77,7 @@ spec = do
   -- -------------------------------------------------------------------
 
   describe "loading a file" $ do
-    {-it "loads a file having the LANGUAGE CPP pragma" $ do
+    it "loads a file having the LANGUAGE CPP pragma" $ do
       t <- ct $ parsedFileGhc "./BCpp.hs"
 
       let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
@@ -102,7 +102,7 @@ spec = do
       diff `shouldBe` []
 
     -- ---------------------------------
--}
+
     it "loads a series of files based on cabal1" $ do
 
       currentDir <- getCurrentDirectory
