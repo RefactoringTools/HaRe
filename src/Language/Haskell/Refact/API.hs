@@ -236,10 +236,6 @@ module Language.Haskell.Refact.API
   , copyAnn
   , clearPriorComments
   , balanceAllComments
-
- -- * from `Language.Haskell.Refact.Utils.Compare`
- , constructComp
--- , Compare
    
  ) where
 
@@ -256,4 +252,3 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.Refact.Utils.Compare

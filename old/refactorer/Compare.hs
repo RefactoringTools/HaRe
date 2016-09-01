@@ -4,6 +4,12 @@ import Data.Generics as SYB hiding (Proxy)
 import qualified GHC as GHC
 import qualified GHC.SYB.Utils as SYB
 
+{-
+The goal of this module was to provide way to compare arbitrary chunks of Named AST. The idea was that if shape and type of the trees were the same and the leaves contained the same name then the two abstract syntax trees would be considered the same. This didn't pan out and I worked around it so I've moved the file to old for preservation.
+
+September 2016
+--Stephen Adams 
+-}
 
 data Comp = Rep SYB.TypeRep [Comp]
           | Comp GHC.RdrName
