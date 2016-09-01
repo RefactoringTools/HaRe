@@ -1,10 +1,32 @@
-Name: HaRe-tests
+Name: testdata
 Version: 0
 Author: Alan Zimmerman
 Maintainer: Alan Zimmerman
 Cabal-Version: >= 1.10
 Build-Type: Simple
 -- Other-Extensions: CPP
+
+Library
+  Hs-Source-Dirs:         .
+  Build-Depends:          base
+                        , syb
+  GHC-Options:            -W
+  default-language:    Haskell2010
+
+Executable RenamingMain
+  Main-Is: ./Renaming/Main.hs
+  Hs-Source-Dirs:         .
+  Build-Depends:          base >= 4.0  && < 5
+                        , syb
+  GHC-Options:            -W
+  default-language:    Haskell2010
+
+Executable RenamingMain2
+  Main-Is: ./Renaming/Main2.hs
+  Hs-Source-Dirs:         .
+  Build-Depends:          base >= 4.0  && < 5
+                        , syb
+  default-language:    Haskell2010
 
 Executable bcpp
   Main-Is: BCpp.hs

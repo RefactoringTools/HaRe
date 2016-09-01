@@ -1,7 +1,7 @@
 Name:                           HaRe
 Version:                        0.8.3.0
 Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
-Maintainer:                     Alan Zimmerman (alan/zimm@gmail.com)
+Maintainer:                     Alan Zimmerman (alan.zimm@gmail.com)
 Stability:                      Alpha
 Bug-Reports:                    http://github.com/RefactoringTools/HaRe/issues
 License:                        BSD3
@@ -242,7 +242,7 @@ test-suite spec
   cpp-options:
       -DTEST
   main-is:
-      Spec.hs
+      Main.hs
   Hs-Source-Dirs:
     src
     test
@@ -320,6 +320,8 @@ test-suite spec
     , ghc-exactprint >= 0.5.2.1
     , monad-control
     , Cabal >= 1.22
+    , turtle
+    , foldl
     , syb-with-class
     -- , Paths_HaRe
     , HaRe >= 0.8.2.1
