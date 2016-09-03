@@ -140,7 +140,6 @@ Library
                                 , syz
                                 , ghc-exactprint >= 0.5.2.1
                                 , monad-control
-                                , syb-with-class
                                 , Cabal >= 1.22
 
         GHC-Options:            -O0
