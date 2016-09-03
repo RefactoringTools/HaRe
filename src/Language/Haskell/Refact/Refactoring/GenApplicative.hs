@@ -61,7 +61,7 @@ constructAppChain (st:stmts) = do
             _ -> constructAppChain stmts
   case getStmtLR st of
     --If it is a bodystmt then this statement will not affect the output of the function so we can simply 
-    (GHC.BodyStmt body _ _ _) -> do
+    (GHC.BodyStmt body _ _ _) -> undefined
       
   where
     getStmtLR :: GHC.ExprLStmt GHC.RdrName -> GHC.StmtLR GHC.RdrName GHC.RdrName ParsedLExpr

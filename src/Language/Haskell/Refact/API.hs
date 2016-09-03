@@ -245,13 +245,11 @@ module Language.Haskell.Refact.API
   , synthesizeAnns
   , addNewKeyword
   , addNewKeywords
- -- * from `Language.Haskell.Refact.Utils.Compare`
-  , constructComp
+
   , locate
   , addEmptyAnn
   , addAnnVal
   , addAnn
--- , Compare
 
    -- from Language.Haskell.Refact.Utils.Synonyms
  , UnlocParsedHsBind
