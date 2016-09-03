@@ -20,7 +20,7 @@ spec = do
                                 "./MaybeToMonadPlus/MMP1.hs.expected"
       diff `shouldBe` []
     it "Another simple example where maybe constructor calls need to be replaced." $ do
-      res <- ct $ maybeToMonadPlus logTestSettings testOptions "./MaybeToMonadPlus/MMP2.hs" (4,1) "f" 2
+      res <- ct $ maybeToMonadPlus defaultTestSettings testOptions "./MaybeToMonadPlus/MMP2.hs" (4,1) "f" 2
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["MaybeToMonadPlus/MMP2.hs"]
       diff <- ct $ compareFiles "./MaybeToMonadPlus/MMP2.refactored.hs"

@@ -236,6 +236,7 @@ module Language.Haskell.Refact.API
   , copyAnn
   , clearPriorComments
   , balanceAllComments
+
   , exactPrintParsed
   , zeroDP
   , handleParseResult
@@ -286,6 +287,5 @@ import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 import Language.Haskell.Refact.Utils.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.Refact.Utils.Compare
 import Language.Haskell.Refact.Utils.Synonyms
 import Language.Haskell.Refact.Utils.Query

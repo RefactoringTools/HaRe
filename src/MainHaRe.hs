@@ -297,7 +297,7 @@ runFunc f = do
   putStrLn ret
 
 showLisp :: [String] -> String
-showLisp xs = "(" ++ (intercalate " " $ map show xs) ++ ")"
+showLisp xs = "(" ++ (intercalate " " $ map (\str -> "\"" ++ str ++ "\"") xs) ++ ")"
 
 catchException :: (IO t) -> IO (Either String t)
 catchException f = do
