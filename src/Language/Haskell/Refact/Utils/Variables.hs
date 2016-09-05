@@ -540,7 +540,7 @@ hsFreeAndDeclaredRdr' nm t = do
 #endif
 #if __GLASGOW_HASKELL__ <= 710
           hstype (GHC.L _ (GHC.HsWildcardTy)) = return (FN [],DN [])
-          hstype (GHC.L _ (GHC.HsNamedWildcardTy n)) = return (FN [rdrName2NamePure nm (GHC.L l n)],DN [])
+          hstype (GHC.L l (GHC.HsNamedWildcardTy n)) = return (FN [rdrName2NamePure nm (GHC.L l n)],DN [])
 #else
           hstype (GHC.L _ (GHC.HsWildCardTy _)) = return (FN [],DN [])
 #endif
