@@ -36,6 +36,7 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.Identity
 import Control.Monad.State
 import Data.List
+import Data.Maybe
 import Data.IORef
 
 -- import Language.Haskell.GHC.ExactPrint
@@ -61,6 +62,7 @@ import qualified GHC           as GHC
 import qualified Hooks         as GHC
 import qualified HscMain       as GHC
 import qualified HscTypes      as GHC
+import qualified TcRnMonad     as GHC
 import qualified TcRnTypes     as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
@@ -97,7 +99,7 @@ parseSourceFileGhc' targetFile = do
   cfileName <- liftIO $ canonicalizePath targetFile
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
   case mm of
-    [(_,modSum)] -> loadFromModSummary modSum
+    [(_,modSum)] -> loadFromModSummary Nothing modSum
     _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
 
 -- ---------------------------------------------------------------------
@@ -106,27 +108,30 @@ parseSourceFileGhc' targetFile = do
 parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
   logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
-  ref <- liftIO $ newIORef "a"
+  cfileName <- liftIO $ canonicalizePath targetFile
+  ref <- liftIO $ newIORef (cfileName,Nothing)
   let
     setTarget targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] (installHooks ref) (return ())
   setTarget targetFile
+  logm $ "parseSourceFileGhc:after setTarget"
+  (_,mtm) <- liftIO $ readIORef ref
+  logm $ "parseSourceFileGhc:isJust mtm:" ++ show (isJust mtm)
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph
-  cfileName <- liftIO $ canonicalizePath targetFile
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
   case mm of
-    [(_,modSum)] -> loadFromModSummary modSum
+    [(_,modSum)] -> loadFromModSummary mtm modSum
     _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
 
 -- ---------------------------------------------------------------------
 
-installHooks :: (Monad m) => IORef t -> GHC.DynFlags -> m GHC.DynFlags
+installHooks :: (Monad m) => IORef (FilePath,Maybe TypecheckedModule) -> GHC.DynFlags -> m GHC.DynFlags
 installHooks ref dflags = return $ dflags {
     GHC.hooks = (GHC.hooks dflags) {
         GHC.hscFrontendHook   = Just $ runHscFrontend ref
       }
   }
-runHscFrontend :: IORef t -> GHC.ModSummary -> GHC.Hsc GHC.FrontendResult
+runHscFrontend :: IORef (FilePath,Maybe TypecheckedModule) -> GHC.ModSummary -> GHC.Hsc GHC.FrontendResult
 runHscFrontend ref mod_summary
     = GHC.FrontendTypecheck `fmap` hscFrontend ref mod_summary
 
@@ -134,12 +139,51 @@ runHscFrontend ref mod_summary
 -- | Given a 'ModSummary', parses and typechecks it, returning the
 -- 'TcGblEnv' resulting from type-checking.
 -- Based on GHC.hscFileFrontend
-hscFrontend :: IORef t -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
+--
+-- This gets called on every module compiled when loading the wanted target.
+-- When it is the wanted target, keep the ParsedSource and TypecheckedSource,
+-- with API Annotations enabled.
+hscFrontend :: IORef (FilePath,Maybe TypecheckedModule) -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
 hscFrontend ref mod_summary = do
-    hpm <- GHC.hscParse' mod_summary
-    hsc_env <- GHC.getHscEnv
-    tcg_env <- GHC.tcRnModule' hsc_env mod_summary False hpm
-    return tcg_env
+    liftIO $ putStrLn $ "hscFrontend:entered:" ++ fileNameFromModSummary mod_summary
+    (fn,_) <- liftIO $ readIORef ref
+    let
+      keepInfo = case GHC.ml_hs_file (GHC.ms_location mod_summary) of
+                   Just fileName -> fn == fileName
+                   Nothing -> False
+    if keepInfo
+      then do
+        hpm <- GHC.hscParse' mod_summary
+        let p = GHC.ParsedModule mod_summary
+                                (GHC.hpm_module hpm)
+                                (GHC.hpm_src_files hpm)
+                                (GHC.hpm_annotations hpm)
+
+        hsc_env <- GHC.getHscEnv
+        -- tcg_env <- GHC.tcRnModule' hsc_env mod_summary False hpm
+        (tc_gbl_env,rn_info) <- liftIO $ GHC.hscTypecheckRename hsc_env mod_summary hpm
+
+        details <- liftIO $ GHC.makeSimpleDetails hsc_env tc_gbl_env
+        -- safe    <- liftIO $ GHC.finalSafeMode (GHC.ms_hspp_opts mod_summary) tc_gbl_env
+
+        let
+          tc =
+            TypecheckedModule {
+              tmParsedModule      = p,
+              tmRenamedSource     = gfromJust "hscFrontend" rn_info,
+              tmTypecheckedSource = GHC.tcg_binds tc_gbl_env,
+              tmMinfExports       = GHC.md_exports details,
+              tmMinfRdrEnv        = Just (GHC.tcg_rdr_env tc_gbl_env)
+              }
+
+        liftIO $ putStrLn $ "hscFrontend:about to modifyIOREF"
+        liftIO $ modifyIORef' ref (const (fn,Just tc))
+        return tc_gbl_env
+      else do
+        hpm <- GHC.hscParse' mod_summary
+        hsc_env <- GHC.getHscEnv
+        tc_gbl_env <- GHC.tcRnModule' hsc_env mod_summary False hpm
+        return tc_gbl_env
 
 -- ---------------------------------------------------------------------
 
@@ -167,12 +211,24 @@ tweakModSummaryDynFlags ms =
 
 -- | In the existing GHC session, put the requested TypeCheckedModule
 -- into the RefactGhc monad
-loadFromModSummary :: GHC.ModSummary -> RefactGhc ()
-loadFromModSummary modSum = do
+loadFromModSummary :: Maybe TypecheckedModule -> GHC.ModSummary -> RefactGhc ()
+loadFromModSummary mtm modSum = do
   logm $ "loadFromModSummary:modSum=" ++ show modSum
-  let modSumWithRaw = tweakModSummaryDynFlags modSum
-  p <- GHC.parseModule modSumWithRaw
-  t <- GHC.typecheckModule p
+  t <- case mtm of
+    Nothing -> do
+      let modSumWithRaw = tweakModSummaryDynFlags modSum
+      p <- GHC.parseModule modSumWithRaw
+      t' <- GHC.typecheckModule p
+      let
+        tm = TypecheckedModule
+          { tmParsedModule = p
+          , tmRenamedSource = gfromJust "loadFromModSummary" $ GHC.tm_renamed_source t'
+          , tmTypecheckedSource = GHC.tm_typechecked_source t'
+          , tmMinfExports  = error $ "loadFromModSummary:not visible in ModuleInfo 1"
+          , tmMinfRdrEnv   = error $ "loadFromModSummary:not visible in ModuleInfo 2"
+          }
+      return tm
+    Just tm -> return tm
 
   -- dflags <- GHC.getDynFlags
   -- cppComments <- if (GHC.xopt GHC.Opt_Cpp dflags)

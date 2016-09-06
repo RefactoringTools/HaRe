@@ -132,10 +132,12 @@ import Language.Haskell.GHC.ExactPrint.Utils
 
 
 -- Modules from GHC
+import qualified Avail         as GHC
 import qualified FastString    as GHC
 import qualified GHC           as GHC
 import qualified Module        as GHC
 import qualified Name          as GHC
+import qualified NameSet       as GHC
 import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 import qualified TyCon         as GHC
@@ -378,8 +380,14 @@ modIsExported modName (_g,_emps,mexps,_mdocs)
 isExported :: GHC.Name -> RefactGhc Bool
 isExported n = do
   typechecked <- getTypecheckedModule
-  let modInfo = GHC.tm_checked_module_info typechecked
-  return $ GHC.modInfoIsExportedName modInfo n
+  -- let modInfo = GHC.tm_checked_module_info typechecked
+  -- return $ GHC.modInfoIsExportedName modInfo n
+  return $ GHC.elemNameSet n (GHC.availsToNameSet (tmMinfExports typechecked))
+
+
+-- modInfoIsExportedName :: ModuleInfo -> Name -> Bool
+-- modInfoIsExportedName minf name = elemNameSet name (availsToNameSet (minf_exports minf))
+
 
 -- ---------------------------------------------------------------------
 
@@ -459,7 +467,7 @@ usedWithoutQualR name t = isJust $ SYB.something (inName) t
 getModule :: RefactGhc GHC.Module
 getModule = do
   typechecked <- getTypecheckedModule
-  return $ GHC.ms_mod $ GHC.pm_mod_summary $ GHC.tm_parsed_module typechecked
+  return $ GHC.ms_mod $ GHC.pm_mod_summary $ tmParsedModule typechecked
 
 -- ---------------------------------------------------------------------
 
@@ -507,9 +515,13 @@ isId mid = mid/=[] && isLegalIdTail (tail mid) && not (isReservedId mid)
 isTopLevelPN::GHC.Name -> RefactGhc Bool
 isTopLevelPN n = do
   typechecked <- getTypecheckedModule
-  let maybeNames = GHC.modInfoTopLevelScope $ GHC.tm_checked_module_info typechecked
+  let maybeNames = modInfoTopLevelScope typechecked
   let names = fromMaybe [] maybeNames
   return $ n `elem` names
+
+modInfoTopLevelScope :: TypecheckedModule -> Maybe [GHC.Name]
+modInfoTopLevelScope tm
+  = fmap (map GHC.gre_name . GHC.globalRdrEnvElts) (tmMinfRdrEnv tm)
 
 
 -- |Return True if a PName is a local PName.
@@ -2503,7 +2515,7 @@ useLoc (GHC.L l _) = GHC.srcSpanStart l
 findIdForName :: GHC.Name -> RefactGhc (Maybe GHC.Id)
 findIdForName n = do
   tm <- getTypecheckedModule
-  let t = GHC.tm_typechecked_source tm
+  let t = tmTypecheckedSource tm
   let r = SYB.somethingStaged SYB.Parser Nothing (Nothing `SYB.mkQ` worker) t
       worker (i::GHC.Id)
          | (GHC.nameUnique n) ==  (GHC.varUnique i) = Just i

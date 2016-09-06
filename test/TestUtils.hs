@@ -104,8 +104,8 @@ parsedFileGhc fileName = do
        res <- parseSourceFileTest fileName
        -- logm $ "parsedFileGhc:done"
        return res
-  (parseResult,_s) <- runRefactGhcStateLog comp Normal
-  -- (parseResult,_s) <- runRefactGhcStateLog comp Debug
+  -- (parseResult,_s) <- runRefactGhcStateLog comp Normal
+  (parseResult,_s) <- runRefactGhcStateLog comp Debug
   return parseResult
 
 -- ---------------------------------------------------------------------
@@ -255,7 +255,7 @@ showAnnDataFromState st =
     Just tm -> r
       where
         anns = tkCache (rsTokenCache tm) Map.! mainTid
-        parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
+        parsed = GHC.pm_parsed_source $ tmParsedModule
                  $ rsTypecheckedMod tm
         r = showAnnData anns 0 parsed
     Nothing -> []
@@ -304,7 +304,7 @@ sourceFromState st =
     Just tm -> r
       where
         anns = tkCache (rsTokenCache tm) Map.! mainTid
-        parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module
+        parsed = GHC.pm_parsed_source $ tmParsedModule
                  $ rsTypecheckedMod tm
         r = exactPrint parsed anns
     Nothing -> []
