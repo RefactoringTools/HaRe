@@ -164,11 +164,8 @@ spec = do
       let
         comp = do
          parseSourceFileGhc testFileName
-         logm $ "after parseSourceFileGhc"
          tm <- getRefactTargetModule
-         logm $ "after getRefactTargetModule"
          g <- clientModsAndFiles tm
-         logm $ "after clientModsAndFiles"
          return g
       (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialState testOptions
       -- (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialLogOnState testOptions

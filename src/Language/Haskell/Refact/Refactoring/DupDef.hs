@@ -159,7 +159,7 @@ reallyDoDuplicating pn newName _inscopes = do
           = filter (\d->isFunBindP d || isSimplePatDecl d) $ definingDeclsRdrNames nm [n] ds True False
 
 
-        doDuplicating' :: (SYB.Typeable t,SYB.Data t) => GHC.Name -> t -> GHC.Located GHC.Name -> RefactGhc t
+        doDuplicating' :: (SYB.Data t) => GHC.Name -> t -> GHC.Located GHC.Name -> RefactGhc t
         doDuplicating' newNameGhc t _ln = do
           logm $ "doDuplicating' entered"
           -- logm $ "doDuplicating' entered:t=" ++ SYB.showData SYB.Parser 0 t

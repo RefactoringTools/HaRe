@@ -265,7 +265,7 @@ equivalentNameInNewMod old = do
   logm $ "equivalentNameInNewMod:gnames=" ++ showGhcQual (map (\n -> (GHC.nameModule n,n)) gnames)
   let clientModule = GHC.nameModule old
   logm $ "equivalentNameInNewMod:(old,clientModule)=" ++ showGhcQual (old,clientModule)
-  let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
+  -- let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
   let clientInscopes = filter (\n -> eqModules clientModule (GHC.nameModule n)) gnames
   logm $ "equivalentNameInNewMod:clientInscopes=" ++ showGhcQual clientInscopes
   let newNames = filter (\n -> showGhcQual n == showGhcQual old) clientInscopes
