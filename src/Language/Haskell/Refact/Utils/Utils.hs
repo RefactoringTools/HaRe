@@ -36,6 +36,7 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.Identity
 import Control.Monad.State
 import Data.List
+import Data.IORef
 
 -- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
@@ -57,7 +58,10 @@ import System.FilePath.Posix
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
--- import qualified Outputable    as GHC
+import qualified Hooks         as GHC
+import qualified HscMain       as GHC
+import qualified HscTypes      as GHC
+import qualified TcRnTypes     as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
 -- import qualified Data.Generics as SYB
@@ -84,11 +88,10 @@ getTargetGhc (GM.ModulePath _mn fp) = parseSourceFileGhc fp
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
-parseSourceFileGhc :: FilePath -> RefactGhc ()
-parseSourceFileGhc targetFile = do
+parseSourceFileGhc' :: FilePath -> RefactGhc ()
+parseSourceFileGhc' targetFile = do
   logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
   setTargetSession targetFile
-  logm $ "parseSourceFileGhc:after setTargetSession"
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath targetFile
@@ -99,12 +102,53 @@ parseSourceFileGhc targetFile = do
 
 -- ---------------------------------------------------------------------
 
+-- | Parse a single source file into a GHC session
+parseSourceFileGhc :: FilePath -> RefactGhc ()
+parseSourceFileGhc targetFile = do
+  logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
+  ref <- liftIO $ newIORef "a"
+  let
+    setTarget targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] (installHooks ref) (return ())
+  setTarget targetFile
+  graph  <- GHC.getModuleGraph
+  cgraph <- canonicalizeGraph graph
+  cfileName <- liftIO $ canonicalizePath targetFile
+  let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
+  case mm of
+    [(_,modSum)] -> loadFromModSummary modSum
+    _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
+
+-- ---------------------------------------------------------------------
+
+installHooks :: (Monad m) => IORef t -> GHC.DynFlags -> m GHC.DynFlags
+installHooks ref dflags = return $ dflags {
+    GHC.hooks = (GHC.hooks dflags) {
+        GHC.hscFrontendHook   = Just $ runHscFrontend ref
+      }
+  }
+runHscFrontend :: IORef t -> GHC.ModSummary -> GHC.Hsc GHC.FrontendResult
+runHscFrontend ref mod_summary
+    = GHC.FrontendTypecheck `fmap` hscFrontend ref mod_summary
+
+-- ---------------------------------------------------------------------
+-- | Given a 'ModSummary', parses and typechecks it, returning the
+-- 'TcGblEnv' resulting from type-checking.
+-- Based on GHC.hscFileFrontend
+hscFrontend :: IORef t -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
+hscFrontend ref mod_summary = do
+    hpm <- GHC.hscParse' mod_summary
+    hsc_env <- GHC.getHscEnv
+    tcg_env <- GHC.tcRnModule' hsc_env mod_summary False hpm
+    return tcg_env
+
+-- ---------------------------------------------------------------------
+
 setTargetSession :: FilePath -> RefactGhc ()
 -- setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] setDynFlags (return ())
 setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (return ())
 
-setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
-setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
+-- setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
+-- setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
 
 -- ---------------------------------------------------------------------
 
@@ -135,6 +179,7 @@ loadFromModSummary modSum = do
   cppComments <- if True
                   then do
                        -- ++AZ++:TODO: enable the CPP option check some time
+                       -- TODO: Set the approriate DynFlag to retain the source, so this can be done more cheaply
                        logm $ "loadFromModSummary:CPP flag set"
                        case GHC.ml_hs_file $ GHC.ms_location modSum of
                          Just fileName -> getCppTokensAsComments defaultCppOptions fileName
@@ -208,7 +253,7 @@ runRefacSession settings opt comp = do
   return $ modifiedFiles refactoredMods
 
 -- ---------------------------------------------------------------------
-
+{-
 canonicalizeTargets :: Targets-> IO Targets
 canonicalizeTargets tgts = do
   cur <- getCurrentDirectory
@@ -216,7 +261,7 @@ canonicalizeTargets tgts = do
     canonicalizeTarget (Left path)     = Left <$> canonicalizePath (cur </> path)
     canonicalizeTarget (Right modname) = return $ Right modname
   mapM canonicalizeTarget tgts
-
+-}
 -- ---------------------------------------------------------------------
 -- TODO: the module should be stored in the state, and returned if it
 -- has been modified in a prior refactoring, instead of being parsed
@@ -355,10 +400,11 @@ writeRefactoredFiles verbosity files
      where
        modifyFile ((fileName,_),(ann,parsed)) = do
 
-           let rigidOptions :: PrintOptions Identity String
-               rigidOptions = printOptions (\_ b -> return b) return return RigidLayout
+           let
+               -- rigidOptions :: PrintOptions Identity String
+               -- rigidOptions = printOptions (\_ b -> return b) return return RigidLayout
 
-               exactPrintRigid  ast as = runIdentity (exactPrintWithOptions rigidOptions ast as)
+               -- exactPrintRigid  ast as = runIdentity (exactPrintWithOptions rigidOptions ast as)
                exactPrintNormal ast as = runIdentity (exactPrintWithOptions stringOptions ast as)
 
            -- let source = exactPrint parsed ann
