@@ -149,6 +149,33 @@ spec = do
 
   -- -----------------------------------
 
+    it "loads a file without a cabal project" $ do
+
+      tmp <- getTemporaryDirectory
+      let testDir = tmp ++ "/hare-test-no-cabal"
+          testFileName = testDir ++ "/Foo.hs"
+          testFileContents = unlines
+            [ "main = putStrLn \"helo\""
+            , "x = 1"
+            ]
+      createDirectoryIfMissing True testDir
+      writeFile testFileName testFileContents
+
+      let
+        comp = do
+         parseSourceFileGhc testFileName
+         logm $ "after parseSourceFileGhc"
+         tm <- getRefactTargetModule
+         logm $ "after getRefactTargetModule"
+         g <- clientModsAndFiles tm
+         logm $ "after clientModsAndFiles"
+         return g
+      (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialState testOptions
+      -- (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialLogOnState testOptions
+      showGhc (map GM.mpModule mg) `shouldBe` "[]"
+
+  -- -----------------------------------
+
     it "loads a series of files based on cabal3, which has a lib and an exe" $ do
 
       currentDir <- getCurrentDirectory
@@ -396,6 +423,38 @@ spec = do
       showGhc (map GM.mpModule mg) `shouldBe` "[Main, Main]"
 
       setCurrentDirectory currentDir
+
+    ------------------------------------
+
+    it "gets modules when loading without a cabal file" $ do
+
+      tmp <- getTemporaryDirectory
+      let testDir = tmp ++ "/hare-test-no-cabal-clientmodsandfiles"
+          testFileBName   = testDir ++ "/B.hs"
+          testFileFooName = testDir ++ "/Foo.hs"
+          testFileBContents = unlines
+            [ "module B where"
+            , "y = 2"
+            ]
+          testFileFooContents = unlines
+            [ "import B"
+            , "main = putStrLn \"hello\""
+            , "x = y + 1"
+            ]
+      createDirectoryIfMissing True testDir
+      writeFile testFileBName testFileBContents
+      writeFile testFileFooName testFileFooContents
+
+      let
+        comp = do
+         parseSourceFileGhc "./Foo.hs" -- Load the file first
+         parseSourceFileGhc "./B.hs" -- Load the file first
+         tm <- getRefactTargetModule
+         g <- clientModsAndFiles tm
+         return g
+      (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialState testOptions
+      showGhc (map GM.mpModule mg) `shouldBe` "[]"
+
 
     ------------------------------------
 

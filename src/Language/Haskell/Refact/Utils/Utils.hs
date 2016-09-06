@@ -387,6 +387,7 @@ writeRefactoredFiles verbosity files
 
 -- clientModsAndFiles :: GHC.ModuleName -> RefactGhc [TargetModule]
 clientModsAndFiles :: GM.ModulePath -> RefactGhc [TargetModule]
+-- TODO: Use ghc-mod cache if there is a cabal file, else normal GHC modulegraph
 clientModsAndFiles m = do
   mgs <- cabalModuleGraphs
   -- logm $ "clientModsAndFiles:mgs=" ++ show mgs
@@ -433,9 +434,10 @@ mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
 -- | Return the server module and file names. The server modules of
 -- module, say m, are those modules which are directly or indirectly
 -- imported by module m. This can only be called in a live GHC session
--- TODO: make sure this works with multiple targets. Is that needed? No?
+-- TODO: make sure this works with multiple targets. Is that needed?
 serverModsAndFiles
   :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
+-- TODO: Use ghc-mod cache if there is a cabal file, else normal GHC modulegraph
 serverModsAndFiles m = do
   ms <- GHC.getModuleGraph
   modsum <- GHC.getModSummary m

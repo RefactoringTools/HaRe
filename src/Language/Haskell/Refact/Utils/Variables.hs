@@ -71,7 +71,6 @@ import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Bag           as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
-import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 
 import qualified Data.Generics as SYB

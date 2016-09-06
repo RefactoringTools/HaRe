@@ -253,9 +253,13 @@ cabalModuleGraphs = RefactGhc doCabalModuleGraphs
   where
     doCabalModuleGraphs :: (GM.IOish m) => GM.GhcModT m [GM.GmModuleGraph]
     doCabalModuleGraphs = do
-      mcs <- GM.cabalResolvedComponents
-      let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
-      return $ graph
+      crdl <- GM.cradle
+      case GM.cradleCabalFile crdl of
+        Just _ -> do
+          mcs <- GM.cabalResolvedComponents
+          let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
+          return $ graph
+        Nothing -> return []
 
 -- ---------------------------------------------------------------------
 
