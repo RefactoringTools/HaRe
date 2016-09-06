@@ -588,6 +588,18 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
 
     -- -----------------------------------------------------------------
 
+    it "passes WildCard.hs" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/WildCard.hs" "taggedPlugins2" (7,1)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/WildCard.hs" "taggedPlugins2" (7,1)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/WildCard.hs\"]"
+     diff <- ct $ compareFiles "./Renaming/WildCard.refactored.hs"
+                               "./Renaming/WildCard.expected.hs"
+     diff `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
 {-
     it "renames in slack-api" $ do
      let cts = cdAndDo "/home/alanz/tmp/hackage/slack-api-0.6"

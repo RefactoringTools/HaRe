@@ -539,10 +539,10 @@ hsFreeAndDeclaredRdr' nm t = do
           hstype (GHC.L _ (GHC.HsWrapTy _ typ)) = hsFreeAndDeclaredRdr' nm typ
 #endif
 #if __GLASGOW_HASKELL__ <= 710
-          hstype (GHC.L _ (GHC.HsWildcardTy)) = error "To implement: hstype, HsWildcardTy"
-          hstype (GHC.L _ (GHC.HsNamedWildcardTy _)) = error "To implement: HsNamedWildcardTy"
+          hstype (GHC.L _ (GHC.HsWildcardTy)) = return (FN [],DN [])
+          hstype (GHC.L l (GHC.HsNamedWildcardTy n)) = return (FN [rdrName2NamePure nm (GHC.L l n)],DN [])
 #else
-          hstype (GHC.L _ (GHC.HsWildCardTy _)) = error "To implement: hstype, HsWildcardTy"
+          hstype (GHC.L _ (GHC.HsWildCardTy _)) = return (FN [],DN [])
 #endif
 #if __GLASGOW_HASKELL__ > 710
           hstype (GHC.L _ (GHC.HsQualTy (GHC.L _ ctxt) ty)) = recurseList (ty:ctxt)
