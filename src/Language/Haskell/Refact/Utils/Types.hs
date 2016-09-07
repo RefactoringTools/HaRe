@@ -39,8 +39,10 @@ data TypecheckedModule = TypecheckedModule
   { tmParsedModule      :: !GHC.ParsedModule
   , tmRenamedSource     :: !GHC.RenamedSource
   , tmTypecheckedSource :: !GHC.TypecheckedSource
-  , tmMinfExports       :: ![GHC.AvailInfo]
-  , tmMinfRdrEnv        :: !(Maybe GHC.GlobalRdrEnv)   -- Nothing for a compiled/package mod
+  -- , tmMinfExports       :: ![GHC.AvailInfo]
+  -- , tmMinfRdrEnv        :: !(Maybe GHC.GlobalRdrEnv)   -- Nothing for a compiled/package mod
+  , tmMinfExports       :: [GHC.AvailInfo]
+  , tmMinfRdrEnv        :: (Maybe GHC.GlobalRdrEnv)   -- Nothing for a compiled/package mod
   }
 
 -- TODO: improve this, or remove it's need

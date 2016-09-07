@@ -109,10 +109,12 @@ parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
   logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
   cfileName <- liftIO $ canonicalizePath targetFile
+  logm $ "parseSourceFileGhc:cfileName=" ++ show cfileName
   ref <- liftIO $ newIORef (cfileName,Nothing)
   let
-    setTarget targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] (installHooks ref) (return ())
-  setTarget targetFile
+    setTarget fileName = RefactGhc $ GM.runGmlT' [Left fileName] (installHooks ref) (return ())
+  -- setTarget targetFile
+  setTarget cfileName
   logm $ "parseSourceFileGhc:after setTarget"
   (_,mtm) <- liftIO $ readIORef ref
   logm $ "parseSourceFileGhc:isJust mtm:" ++ show (isJust mtm)
@@ -121,6 +123,7 @@ parseSourceFileGhc targetFile = do
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
   case mm of
     [(_,modSum)] -> loadFromModSummary mtm modSum
+    -- [(_,modSum)] -> loadFromModSummary Nothing modSum
     _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
 
 -- ---------------------------------------------------------------------
@@ -145,26 +148,31 @@ runHscFrontend ref mod_summary
 -- with API Annotations enabled.
 hscFrontend :: IORef (FilePath,Maybe TypecheckedModule) -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
 hscFrontend ref mod_summary = do
-    liftIO $ putStrLn $ "hscFrontend:entered:" ++ fileNameFromModSummary mod_summary
+    -- liftIO $ putStrLn $ "hscFrontend:entered:" ++ fileNameFromModSummary mod_summary
+    (mfn,_) <- canonicalizeModSummary mod_summary
+    -- liftIO $ putStrLn $ "hscFrontend:mfn:" ++ show mfn
     (fn,_) <- liftIO $ readIORef ref
     let
-      keepInfo = case GHC.ml_hs_file (GHC.ms_location mod_summary) of
+      keepInfo = case mfn of
                    Just fileName -> fn == fileName
                    Nothing -> False
     if keepInfo
       then do
-        hpm <- GHC.hscParse' mod_summary
+        -- liftIO $ putStrLn $ "hscFrontend:in keepInfo"
+        let modSumWithRaw = tweakModSummaryDynFlags mod_summary
+
+        hsc_env <- GHC.getHscEnv
+        let hsc_env_tmp = hsc_env { GHC.hsc_dflags = GHC.ms_hspp_opts modSumWithRaw }
+        hpm <- liftIO $ GHC.hscParse hsc_env_tmp modSumWithRaw
         let p = GHC.ParsedModule mod_summary
-                                (GHC.hpm_module hpm)
-                                (GHC.hpm_src_files hpm)
+                                (GHC.hpm_module      hpm)
+                                (GHC.hpm_src_files   hpm)
                                 (GHC.hpm_annotations hpm)
 
         hsc_env <- GHC.getHscEnv
-        -- tcg_env <- GHC.tcRnModule' hsc_env mod_summary False hpm
         (tc_gbl_env,rn_info) <- liftIO $ GHC.hscTypecheckRename hsc_env mod_summary hpm
 
         details <- liftIO $ GHC.makeSimpleDetails hsc_env tc_gbl_env
-        -- safe    <- liftIO $ GHC.finalSafeMode (GHC.ms_hspp_opts mod_summary) tc_gbl_env
 
         let
           tc =
@@ -176,7 +184,6 @@ hscFrontend ref mod_summary = do
               tmMinfRdrEnv        = Just (GHC.tcg_rdr_env tc_gbl_env)
               }
 
-        liftIO $ putStrLn $ "hscFrontend:about to modifyIOREF"
         liftIO $ modifyIORef' ref (const (fn,Just tc))
         return tc_gbl_env
       else do

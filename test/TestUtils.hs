@@ -104,8 +104,8 @@ parsedFileGhc fileName = do
        res <- parseSourceFileTest fileName
        -- logm $ "parsedFileGhc:done"
        return res
-  -- (parseResult,_s) <- runRefactGhcStateLog comp Normal
-  (parseResult,_s) <- runRefactGhcStateLog comp Debug
+  (parseResult,_s) <- runRefactGhcStateLog comp Normal
+  -- (parseResult,_s) <- runRefactGhcStateLog comp Debug
   return parseResult
 
 -- ---------------------------------------------------------------------
