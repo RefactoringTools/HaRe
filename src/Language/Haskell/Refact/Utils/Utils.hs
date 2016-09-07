@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -131,12 +132,20 @@ parseSourceFileGhc targetFile = do
 installHooks :: (Monad m) => IORef (FilePath,Maybe TypecheckedModule) -> GHC.DynFlags -> m GHC.DynFlags
 installHooks ref dflags = return $ dflags {
     GHC.hooks = (GHC.hooks dflags) {
+
+#if __GLASGOW_HASKELL__ <= 710
+        GHC.hscFrontendHook   = Just $ hscFrontend ref
+#else
         GHC.hscFrontendHook   = Just $ runHscFrontend ref
+#endif
       }
   }
+
+#if __GLASGOW_HASKELL__ > 710
 runHscFrontend :: IORef (FilePath,Maybe TypecheckedModule) -> GHC.ModSummary -> GHC.Hsc GHC.FrontendResult
 runHscFrontend ref mod_summary
     = GHC.FrontendTypecheck `fmap` hscFrontend ref mod_summary
+#endif
 
 -- ---------------------------------------------------------------------
 -- | Given a 'ModSummary', parses and typechecks it, returning the
