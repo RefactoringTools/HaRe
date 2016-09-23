@@ -301,7 +301,8 @@ runFunc f = do
   putStrLn ret
 
 showLisp :: [String] -> String
-showLisp xs = "(" ++ (intercalate " " $ map (\str -> "\"" ++ str ++ "\"") xs) ++ ")"
+showLisp xs = "(" ++ (intercalate " " $ map (\str -> "\"" ++ unixSlashes str ++ "\"") xs) ++ ")"
+  where unixSlashes = map (\c -> if c == '\\' then '/' else c)
 
 catchException :: (IO t) -> IO (Either String t)
 catchException f = do
