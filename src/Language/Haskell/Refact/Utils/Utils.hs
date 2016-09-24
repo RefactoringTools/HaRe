@@ -30,6 +30,8 @@ module Language.Haskell.Refact.Utils.Utils
 
        , stripCallStack
 
+       , initTargetSession
+       , dropTargetSession
        ) where
 
 -- import Control.Exception
@@ -87,8 +89,6 @@ getTargetGhc (GM.ModulePath _mn fp) = parseSourceFileGhc fp
 parseSourceFileGhc :: FilePath -> RefactGhc ()
 parseSourceFileGhc targetFile = do
   logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
-  setTargetSession targetFile
-  logm $ "parseSourceFileGhc:after setTargetSession"
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath targetFile
@@ -99,9 +99,15 @@ parseSourceFileGhc targetFile = do
 
 -- ---------------------------------------------------------------------
 
-setTargetSession :: FilePath -> RefactGhc ()
--- setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] setDynFlags (return ())
-setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (return ())
+initTargetSession :: [FilePath] -> RefactGhc ()
+initTargetSession targetFiles = do
+  logm $ "initTargetSession:targetFiles=" ++ show targetFiles
+  RefactGhc $ GM.runGmlT' (map Left targetFiles) return (return ())
+
+dropTargetSession :: RefactGhc ()
+dropTargetSession = do
+  logm "dropTargetSession"
+  RefactGhc $ GM.dropSession
 
 setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
 setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
