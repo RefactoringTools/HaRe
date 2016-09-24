@@ -13,8 +13,12 @@ import Control.Monad
 import Data.List
 
 import qualified Language.Haskell.GhcMod as GM (Options(..))
+import qualified Language.Haskell.GhcMod.Internal as GM
 import Language.Haskell.Refact.API
 import System.Directory
+
+import Language.Haskell.Refact.Utils.Utils (initTargetSession, dropTargetSession)
+
 
 {-This refactoring renames an indentifier to a user-specified name.
 
@@ -59,6 +63,7 @@ rename settings opts fileName newName (row,col) = do
 compRename :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 compRename fileName newName (row,col) = do
     logm $ "Renaming.comp: (fileName,newName,(row,col))=" ++ show (fileName,newName,(row,col))
+    initTargetSession [fileName]
     parseSourceFileGhc fileName
 
     parsed       <- getRefactParsed
@@ -107,15 +112,20 @@ compRename fileName newName (row,col) = do
             newNameGhc <- mkNewGhcName (Just modu) newName
             (refactoredMod, nIsExported) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName)
                                            RSAlreadyLoaded
+            dropTargetSession
 
             logm $ "Renaming:nIsExported=" ++ show nIsExported
             if nIsExported  --no matter whether this pn is used or not.
                 then do clients <- clientModsAndFiles targetModule
                         logm ("Renaming: clients=" ++ show clients) -- ++AZ++ debug
+                        initTargetSession $ fileName : map (\(GM.ModulePath _mn fp) -> fp) clients
                         refactoredClients <- mapM (renameInClientMod n newName newNameGhc) clients
+                        dropTargetSession
                         return $ refactoredMod : concat refactoredClients
                 else return [refactoredMod]
-        Nothing -> error "Invalid cursor position!"
+        Nothing -> do
+          dropTargetSession
+          error "Invalid cursor position!"
 
 
 -- |Actually do the renaming, split into the various things that can
@@ -194,10 +204,10 @@ renameTopLevelVarName oldPN newName newNameGhc modName existChecking exportCheck
 
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
                   -> RefactGhc [ApplyRefacResult]
-renameInClientMod oldPN newName newNameGhc targetModule = do
+renameInClientMod oldPN newName newNameGhc targetModule@(GM.ModulePath _mn fp) = do
     logm $ "renameInClientMod:(oldPN,newNameGhc,targetModule)=" ++ showGhc (oldPN,newNameGhc,targetModule) -- ++AZ++
     logm $ "renameInClientMod:(newNameGhc module)=" ++ showGhc (GHC.nameModule newNameGhc) -- ++AZ++
-    getTargetGhc targetModule
+    parseSourceFileGhc fp
 
     modName <- getRefactModuleName
     parsed  <- getRefactParsed
