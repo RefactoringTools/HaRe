@@ -3,8 +3,9 @@ module Language.Haskell.Refact.Refactoring.GenApplicative where
 import Language.Haskell.Refact.API
 import qualified Language.Haskell.GhcMod as GM
 import qualified GHC as GHC
+import qualified RdrName as GHC
 import System.Directory
-
+import FastString
 import Data.Generics as SYB
 import GHC.SYB.Utils as SYB
 
@@ -54,24 +55,46 @@ getReturnRhs funBind = SYB.something (Nothing `SYB.mkQ` retStmt) funBind
         retRHS (GHC.HsApp _  (GHC.L _ rhs)) = rhs
 
 
-constructAppChain :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedExpr
-constructAppChain (st:stmts) = do
-  rest <- case length stmts of
-            1 -> return $ getBody (head stmts)
-            _ -> constructAppChain stmts
-  case getStmtLR st of
-    --If it is a bodystmt then this statement will not affect the output of the function so we can simply 
-    (GHC.BodyStmt body _ _ _) -> undefined
-      
+constructAppChain :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedExpr
+constructAppChain retRhs lst@(st:stmts) = do
+  effects <- buildChain lst
+  return undefined
+
   where
-    getStmtLR :: GHC.ExprLStmt GHC.RdrName -> GHC.StmtLR GHC.RdrName GHC.RdrName ParsedLExpr
-    getStmtLR (GHC.L _ stlr) = stlr
-    getBody :: GHC.ExprLStmt GHC.RdrName -> ParsedLExpr
-    getBody (GHC.BindStmt _ body _ _) = body
-    getBody (GHC.BodyStmt body _ _ _) = body
-{-constructPureStatement :: ParsedExpr -> RefactGhc (Maybe ([ParsedExpr] -> ParsedLExpr))
-constructPureStatement pExpr =
-  case pExpr of
-    (GHC.HsVar _) -> return Nothing
-    _ -> error "Other types of expressions are not supported yet."
--}
+    getStmtExpr :: GHC.ExprLStmt GHC.RdrName -> GHC.LHsExpr GHC.RdrName
+    getStmtExpr (GHC.L _ (GHC.BodyStmt body _ _ _)) = body
+    getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _)) = body
+    buildChain :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedExpr
+    buildChain (st:stmts) = do           
+      let (op, rst) = buildChain' stmts
+          useApply = op && isBindStmt st
+          stExpr = getStmtExpr st
+      if useApply then do
+        lap <- locate fApp
+        return (GHC.OpApp rst lap (GHC.PlaceHolder) stExpr)
+      else do
+        return undefined
+    buildChain' = undefined
+
+--Checks if a name occurs in the given ast chunk
+nameOccurs :: Data a => GHC.RdrName -> a -> Bool
+nameOccurs nm = SYB.everything (||) (False `SYB.mkQ` isName)
+  where isName :: GHC.RdrName -> Bool
+        isName mName = nm == mName
+
+isBindStmt :: GHC.ExprLStmt GHC.RdrName -> Bool
+isBindStmt (GHC.L _ (GHC.BindStmt _ _ _ _)) = True
+isBindStmt _ = False
+
+fApp :: ParsedExpr
+fApp = let nm = fsLit "<*>" in
+  (GHC.HsVar (GHC.mkVarUnqual nm))
+
+lApp :: ParsedExpr
+lApp = let nm = fsLit "<*" in
+  (GHC.HsVar (GHC.mkVarUnqual nm))
+
+rApp :: ParsedExpr
+rApp = let nm = fsLit "*>" in
+  (GHC.HsVar (GHC.mkVarUnqual nm))
+

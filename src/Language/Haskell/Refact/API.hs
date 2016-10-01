@@ -246,7 +246,6 @@ module Language.Haskell.Refact.API
   , addNewKeyword
   , addNewKeywords
 
-  , locate
   , addEmptyAnn
   , addAnnVal
   , addAnn
