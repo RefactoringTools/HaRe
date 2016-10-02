@@ -366,8 +366,8 @@ spec = do
     -- ---------------------------------
 
     it "naming clash IdIn5" $ do
-     -- ct $ rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1)
-     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1))
+     -- ct $ rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (13,1)
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (13,1))
      (show res) `shouldBe` "Just \"Name 'y' already exists, or renaming 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
 
     -- ---------------------------------

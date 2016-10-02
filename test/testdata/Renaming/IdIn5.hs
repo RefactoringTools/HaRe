@@ -1,5 +1,8 @@
 module IdIn5 where
 
+-- Check that annotation can be processed properly too
+{-# ANN module ("HLint: ignore Eta reduce"         :: String) #-}
+
 {-To rename an identifier name, stop the cursor at any occurrence of the name,
   then input the new name in the mini-buffer, after that, select the 'rename'
   command from the 'Refactor' menu.-}
