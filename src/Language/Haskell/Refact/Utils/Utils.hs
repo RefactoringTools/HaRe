@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
@@ -36,6 +37,8 @@ module Language.Haskell.Refact.Utils.Utils
 import Control.Monad.Identity
 import Control.Monad.State
 import Data.List
+import Data.Maybe
+import Data.IORef
 
 -- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
@@ -57,7 +60,11 @@ import System.FilePath.Posix
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
--- import qualified Outputable    as GHC
+import qualified Hooks         as GHC
+import qualified HscMain       as GHC
+import qualified HscTypes      as GHC
+import qualified TcRnMonad     as GHC
+import qualified TcRnTypes     as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
 -- import qualified Data.Generics as SYB
@@ -84,18 +91,115 @@ getTargetGhc (GM.ModulePath _mn fp) = parseSourceFileGhc fp
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
-parseSourceFileGhc :: FilePath -> RefactGhc ()
-parseSourceFileGhc targetFile = do
+parseSourceFileGhc' :: FilePath -> RefactGhc ()
+parseSourceFileGhc' targetFile = do
   logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
   setTargetSession targetFile
-  logm $ "parseSourceFileGhc:after setTargetSession"
   graph  <- GHC.getModuleGraph
   cgraph <- canonicalizeGraph graph
   cfileName <- liftIO $ canonicalizePath targetFile
   let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
   case mm of
-    [(_,modSum)] -> loadFromModSummary modSum
+    [(_,modSum)] -> loadFromModSummary Nothing modSum
     _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
+
+-- ---------------------------------------------------------------------
+
+-- | Parse a single source file into a GHC session
+parseSourceFileGhc :: FilePath -> RefactGhc ()
+parseSourceFileGhc targetFile = do
+  logm $ "parseSourceFileGhc:targetFile=" ++ show targetFile
+  cfileName <- liftIO $ canonicalizePath targetFile
+  logm $ "parseSourceFileGhc:cfileName=" ++ show cfileName
+  ref <- liftIO $ newIORef (cfileName,Nothing)
+  let
+    setTarget fileName = RefactGhc $ GM.runGmlT' [Left fileName] (installHooks ref) (return ())
+  -- setTarget targetFile
+  setTarget cfileName
+  logm $ "parseSourceFileGhc:after setTarget"
+  (_,mtm) <- liftIO $ readIORef ref
+  logm $ "parseSourceFileGhc:isJust mtm:" ++ show (isJust mtm)
+  graph  <- GHC.getModuleGraph
+  cgraph <- canonicalizeGraph graph
+  let mm = filter (\(mfn,_ms) -> mfn == Just cfileName) cgraph
+  case mm of
+    [(_,modSum)] -> loadFromModSummary mtm modSum
+    -- [(_,modSum)] -> loadFromModSummary Nothing modSum
+    _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
+
+-- ---------------------------------------------------------------------
+
+installHooks :: (Monad m) => IORef (FilePath,Maybe TypecheckedModule) -> GHC.DynFlags -> m GHC.DynFlags
+installHooks ref dflags = return $ dflags {
+    GHC.hooks = (GHC.hooks dflags) {
+
+#if __GLASGOW_HASKELL__ <= 710
+        GHC.hscFrontendHook   = Just $ hscFrontend ref
+#else
+        GHC.hscFrontendHook   = Just $ runHscFrontend ref
+#endif
+      }
+  }
+
+#if __GLASGOW_HASKELL__ > 710
+runHscFrontend :: IORef (FilePath,Maybe TypecheckedModule) -> GHC.ModSummary -> GHC.Hsc GHC.FrontendResult
+runHscFrontend ref mod_summary
+    = GHC.FrontendTypecheck `fmap` hscFrontend ref mod_summary
+#endif
+
+-- ---------------------------------------------------------------------
+-- | Given a 'ModSummary', parses and typechecks it, returning the
+-- 'TcGblEnv' resulting from type-checking.
+-- Based on GHC.hscFileFrontend
+--
+-- This gets called on every module compiled when loading the wanted target.
+-- When it is the wanted target, keep the ParsedSource and TypecheckedSource,
+-- with API Annotations enabled.
+hscFrontend :: IORef (FilePath,Maybe TypecheckedModule) -> GHC.ModSummary -> GHC.Hsc GHC.TcGblEnv
+hscFrontend ref mod_summary = do
+    -- liftIO $ putStrLn $ "hscFrontend:entered:" ++ fileNameFromModSummary mod_summary
+    (mfn,_) <- canonicalizeModSummary mod_summary
+    -- liftIO $ putStrLn $ "hscFrontend:mfn:" ++ show mfn
+    (fn,_) <- liftIO $ readIORef ref
+    let
+      keepInfo = case mfn of
+                   Just fileName -> fn == fileName
+                   Nothing -> False
+    if keepInfo
+      then do
+        -- liftIO $ putStrLn $ "hscFrontend:in keepInfo"
+        let modSumWithRaw = tweakModSummaryDynFlags mod_summary
+
+        hsc_env <- GHC.getHscEnv
+        let hsc_env_tmp = hsc_env { GHC.hsc_dflags = GHC.ms_hspp_opts modSumWithRaw }
+        hpm <- liftIO $ GHC.hscParse hsc_env_tmp modSumWithRaw
+        let p = GHC.ParsedModule mod_summary
+                                (GHC.hpm_module      hpm)
+                                (GHC.hpm_src_files   hpm)
+                                (GHC.hpm_annotations hpm)
+
+        hsc_env <- GHC.getHscEnv
+        (tc_gbl_env,rn_info) <- liftIO $ GHC.hscTypecheckRename hsc_env mod_summary hpm
+
+        details <- liftIO $ GHC.makeSimpleDetails hsc_env tc_gbl_env
+
+        let
+          tc =
+            TypecheckedModule {
+              tmParsedModule      = p,
+              tmRenamedSource     = gfromJust "hscFrontend" rn_info,
+              tmTypecheckedSource = GHC.tcg_binds tc_gbl_env,
+              tmMinfExports       = GHC.md_exports details,
+              tmMinfRdrEnv        = Just (GHC.tcg_rdr_env tc_gbl_env)
+              }
+
+        liftIO $ modifyIORef' ref (const (fn,Just tc))
+        return tc_gbl_env
+      else do
+        hpm <- GHC.hscParse' mod_summary
+        hsc_env <- GHC.getHscEnv
+        tc_gbl_env <- GHC.tcRnModule' hsc_env mod_summary False hpm
+        return tc_gbl_env
 
 -- ---------------------------------------------------------------------
 
@@ -103,8 +207,8 @@ setTargetSession :: FilePath -> RefactGhc ()
 -- setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] setDynFlags (return ())
 setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (return ())
 
-setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
-setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
+-- setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
+-- setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
 
 -- ---------------------------------------------------------------------
 
@@ -123,18 +227,31 @@ tweakModSummaryDynFlags ms =
 
 -- | In the existing GHC session, put the requested TypeCheckedModule
 -- into the RefactGhc monad
-loadFromModSummary :: GHC.ModSummary -> RefactGhc ()
-loadFromModSummary modSum = do
+loadFromModSummary :: Maybe TypecheckedModule -> GHC.ModSummary -> RefactGhc ()
+loadFromModSummary mtm modSum = do
   logm $ "loadFromModSummary:modSum=" ++ show modSum
-  let modSumWithRaw = tweakModSummaryDynFlags modSum
-  p <- GHC.parseModule modSumWithRaw
-  t <- GHC.typecheckModule p
+  t <- case mtm of
+    Nothing -> do
+      let modSumWithRaw = tweakModSummaryDynFlags modSum
+      p <- GHC.parseModule modSumWithRaw
+      t' <- GHC.typecheckModule p
+      let
+        tm = TypecheckedModule
+          { tmParsedModule = p
+          , tmRenamedSource = gfromJust "loadFromModSummary" $ GHC.tm_renamed_source t'
+          , tmTypecheckedSource = GHC.tm_typechecked_source t'
+          , tmMinfExports  = error $ "loadFromModSummary:not visible in ModuleInfo 1"
+          , tmMinfRdrEnv   = error $ "loadFromModSummary:not visible in ModuleInfo 2"
+          }
+      return tm
+    Just tm -> return tm
 
   -- dflags <- GHC.getDynFlags
   -- cppComments <- if (GHC.xopt GHC.Opt_Cpp dflags)
   cppComments <- if True
                   then do
                        -- ++AZ++:TODO: enable the CPP option check some time
+                       -- TODO: Set the approriate DynFlag to retain the source, so this can be done more cheaply
                        logm $ "loadFromModSummary:CPP flag set"
                        case GHC.ml_hs_file $ GHC.ms_location modSum of
                          Just fileName -> getCppTokensAsComments defaultCppOptions fileName
@@ -208,7 +325,7 @@ runRefacSession settings opt comp = do
   return $ modifiedFiles refactoredMods
 
 -- ---------------------------------------------------------------------
-
+{-
 canonicalizeTargets :: Targets-> IO Targets
 canonicalizeTargets tgts = do
   cur <- getCurrentDirectory
@@ -216,7 +333,7 @@ canonicalizeTargets tgts = do
     canonicalizeTarget (Left path)     = Left <$> canonicalizePath (cur </> path)
     canonicalizeTarget (Right modname) = return $ Right modname
   mapM canonicalizeTarget tgts
-
+-}
 -- ---------------------------------------------------------------------
 -- TODO: the module should be stored in the state, and returned if it
 -- has been modified in a prior refactoring, instead of being parsed
@@ -355,10 +472,11 @@ writeRefactoredFiles verbosity files
      where
        modifyFile ((fileName,_),(ann,parsed)) = do
 
-           let rigidOptions :: PrintOptions Identity String
-               rigidOptions = printOptions (\_ b -> return b) return return RigidLayout
+           let
+               -- rigidOptions :: PrintOptions Identity String
+               -- rigidOptions = printOptions (\_ b -> return b) return return RigidLayout
 
-               exactPrintRigid  ast as = runIdentity (exactPrintWithOptions rigidOptions ast as)
+               -- exactPrintRigid  ast as = runIdentity (exactPrintWithOptions rigidOptions ast as)
                exactPrintNormal ast as = runIdentity (exactPrintWithOptions stringOptions ast as)
 
            -- let source = exactPrint parsed ann
@@ -387,6 +505,7 @@ writeRefactoredFiles verbosity files
 
 -- clientModsAndFiles :: GHC.ModuleName -> RefactGhc [TargetModule]
 clientModsAndFiles :: GM.ModulePath -> RefactGhc [TargetModule]
+-- TODO: Use ghc-mod cache if there is a cabal file, else normal GHC modulegraph
 clientModsAndFiles m = do
   mgs <- cabalModuleGraphs
   -- logm $ "clientModsAndFiles:mgs=" ++ show mgs
@@ -433,9 +552,10 @@ mycomp ms1 ms2 = (GHC.ms_mod ms1) == (GHC.ms_mod ms2)
 -- | Return the server module and file names. The server modules of
 -- module, say m, are those modules which are directly or indirectly
 -- imported by module m. This can only be called in a live GHC session
--- TODO: make sure this works with multiple targets. Is that needed? No?
+-- TODO: make sure this works with multiple targets. Is that needed?
 serverModsAndFiles
   :: GHC.GhcMonad m => GHC.ModuleName -> m [GHC.ModSummary]
+-- TODO: Use ghc-mod cache if there is a cabal file, else normal GHC modulegraph
 serverModsAndFiles m = do
   ms <- GHC.getModuleGraph
   modsum <- GHC.getModSummary m

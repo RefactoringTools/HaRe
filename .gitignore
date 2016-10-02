@@ -108,6 +108,7 @@
 /testing/evalAddEvalMon/UTestCache
 /testing/introThreshold/UTestCache
 dist/
+dist-newstyle/
 editors/Emacs/haskell-refac.el
 editors/Emacs/haskell-refac.el2
 editors/GenEditorInterfaces
@@ -462,3 +463,4 @@ test/testdata/cabal/cabal3/stack.yaml
 test/testdata/cabal/cabal4/stack.yaml
 test/testdata/cabal/foo/stack.yaml
 test/testdata/stack.yaml
+/cabal.project.local

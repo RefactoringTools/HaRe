@@ -8,11 +8,10 @@ module Language.Haskell.Refact.Utils.GhcModuleGraph
   ) where
 
 -- GHC imports
-#if __GLASGOW_HASKELL__ > 710
-import BasicTypes
-#endif
 import Digraph
+#if __GLASGOW_HASKELL__ <= 710
 import FastString
+#endif
 import GHC
 import HscTypes
 import Panic

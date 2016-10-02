@@ -22,6 +22,7 @@ import Language.Haskell.Refact.Utils.LocUtils
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.TypeUtils
+import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
 
@@ -41,7 +42,7 @@ spec = do
   describe "locToExp on ParsedSource" $ do
     it "p:finds the largest leftmost expression contained in a given region #1" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
 
       let (Just expr) = locToExp (7,7) (7,43) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,9)
@@ -50,7 +51,7 @@ spec = do
     it "p:finds the largest leftmost expression contained in a given region #2" $ do
       -- ((_, _, mod), toks) <- parsedFileBGhc
       t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
-      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let modu = GHC.pm_parsed_source $ tmParsedModule t
 
       let (Just expr) = locToExp (7,7) (7,41) modu :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
       getLocatedStart expr `shouldBe` (7,12)
@@ -58,7 +59,7 @@ spec = do
 
     it "finds the largest leftmost expression in RenamedSource" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      let renamed = tmRenamedSource t
 
       let (Just expr) = locToExp (7,7) (7,41) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
       getLocatedStart expr `shouldBe` (7,12)
@@ -68,7 +69,7 @@ spec = do
     it "r:finds the largest leftmost expression contained in a given region #1" $ do
       -- ((_, Just renamed, _), toks) <- parsedFileBGhc
       t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
-      let renamed = fromJust $ GHC.tm_renamed_source t
+      let renamed = tmRenamedSource t
 
       let (Just expr) = locToExp (7,7) (7,43) renamed :: Maybe (GHC.Located (GHC.HsExpr GHC.Name))
       getLocatedStart expr `shouldBe` (7,9)
@@ -80,14 +81,14 @@ spec = do
     it "loads a file having the LANGUAGE CPP pragma" $ do
       t <- ct $ parsedFileGhc "./BCpp.hs"
 
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
       (showGhc parsed) `shouldBe` "module BCpp where\nbob :: Int -> Int -> Int\nbob x y = x + y"
 
      -- ---------------------------------
     it "loads a file having a top comment and LANGUAGE CPP pragma" $ do
       t <- ct $ parsedFileGhc "./BCppTC.hs"
 
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
       (showGhc parsed) `shouldBe` "module BCppTC where\nbob :: Int -> Int -> Int\nbob x y = x + y"
 
      -- ---------------------------------
@@ -146,6 +147,30 @@ spec = do
       (show r') `shouldBe` "[\"src/Foo/Bar.hs\","++
                             "\"src/main1.hs\","++
                             "\"src/main2.hs\"]"
+
+  -- -----------------------------------
+
+    it "loads a file without a cabal project" $ do
+
+      tmp <- getTemporaryDirectory
+      let testDir = tmp ++ "/hare-test-no-cabal"
+          testFileName = testDir ++ "/Foo.hs"
+          testFileContents = unlines
+            [ "main = putStrLn \"helo\""
+            , "x = 1"
+            ]
+      createDirectoryIfMissing True testDir
+      writeFile testFileName testFileContents
+
+      let
+        comp = do
+         parseSourceFileGhc testFileName
+         tm <- getRefactTargetModule
+         g <- clientModsAndFiles tm
+         return g
+      (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialState testOptions
+      -- (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialLogOnState testOptions
+      showGhc (map GM.mpModule mg) `shouldBe` "[]"
 
   -- -----------------------------------
 
@@ -332,14 +357,14 @@ spec = do
   describe "getModuleName" $ do
     it "returns a string for the module name if there is one" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/B.hs"
-      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let modu = GHC.pm_parsed_source $ tmParsedModule t
 
       let (Just (_modname,modNameStr)) = getModuleName modu
       modNameStr `shouldBe` "TypeUtils.B"
 
     it "returns Nothing for the module name otherwise" $ do
       t <- ct $ parsedFileGhc "./NoMod.hs"
-      let modu = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let modu = GHC.pm_parsed_source $ tmParsedModule t
       getModuleName modu `shouldBe` Nothing
 
   -- -------------------------------------------------------------------
@@ -396,6 +421,38 @@ spec = do
       showGhc (map GM.mpModule mg) `shouldBe` "[Main, Main]"
 
       setCurrentDirectory currentDir
+
+    ------------------------------------
+
+    it "gets modules when loading without a cabal file" $ do
+
+      tmp <- getTemporaryDirectory
+      let testDir = tmp ++ "/hare-test-no-cabal-clientmodsandfiles"
+          testFileBName   = testDir ++ "/B.hs"
+          testFileFooName = testDir ++ "/Foo.hs"
+          testFileBContents = unlines
+            [ "module B where"
+            , "y = 2"
+            ]
+          testFileFooContents = unlines
+            [ "import B"
+            , "main = putStrLn \"hello\""
+            , "x = y + 1"
+            ]
+      createDirectoryIfMissing True testDir
+      writeFile testFileBName testFileBContents
+      writeFile testFileFooName testFileFooContents
+
+      let
+        comp = do
+         parseSourceFileGhc "./Foo.hs" -- Load the file first
+         parseSourceFileGhc "./B.hs" -- Load the file first
+         tm <- getRefactTargetModule
+         g <- clientModsAndFiles tm
+         return g
+      (mg,_s) <- cdAndDo testDir $ runRefactGhc comp initialState testOptions
+      showGhc (map GM.mpModule mg) `shouldBe` "[]"
+
 
     ------------------------------------
 
@@ -483,7 +540,7 @@ spec = do
           return (pr,g)
 
       ( (t, mg), _s) <- ct $ runRefactGhc comp initialState testOptions
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
       showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
@@ -500,7 +557,7 @@ spec = do
 
           return (pr,g)
       ((t, mg ), _s) <- ct $ runRefactGhc comp initialState testOptions
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
       showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
@@ -517,7 +574,7 @@ spec = do
 
           return (pr,g)
       ((t, mg), _s) <- ct $ runRefactGhc comp  initialState testOptions
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"DupDef.Dd1\",\"DupDef.Dd1\")"
       showGhc (map GM.mpModule mg) `shouldBe` "[DupDef.Dd2, DupDef.Dd3]"
 
@@ -582,7 +639,7 @@ spec = do
     it "loads a file from a sub directory" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/DeclareS.hs"
       fileName <- canonicalizePath "./test/testdata/FreeAndDeclared/DeclareS.hs"
-      let parsed = GHC.pm_parsed_source $ GHC.tm_parsed_module t
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
       let
         comp = do
           parseSourceFileGhc fileName

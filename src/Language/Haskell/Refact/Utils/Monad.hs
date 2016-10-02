@@ -97,7 +97,7 @@ logSettings = defaultSettings { rsetVerboseLevel = Debug }
 data RefactStashId = Stash !String deriving (Show,Eq,Ord)
 
 data RefactModule = RefMod
-        { rsTypecheckedMod  :: !GHC.TypecheckedModule
+        { rsTypecheckedMod  :: !TypecheckedModule
         , rsNameMap         :: NameMap
           -- ^ Mapping from the names in the ParsedSource to the renamed
           -- versions. Note: No strict mark, can be computed lazily.
@@ -167,7 +167,7 @@ type Targets = [Either FilePath GHC.ModuleName]
 
 -- |Result of parsing a Haskell source file. It is simply the
 -- TypeCheckedModule produced by GHC.
-type ParseResult = GHC.TypecheckedModule
+type ParseResult = TypecheckedModule
 
 -- |Provide some temporary storage while the refactoring is taking
 -- place
@@ -253,9 +253,13 @@ cabalModuleGraphs = RefactGhc doCabalModuleGraphs
   where
     doCabalModuleGraphs :: (GM.IOish m) => GM.GhcModT m [GM.GmModuleGraph]
     doCabalModuleGraphs = do
-      mcs <- GM.cabalResolvedComponents
-      let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
-      return $ graph
+      crdl <- GM.cradle
+      case GM.cradleCabalFile crdl of
+        Just _ -> do
+          mcs <- GM.cabalResolvedComponents
+          let graph = map GM.gmcHomeModuleGraph $ Map.elems mcs
+          return $ graph
+        Nothing -> return []
 
 -- ---------------------------------------------------------------------
 
