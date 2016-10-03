@@ -28,6 +28,13 @@ Executable RenamingMain2
                         , syb
   default-language:    Haskell2010
 
+Executable RenamingExportedType
+  Main-Is: ./Renaming/ExportedTypeClient.hs
+  Hs-Source-Dirs:         .
+  Build-Depends:          base >= 4.0  && < 5
+                        , syb
+  default-language:    Haskell2010
+
 Executable bcpp
   Main-Is: BCpp.hs
   Build-Depends:          base >= 4.0  && < 5

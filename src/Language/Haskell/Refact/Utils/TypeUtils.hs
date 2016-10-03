@@ -264,7 +264,7 @@ equivalentNameInNewMod old = do
   let eqModules (GHC.Module pk1 mn1) (GHC.Module pk2 mn2) = mn1 == mn2 && pk1 == pk2
 
   gnames <- GHC.getNamesInScope
-  logm $ "equivalentNameInNewMod:gnames=" ++ showGhcQual (map (\n -> (GHC.nameModule n,n)) gnames)
+  -- logm $ "equivalentNameInNewMod:gnames=" ++ showGhcQual (map (\n -> (GHC.nameModule n,n)) gnames)
   let clientModule = GHC.nameModule old
   logm $ "equivalentNameInNewMod:(old,clientModule)=" ++ showGhcQual (old,clientModule)
   -- let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
