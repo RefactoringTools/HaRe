@@ -981,6 +981,7 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` ibndrs
           `SYB.extQ` lsigty
 #endif
+          `SYB.extQ` lanndecl
           ) t
 
     -- err2 = error $ "hsVisibleDsRdr:err2:no match for:" ++ (SYB.showData SYB.Renamer 0 t)
@@ -1405,6 +1406,9 @@ hsVisibleDsRdr nm e t = do
     lsigty :: GHC.LHsSigType GHC.RdrName -> RefactGhc DeclaredNames
     lsigty (GHC.HsIB _ ty) = hsVisibleDsRdr nm e ty
 #endif
+    -- -----------------------
+    lanndecl :: GHC.LAnnDecl GHC.RdrName -> RefactGhc DeclaredNames
+    lanndecl (GHC.L _ (GHC.HsAnnotation _ _ expr)) = hsVisibleDsRdr nm e expr
     -- -----------------------
 
     err = error $ "hsVisibleDsRdr nm:no match for:" ++ (SYB.showData SYB.Parser 0 t)

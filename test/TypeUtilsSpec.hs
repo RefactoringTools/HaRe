@@ -1007,13 +1007,13 @@ spec = do
       t <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
       let parsed = GHC.pm_parsed_source $ tmParsedModule t
 
-      let Just rhs  = locToExp (14,6) (15,14) parsed  :: (Maybe (GHC.LHsExpr GHC.RdrName))
+      let Just rhs  = locToExp (17,6) (18,14) parsed  :: (Maybe (GHC.LHsExpr GHC.RdrName))
       (showGhcQual rhs) `shouldBe` "x + y + z"
 
       -- let Just er = getName "IdIn5.x" renamed
-      let Just e  = locToRdrName (14,7) parsed
+      let Just e  = locToRdrName (17,7) parsed
       (showGhcQual e) `shouldBe` "x"
-      (SYB.showData SYB.Parser 0 e) `shouldBe` "\n(L {Renaming/IdIn5.hs:14:7} \n (Unqual {OccName: x}))"
+      (SYB.showData SYB.Parser 0 e) `shouldBe` "\n(L {Renaming/IdIn5.hs:17:7} \n (Unqual {OccName: x}))"
 
       let
         comp = do
@@ -1075,9 +1075,9 @@ spec = do
       t <- ct $ parsedFileGhc "./Renaming/IdIn5.hs"
       let parsed = GHC.pm_parsed_source $ tmParsedModule t
 
-      let Just ln = locToRdrName (10, 1) parsed
+      let Just ln = locToRdrName (13, 1) parsed
       (showGhcQual ln) `shouldBe` "x"
-      (SYB.showData SYB.Parser 0 ln) `shouldBe` "\n(L {Renaming/IdIn5.hs:10:1} \n (Unqual {OccName: x}))"
+      (SYB.showData SYB.Parser 0 ln) `shouldBe` "\n(L {Renaming/IdIn5.hs:13:1} \n (Unqual {OccName: x}))"
 
       let
         comp = do
@@ -1089,7 +1089,7 @@ spec = do
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
-      (show _fds) `shouldBe` "(FN [GHC.Num.+],"++
+      (show _fds) `shouldBe` "(FN [GHC.Base.String, GHC.Num.+],"++
                               "DN [IdIn5.x, IdIn5.foo, IdIn5.bar, IdIn5.main])"
 
       (show fds) `shouldBe` "DN [GHC.Num.+, IdIn5.x, z, y, IdIn5.foo, IdIn5.bar]"
