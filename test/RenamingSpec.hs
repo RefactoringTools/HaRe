@@ -588,6 +588,36 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
 
     -- -----------------------------------------------------------------
 
+    it "passes ExportedType.hs for type name" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,7)
+     -- ct $ rename logTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,7)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/ExportedType.hs\",\"Renaming/ExportedTypeClient.hs\"]"
+     diff <- ct $ compareFiles "./Renaming/ExportedType.refactored.hs"
+                               "./Renaming/ExportedType.expected.hs"
+     diff `shouldBe` []
+     diff2 <- ct $ compareFiles "./Renaming/ExportedTypeClient.refactored.hs"
+                                "./Renaming/ExportedTypeClient.expected.hs"
+     diff2 `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "passes ExportedType.hs for type constructor" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,16)
+     -- ct $ rename logTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,16)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/ExportedType.hs\",\"Renaming/ExportedTypeClient.hs\"]"
+     diff <- ct $ compareFiles "./Renaming/ExportedType.refactored.hs"
+                               "./Renaming/ExportedType.expected2.hs"
+     diff `shouldBe` []
+     diff2 <- ct $ compareFiles "./Renaming/ExportedTypeClient.refactored.hs"
+                                "./Renaming/ExportedTypeClient.expected2.hs"
+     diff2 `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
     it "passes WildCard.hs" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/WildCard.hs" "taggedPlugins2" (7,1)
      -- r <- ct $ rename logTestSettings testOptions "./Renaming/WildCard.hs" "taggedPlugins2" (7,1)

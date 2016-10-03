@@ -43,7 +43,7 @@ import Data.IORef
 -- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
 import Language.Haskell.GHC.ExactPrint.Print
-import Language.Haskell.GHC.ExactPrint.Types
+-- import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Language.Haskell.GhcMod          as GM
@@ -64,7 +64,7 @@ import qualified Hooks         as GHC
 import qualified HscMain       as GHC
 import qualified HscTypes      as GHC
 import qualified TcRnMonad     as GHC
-import qualified TcRnTypes     as GHC
+-- import qualified TcRnTypes     as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
 -- import qualified Data.Generics as SYB
@@ -89,7 +89,7 @@ getTargetGhc :: TargetModule -> RefactGhc ()
 getTargetGhc (GM.ModulePath _mn fp) = parseSourceFileGhc fp
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Parse a single source file into a GHC session
 parseSourceFileGhc' :: FilePath -> RefactGhc ()
 parseSourceFileGhc' targetFile = do
@@ -102,7 +102,7 @@ parseSourceFileGhc' targetFile = do
   case mm of
     [(_,modSum)] -> loadFromModSummary Nothing modSum
     _ -> error $ "HaRe:unexpected error parsing " ++ targetFile
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | Parse a single source file into a GHC session
@@ -202,14 +202,14 @@ hscFrontend ref mod_summary = do
         return tc_gbl_env
 
 -- ---------------------------------------------------------------------
-
+{-
 setTargetSession :: FilePath -> RefactGhc ()
 -- setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] setDynFlags (return ())
 setTargetSession targetFile = RefactGhc $ GM.runGmlT' [Left targetFile] return (return ())
 
 -- setDynFlags :: GHC.DynFlags -> GHC.Ghc GHC.DynFlags
 -- setDynFlags df = return (GHC.gopt_set df GHC.Opt_KeepRawTokenStream)
-
+-}
 -- ---------------------------------------------------------------------
 
 -- |For GHC 7.10.2, setting 'GHC.Opt_KeepRawTokenStream' prevents the pragmas at

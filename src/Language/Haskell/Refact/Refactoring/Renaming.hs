@@ -219,14 +219,17 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
     -- logm $ "renameInClientMod:(newNamesUnqual,oldPN)=" ++ showGhcQual (newNamesUnqual,oldPN)
     -- logm $ "renameInClientMod:(newNames,oldPN)=" ++ showGhcQual (newNames,oldPN)
     -- logm $ "renameInClientMod:(uniques:newNames,oldPN)=" ++ showGhcQual (map GHC.nameUnique newNames,GHC.nameUnique oldPN)
-    case newNames of
+    let newNames' = filter (\n -> (GHC.occNameSpace $ GHC.nameOccName n) == (GHC.occNameSpace $ GHC.nameOccName oldPN)) newNames
+    case newNames' of
         []        -> return []
         -- [oldName] | findPN oldName renamed -> doRenameInClientMod oldName modName renamed
         [oldName] | findNameInRdr nm oldName parsed -> doRenameInClientMod nm oldName modName parsed
                   | otherwise -> do
                       logm "renameInClientMod: name not present in module, returning"
                       return []
-        ns -> error $ "HaRe: renameInClientMod: could not find name to replace, got:" ++ showGhcQual ns
+        -- ns -> error $ "HaRe: renameInClientMod: could not find name to replace, got:" ++ showGhcQual ns
+        ns -> error $ "HaRe: renameInClientMod: could not find name to replace, got:"
+          ++ (showGhcQual $ map (\n -> (n,GHC.occNameSpace $ GHC.nameOccName n)) ns)
 
   where
     doRenameInClientMod nm oldNameGhc modName parsed = do
