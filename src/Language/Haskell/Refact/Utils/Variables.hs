@@ -31,6 +31,7 @@ module Language.Haskell.Refact.Utils.Variables
   , rdrName2Name, rdrName2NamePure
   , eqRdrNamePure
   -- , rdrName2Name'
+  , sameNameSpace
 
   -- ** Identifiers, expressions, patterns and declarations
   , FindEntity(..)
@@ -1552,6 +1553,13 @@ rdrName2NamePure nameMap (GHC.L lrn _) =
 eqRdrNamePure :: NameMap -> GHC.Located GHC.RdrName -> GHC.Name -> Bool
 eqRdrNamePure nameMap rn n
   = GHC.nameUnique (rdrName2NamePure nameMap rn) == GHC.nameUnique n
+
+-- ---------------------------------------------------------------------
+
+-- | Returns True if both @GHC.Name@s are in the same @GHC.NameSpace@.
+sameNameSpace :: GHC.Name -> GHC.Name -> Bool
+sameNameSpace n1 n2
+  = (GHC.occNameSpace $ GHC.nameOccName n1) == (GHC.occNameSpace $ GHC.nameOccName n2)
 
 -- ---------------------------------------------------------------------
 

@@ -161,12 +161,14 @@ renameTopLevelVarName oldPN newName newNameGhc modName existChecking exportCheck
                         , "please select another new name or qualify the use of '"
                         , newName ++ "' before renaming!\n"]
 
-    when (existChecking && newNameStr `elem` d \\ [nameToString oldPN]) . -- only check the declared names here
+    let dns = map nameToString $ filter (sameNameSpace oldPN) d'
+    when (existChecking && newNameStr `elem` dns \\ [nameToString oldPN]) . -- only check the declared names here
         --the same name has been declared in this module.
         error $ mconcat ["Name '", newName, "' already exists in this module\n"]
 
     when (exportChecking && causeNameClashInExports nm oldPN newNameGhc modName parsed) $
         error "The new name will cause conflicting exports, please select another new name!"
+
     when (exportChecking && causeAmbiguity) . -- causeAmbiguityInExports oldPN  newNameGhc {- inscps -} renamed
         error $ mconcat ["The new name will cause ambiguity in the exports of module '"
                         , show modName
@@ -180,7 +182,10 @@ renameTopLevelVarName oldPN newName newNameGhc modName existChecking exportCheck
     logm $ "renameTopLevelVarName:oldPN=" ++ showGhc oldPN
     ds <- hsVisibleNamesRdr oldPN parsed
     logm $ "renameTopLevelVarName:ds computed=" ++ show ds
-    when (existChecking && newName `elem` nub (ds `union` f) \\ [nameToString oldPN]) .
+    DN ds' <- hsVisibleDsRdr nm oldPN parsed
+    let dns2 = map nameToString $ filter (sameNameSpace oldPN) ds'
+    logm $ "renameTopLevelVarName:ds computed2=" ++ show dns2
+    when (existChecking && newName `elem` nub (dns2 `union` f) \\ [nameToString oldPN]) .
         error $ mconcat [ "Name '", newName, "' already exists, or renaming '", nameToString oldPN,  "' to '"
                         , newName, "' will change the program's semantics!\n"]
 
@@ -219,7 +224,7 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
     -- logm $ "renameInClientMod:(newNamesUnqual,oldPN)=" ++ showGhcQual (newNamesUnqual,oldPN)
     -- logm $ "renameInClientMod:(newNames,oldPN)=" ++ showGhcQual (newNames,oldPN)
     -- logm $ "renameInClientMod:(uniques:newNames,oldPN)=" ++ showGhcQual (map GHC.nameUnique newNames,GHC.nameUnique oldPN)
-    let newNames' = filter (\n -> (GHC.occNameSpace $ GHC.nameOccName n) == (GHC.occNameSpace $ GHC.nameOccName oldPN)) newNames
+    let newNames' = filter (sameNameSpace oldPN) newNames
     case newNames' of
         []        -> return []
         -- [oldName] | findPN oldName renamed -> doRenameInClientMod oldName modName renamed

@@ -130,6 +130,8 @@ module Language.Haskell.Refact.API
     , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
     , hsVisibleDsRdr
     , rdrName2Name, rdrName2NamePure
+    , eqRdrNamePure
+    , sameNameSpace
 
     -- *** Property checking
     ,isVarId,isConId,isOperator,isTopLevelPN,isLocalPN,isNonLibraryName -- ,isTopLevelPNT

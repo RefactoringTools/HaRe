@@ -301,6 +301,18 @@ spec = do
 
     -- ---------------------------------
 
+    it "renames in Constructor 5 16" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/Constructor.hs" "MyType" (5,16)
+     -- ct $ rename logTestSettings testOptions "./Renaming/Constructor.hs" "MyType" (5,16)
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/Constructor.hs"
+                  ]
+     diff <- ct $ compareFiles "./Renaming/Constructor.expected.hs"
+                               "./Renaming/Constructor.refactored.hs"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
     it "renames in LayoutIn1 7 17" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
