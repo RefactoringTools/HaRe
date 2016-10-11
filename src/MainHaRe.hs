@@ -131,7 +131,7 @@ runCmd (RmOneParam fileName r c) (opt, gOpt)
 
 rmOneParamCmdOpts :: Parser HareParams
 rmOneParamCmdOpts =
-    LiftOneLevel
+    RmOneParam
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"
@@ -187,7 +187,7 @@ renameCmdOpts =
 
 liftToTopLevelCmdOpts :: Parser HareParams
 liftToTopLevelCmdOpts =
-    LiftOneLevel
+    LiftToTopLevel
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"
