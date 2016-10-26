@@ -4,7 +4,7 @@ import qualified Data.Generics as G
 
 toplevel :: Integer -> Integer
 toplevel x = c * x
- 
+
 c,d :: Integer
 c = 7
 d = 9

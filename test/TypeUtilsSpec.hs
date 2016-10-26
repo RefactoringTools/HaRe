@@ -558,7 +558,7 @@ spec = do
 
     -- ---------------------------------
 
-    it "finds declared HsVar" $ do
+    it "finds free and declared variables" $ do
       t <- ct $ parsedFileGhc "./FreeAndDeclared/Declare.hs"
       let
         comp = do
@@ -566,10 +566,9 @@ spec = do
           nm <- getRefactNameMap
           logDataWithAnns "parsed:"  parsed
           let rr = hsFreeAndDeclaredRdr nm parsed
-          rg <-    hsFreeAndDeclaredPNs    parsed
-          return (rg,rr)
-      -- ((resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
-      ((resg,(FN fr,DN dr)),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+          return rr
+      -- ((FN fr,DN dr),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      ((FN fr,DN dr),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
       -- ---------------------
       -- Free Vars - parsed
@@ -580,7 +579,8 @@ spec = do
                    "(GHC.Base.$, (-1, -1)),\n "++
                    "(GHC.List.head, (-1, -1)), "++
                    "(GHC.List.zip, (-1, -1)),\n "++
-                   "(System.IO.getChar, (-1, -1)), "++
+                   "(GHC.Base.String, (-1, -1)), "++
+                   "(System.IO.getChar, (-1, -1)),\n "++
                    "(System.IO.putStrLn, (-1, -1)),\n "++
                    "(Data.Generics.Text.gshow, (-1, -1))]"
 
@@ -605,42 +605,6 @@ spec = do
                    "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
                    "(FreeAndDeclared.Declare.ff, (36, 1))]"
 
-      -- ---------------------
-      -- GHC version
-      -- Free Vars
-      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
-                   "[(GHC.Integer.Type.Integer, (-1, -1)), "++
-                   "(GHC.Num.*, (-1, -1)),\n "++
-                   "(GHC.Types.Int, (-1, -1)), "++
-                   "(GHC.Base.$, (-1, -1)),\n "++
-                   "(GHC.List.head, (-1, -1)), "++
-                   "(GHC.List.zip, (-1, -1)),\n "++
-                   "(System.IO.getChar, (-1, -1)), "++
-                   "(System.IO.putStrLn, (-1, -1)),\n "++
-                   "(Data.Generics.Text.gshow, (-1, -1))]"
-
-      -- Declared Vars
-      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
-                  "[(FreeAndDeclared.Declare.toplevel, (6, 1)),\n "++
-                  "(FreeAndDeclared.Declare.c, (9, 1)),\n "++
-                  "(FreeAndDeclared.Declare.d, (10, 1)),\n "++
-                  "(FreeAndDeclared.Declare.tup, (16, 1)),\n "++
-                  "(FreeAndDeclared.Declare.h, (16, 6)),\n "++
-                  "(FreeAndDeclared.Declare.t, (16, 8)),\n "++
-                  "(FreeAndDeclared.Declare.D, (18, 1)),\n "++
-                  "(FreeAndDeclared.Declare.A, (18, 10)),\n "++
-                  "(FreeAndDeclared.Declare.B, (18, 14)),\n "++
-                  "(FreeAndDeclared.Declare.C, (18, 25)),\n "++
-                  "(FreeAndDeclared.Declare.unD, (21, 1)),\n "++
-                  "(FreeAndDeclared.Declare.F, (25, 1)),\n "++
-                  "(FreeAndDeclared.Declare.G, (25, 10)),\n "++
-                  "(FreeAndDeclared.Declare.:|, (25, 14)),\n "++
-                  "(FreeAndDeclared.Declare.unF, (27, 1)),\n "++
-                  "(FreeAndDeclared.Declare.main, (30, 1)),\n "++
-                  "(FreeAndDeclared.Declare.mkT, (34, 1)),\n "++
-                  "(FreeAndDeclared.Declare.ff, (36, 1))]"
-
-
     -- ---------------------------------
 
     it "finds free and declared in a single bind PrefixCon" $ do
@@ -651,7 +615,6 @@ spec = do
         comp = do
           parsed <- getRefactParsed
           decls <- liftT $ hsDecls parsed
-          -- let b = head $ drop 4 $ hsBinds renamed
           let b = head $ drop 10 $ decls
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
@@ -661,7 +624,6 @@ spec = do
       (showGhcQual bb) `shouldBe` "unD (B y) = y"
       -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
 
-      -- GHC version
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
                    "[(FreeAndDeclared.Declare.B, (18, 14))]"
@@ -679,7 +641,6 @@ spec = do
         comp = do
           parsed <- getRefactParsed
           decls <- liftT $ hsDecls parsed
-          -- let b = head $ drop 3 $ hsBinds renamed
           let b = head $ drop 12 $ decls
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
@@ -688,7 +649,6 @@ spec = do
       (showGhcQual bb) `shouldBe` "unF (a :| b) = (a, b)"
       -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
 
-      -- GHC version
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
                    "[(FreeAndDeclared.Declare.:|, (25, 14))]"
@@ -706,7 +666,6 @@ spec = do
         comp = do
           parsed <- getRefactParsed
           decls <- liftT $ hsDecls parsed
-          -- let b = head $ drop 0 $ hsBinds renamed
           let b = head $ drop 2 decls
           rg <- hsFreeAndDeclaredPNs [b]
           return (b,rg)
@@ -716,7 +675,6 @@ spec = do
       (showGhcQual bb) `shouldBe` "unR2 (RCon {r1 = a}) = a"
       -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
 
-      -- GHC version
       -- Free Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
                    "[(FreeAndDeclared.DeclareRec.RCon, (3, 10))]"
@@ -724,6 +682,38 @@ spec = do
       -- Declared Vars
       (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
                    "[(FreeAndDeclared.DeclareRec.unR2, (7, 1))]"
+
+    -- ---------------------------------
+
+    it "finds free and declared in a RecCon data declaration" $ do
+      t <- ct $ parsedFileGhc "./Renaming/Field1.hs"
+
+      let
+        comp = do
+          parsed <- getRefactParsed
+          decls <- liftT $ hsDecls parsed
+          let b = head $ drop 0 decls
+          rg <- hsFreeAndDeclaredPNs b
+          return (b,rg)
+      -- ((bb,resg),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      ((bb,resg),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+
+      (showGhcQual bb) `shouldBe` "data Point\n  = Pt {pointx, pointy :: Float}\n  deriving (Show)"
+
+      -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
+
+      -- Free Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
+                   "[(GHC.Types.Float, (-1, -1)), "++
+                   "(GHC.Show.Show, (-1, -1))]"
+
+      -- Declared Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
+                   "[(Field1.Point, (5, 1)), "++
+                   "(Field1.Pt, (5, 14)),\n "++
+                   "(Field1.pointx, (5, 18)), "++
+                   "(Field1.pointy, (5, 26))]"
 
     -- -----------------------------------------------------------------
 
@@ -779,7 +769,6 @@ spec = do
       let
         comp = do
           parsed <- getRefactParsed
-          -- r <- hsFreeAndDeclaredPNs $ hsBinds renamed
           r <- hsFreeAndDeclaredPNs parsed
           return r
       ((res),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
@@ -1019,7 +1008,6 @@ spec = do
         comp = do
           nm <- getRefactNameMap
           fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm e) rhs
-          -- ffds <- hsFreeAndDeclaredGhc rhsr
           let ffds = hsFreeAndDeclaredRdr nm rhs
           return (fds',ffds)
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
@@ -1043,14 +1031,12 @@ spec = do
           -- logDataWithAnns "parsed" parsed
           nm <- getRefactNameMap
           fds' <- hsVisibleDsRdr nm (rdrName2NamePure nm ln) parsed
-          -- ffds <- hsFreeAndDeclaredGhc renamed
           let ffds = hsFreeAndDeclaredRdr nm parsed
           return (fds',ffds)
       ((fds,_fds),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
-      (show _fds) `shouldBe` "(FN [a, "++
-                                  "GHC.Base.++, "++
+      (show _fds) `shouldBe` "(FN [GHC.Base.++, "++
                                   "GHC.Types.Int, "++
                                   "GHC.Classes.==, "++
                                   "GHC.Classes./=, "++
@@ -1146,7 +1132,6 @@ spec = do
           let lpat = head pats
           logDataWithAnns "lpat" lpat
 
-          -- fds' <- hsFreeAndDeclaredGhc $ lpat
           let fds' = hsFreeAndDeclaredRdr nm lpat
           return (fds')
       -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
@@ -1199,7 +1184,6 @@ spec = do
           let (GHC.L _ (GHC.Match _ _pats _rhs binds)) = match
 
           logDataWithAnns "binds" binds
-          -- fds' <- hsFreeAndDeclaredGhc $ binds
           let fds' = hsFreeAndDeclaredRdr nm binds
           return (fds')
       -- ((fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
