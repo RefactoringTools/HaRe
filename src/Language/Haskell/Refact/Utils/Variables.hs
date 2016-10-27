@@ -286,7 +286,8 @@ hsFreeAndDeclaredRdr nm t = res
 hsFreeAndDeclaredRdr':: (SYB.Data t) => NameMap -> t -> Either String (FreeNames,DeclaredNames)
 hsFreeAndDeclaredRdr' nm t = do
       (FN f,DN d) <- hsFreeAndDeclared'
-      let (f',d') = (nub f, nub d)
+      let (f',d') = ( filter (not . GHC.isTyVarName) $ nub f
+                    , filter (not . GHC.isTyVarName) $ nub d)
       return (FN f',DN d')
 
    where
@@ -302,6 +303,7 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` rhs
                                                       `adhocTU` ltydecl
                                                       `adhocTU` lsigtype
+                                                      `adhocTU` lsig
                                                       `adhocTU` datadefn
                                                       `adhocTU` condecl
                                                       `adhocTU` condetails
@@ -520,22 +522,45 @@ hsFreeAndDeclaredRdr' nm t = do
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
           ltydecl (GHC.DataDecl ln _bndrs defn _c _fvs) = do
-              -- let dds = map (rdrName2NamePure nm) $ concatMap (GHC.getConNames . GHC.unLoc) $ GHC.dd_cons defn
               (f,DN dds) <- hsFreeAndDeclaredRdr' nm  defn
 #endif
               return (f,DN (rdrName2NamePure nm ln:dds))
-          ltydecl (GHC.ClassDecl _ctx ln _tyvars
-                           _fds _sigs meths ats atds _docs _fvs) = do
-             (_,md) <- hsFreeAndDeclaredRdr' nm meths
-             (_,ad) <- hsFreeAndDeclaredRdr' nm ats
-             (_,atd) <- hsFreeAndDeclaredRdr' nm atds
-             return (FN [],DN [rdrName2NamePure nm ln] <> md <> ad <> atd)
+          ltydecl (GHC.ClassDecl ctx ln _tyvars
+                           _fds sigs meths ats atds _docs _fvs) = do
+             ct  <- hsFreeAndDeclaredRdr' nm ctx
+             ss  <- recurseList sigs
+             md  <- hsFreeAndDeclaredRdr' nm meths
+             ad  <- hsFreeAndDeclaredRdr' nm ats
+             atd <- hsFreeAndDeclaredRdr' nm atds
+             return ((FN [],DN [rdrName2NamePure nm ln]) <> md <> ad <> atd <> ct <> ss)
 
           ------------------------------
 
           lsigtype :: GHC.LHsSigType GHC.RdrName -> Either String (FreeNames,DeclaredNames)
           lsigtype (GHC.HsIB _ typ) = do
             hsFreeAndDeclaredRdr' nm typ
+
+          ------------------------------
+
+          lsig :: GHC.LSig GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+          lsig (GHC.L _ (GHC.TypeSig lns typ)) = do
+            ts <- hsFreeAndDeclaredRdr' nm typ
+            return ((FN [],DN (map (rdrName2NamePure nm ) lns)) <> ts)
+          lsig (GHC.L _ (GHC.PatSynSig ln typ)) = do
+            ts <- hsFreeAndDeclaredRdr' nm typ
+            return ((FN [],DN [rdrName2NamePure nm ln]) <> ts)
+          lsig (GHC.L _ (GHC.ClassOpSig _ lns typ)) = do
+            ts <- hsFreeAndDeclaredRdr' nm typ
+            return ((FN [],DN (map (rdrName2NamePure nm) lns)) <> ts)
+          lsig (GHC.L _ (GHC.IdSig _ )) = error $ "hsFreeAndDeclaredRdr:IdSig should not occur"
+          lsig (GHC.L _ (GHC.FixSig sig)) = hsFreeAndDeclaredRdr' nm sig
+          lsig (GHC.L _ (GHC.InlineSig ln _)) = do
+            return ((FN [],DN [rdrName2NamePure nm ln]) )
+          lsig (GHC.L _ (GHC.SpecSig ln typs _)) = do
+            ts <- recurseList typs
+            return ((FN [rdrName2NamePure nm ln],DN []) <> ts)
+          lsig (GHC.L _ (GHC.SpecInstSig _ sig)) = hsFreeAndDeclaredRdr' nm sig
+          lsig (GHC.L _ (GHC.MinimalSig _ _)) = return mempty
 
           ------------------------------
 
@@ -566,9 +591,15 @@ hsFreeAndDeclaredRdr' nm t = do
 
           -- condetails :: GHC.HsConDetails (GHC.LBangType GHC.RdrName) (GHC.Located [GHC.LConDeclField GHC.RdrName])
           condetails :: GHC.HsConDeclDetails GHC.RdrName -> Either String (FreeNames,DeclaredNames)
-          condetails (GHC.PrefixCon args)      = recurseList args
+          condetails (GHC.PrefixCon args)      = do
+            -- TODO: get rid of the tyvars
+            (FN fs,d) <- recurseList args
+            return (FN (filter (not . GHC.isTyVarName) fs),d)
           condetails (GHC.RecCon (GHC.L _ fs)) = recurseList fs
-          condetails (GHC.InfixCon a1 a2)      = recurseList [a1,a2]
+          condetails (GHC.InfixCon a1 a2)      = do
+            -- TODO: get rid of the tyvars
+            (FN fs,d) <- recurseList [a1,a2]
+            return (FN (filter (not . GHC.isTyVarName) fs),d)
 
           ------------------------------
 

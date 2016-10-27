@@ -715,6 +715,68 @@ spec = do
                    "(Field1.pointx, (5, 18)), "++
                    "(Field1.pointy, (5, 26))]"
 
+    -- ---------------------------------
+
+    it "finds free and declared in a data declaration, ignoring tyvars 1" $ do
+      t <- ct $ parsedFileGhc "./Renaming/D1.hs"
+
+      let
+        comp = do
+          parsed <- getRefactParsed
+          decls <- liftT $ hsDecls parsed
+          let b = head $ drop 0 decls
+          rg <- hsFreeAndDeclaredPNs b
+          return (b,rg)
+      -- ((bb,resg),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      ((bb,resg),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+
+      (showGhcQual bb) `shouldBe` "data Tree a = Leaf a | Branch (Tree a) (Tree a)"
+
+      -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
+
+      -- Free Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
+                   "[]"
+
+      -- Declared Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
+                   "[(Renaming.D1.Tree, (6, 1)), "++
+                   "(Renaming.D1.Leaf, (6, 15)),\n "++
+                   "(Renaming.D1.Branch, (6, 24))]"
+
+
+    -- ---------------------------------
+
+    it "finds free and declared in a data declaration, ignoring tyvars 2" $ do
+      t <- ct $ parsedFileGhc "./Renaming/D1.hs"
+
+      let
+        comp = do
+          parsed <- getRefactParsed
+          decls <- liftT $ hsDecls parsed
+          let b = head $ drop 3 decls
+          rg <- hsFreeAndDeclaredPNs b
+          return (b,rg)
+      -- ((bb,resg),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      ((bb,resg),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+
+      (showGhcQual bb) `shouldBe` "class SameOrNot a where\n  isSame :: a -> a -> Bool\n  isNotSame :: a -> a -> Bool"
+
+      -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
+
+      -- Free Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (fst resg)) `shouldBe`
+                   "[(GHC.Types.Bool, (-1, -1))]"
+
+      -- Declared Vars
+      (showGhcQual $ map (\n -> (n, getGhcLoc $ GHC.nameSrcSpan n)) (snd resg)) `shouldBe`
+                   "[(Renaming.D1.SameOrNot, (12, 1)), "++
+                   "(Renaming.D1.isSame, (13, 4)),\n "++
+                   "(Renaming.D1.isNotSame, (14, 4))]"
+
+
     -- -----------------------------------------------------------------
 
     it "hsFreeAndDeclaredPNs simplest" $ do
@@ -1037,10 +1099,11 @@ spec = do
       -- ((fds,_fds),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
       (show _fds) `shouldBe` "(FN [GHC.Base.++, "++
+                                  "GHC.Types.Bool, "++
                                   "GHC.Types.Int, "++
-                                  "GHC.Classes.==, "++
+                                  "GHC.Classes.==,\n "++
                                   "GHC.Classes./=, "++
-                                  ":,\n "++
+                                  ":, "++
                                   "GHC.Num.+, "++
                                   "GHC.Real.^, "++
                                   "[]],"++
@@ -2418,9 +2481,8 @@ spec = do
       -- ((nb,_nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
 
       (showGhcQual n) `shouldBe` "Field1.pointx"
-      (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx1, pointy :: Float}\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p +\n                  pointy p * pointy p)\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata Point = Pt {pointx1, pointy :: Float}\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p + pointy p * pointy p)"
-
+      (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata Point = Pt {pointx1, pointy :: Float} deriving Show\n\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p +\n                  pointy p * pointy p)\n\n"
+      (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata Point\n = Pt {pointx1, pointy :: Float}\n deriving (Show)\nabsPoint :: Point -> Float\nabsPoint p = sqrt (pointx1 p * pointx1 p + pointy p * pointy p)"
 
     ------------------------------------
 
@@ -2445,8 +2507,9 @@ spec = do
       ((nb,_nn),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
       -- ((nb,nn),s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
       (showGhcQual n) `shouldBe` "Field1.Point"
-      (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata NewPoint = Pt {pointx, pointy :: Float}\n\nabsPoint :: NewPoint -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
-      (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata NewPoint = Pt {pointx, pointy :: Float}\nabsPoint :: NewPoint -> Float\nabsPoint p = sqrt (pointx p * pointx p + pointy p * pointy p)"
+      (sourceFromState s) `shouldBe` "module Field1 where\n\n--Rename field name 'pointx' to 'pointx1'\n\ndata NewPoint = Pt {pointx, pointy :: Float} deriving Show\n\nabsPoint :: NewPoint -> Float\nabsPoint p = sqrt (pointx p * pointx p +\n                  pointy p * pointy p)\n\n"
+
+      (unspace $ showGhcQual nb) `shouldBe` "module Field1 where\ndata NewPoint\n = Pt {pointx, pointy :: Float}\n deriving (Show)\nabsPoint :: NewPoint -> Float\nabsPoint p = sqrt (pointx p * pointx p + pointy p * pointy p)"
 
     ------------------------------------
 
