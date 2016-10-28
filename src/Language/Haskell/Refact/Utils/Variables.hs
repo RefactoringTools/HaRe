@@ -26,6 +26,7 @@ module Language.Haskell.Refact.Utils.Variables
 
   , getDeclaredTypesRdr
   , getDeclaredVarsRdr
+
   , hsVisibleNamesRdr
   , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
   , hsVisibleDsRdr
@@ -56,7 +57,6 @@ import Control.Monad.State
 import Data.List
 import Data.Maybe
 import Data.Monoid
-import Debug.Trace
 
 import Language.Haskell.Refact.Utils.GhcVersionSpecific
 import Language.Haskell.Refact.Utils.LocUtils
@@ -279,7 +279,7 @@ hsFreeAndDeclaredRdr nm t = res
   where
     fd = hsFreeAndDeclaredRdr' nm t
     (FN f,DN d) = case fd of
-      Left err -> mempty
+      Left _err -> mempty
       Right v -> v
     res = (FN (f \\ d),DN d)
 
@@ -299,6 +299,7 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` binds
                                                       `adhocTU` bindList
                                                       `adhocTU` match
+                                                      `adhocTU` stmtlist
                                                       `adhocTU` stmts
                                                       `adhocTU` rhs
                                                       `adhocTU` ltydecl
@@ -492,6 +493,13 @@ hsFreeAndDeclaredRdr' nm t = do
               (FN rf,DN rd) <- hsFreeAndDeclaredRdr' nm mrhs
               return (FN (pf `union` (rf \\ (pd `union` rd))),DN [])
 
+          stmtlist (ds :: [GHC.ExprLStmt GHC.RdrName]) = do
+            (FN f,DN d) <- recurseList ds
+            -- unless (null ds) $ do
+            --   -- error $ "hsFreeAndDeclaredRdr'.stmtlist ds=" ++ showGhc ds
+            --   error $ "hsFreeAndDeclaredRdr'.stmtlist (f,d)=" ++ showGhc (f,d)
+            return (FN (f\\d),DN d)
+
           -- stmts --
 #if __GLASGOW_HASKELL__ <= 710
           stmts ((GHC.BindStmt pat' expre _bindOp _failOp) :: GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
@@ -501,9 +509,10 @@ hsFreeAndDeclaredRdr' nm t = do
             -- TODO ++AZ++ : Not sure it is meaningful to pull
             --               anything out of bindOp/failOp
             (FN pf,DN pd)  <- hsFreeAndDeclaredRdr' nm pat'
+            -- error $ "hsFreeAndDeclaredRdr'.stmts.BindStmt (pf,pd)=" ++ showGhc (pf,pd)
             (FN ef,_ed) <- hsFreeAndDeclaredRdr' nm expre
             let sf1 = []
-            return (FN $ pf `union` ef `union` (sf1\\pd),DN []) -- pd) -- Check this
+            return (FN $ pf `union` ef `union` (sf1\\pd),DN pd) -- pd) -- Check this
 
           stmts ((GHC.LetStmt binds') :: GHC.Stmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) =
             hsFreeAndDeclaredRdr' nm binds'
@@ -784,20 +793,20 @@ definedNamesRdr nameMap bind = map (rdrName2NamePure nameMap) (definedPNsRdr bin
 -- |Find those declarations(function\/pattern binding) which define
 -- the specified GHC.Names. incTypeSig indicates whether the
 -- corresponding type signature will be included.
-definingDeclsRdrNames::
+definingDeclsRdrNames ::
             NameMap
-            ->[GHC.Name]   -- ^ The specified identifiers.
-            ->[GHC.LHsDecl GHC.RdrName] -- ^ A collection of declarations.
-            ->Bool       -- ^ True means to include the type signature.
-            ->Bool       -- ^ True means to look at the local declarations as well.
-            ->[GHC.LHsDecl GHC.RdrName]  -- ^ The result.
+            -> [GHC.Name]   -- ^ The specified identifiers.
+            -> [GHC.LHsDecl GHC.RdrName] -- ^ A collection of declarations.
+            -> Bool       -- ^ True means to include the type signature.
+            -> Bool       -- ^ True means to look at the local declarations as well.
+            -> [GHC.LHsDecl GHC.RdrName]  -- ^ The result.
 definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining ds
 -- ++AZ++:TODO: now we are processing decls again, reinstate incTypeSig function
 -- TODO: Maybe Use hsFreeAndDeclaredRdr to see what is declared in a decl. Recursive?
   where
    defining decl
      = if recursive
-        then SYB.everythingStaged SYB.Parser (++) [] ([]  `SYB.mkQ` definesDecl `SYB.extQ` definesBind)  decl
+        then SYB.everything  (++) ([]  `SYB.mkQ` definesDecl `SYB.extQ` definesBind)  decl
         else definesDecl decl
      where
       definesDecl :: (GHC.LHsDecl GHC.RdrName) -> [GHC.LHsDecl GHC.RdrName]
@@ -809,6 +818,9 @@ definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining 
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
       definesDecl decl'@(GHC.L _l (GHC.ValD (GHC.PatBind _p _rhs _ty _fvs _)))
+        | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
+
+      definesDecl decl'@(GHC.L _l (GHC.TyClD d))
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
       definesDecl _ = []
@@ -836,6 +848,9 @@ definingDeclsRdrNames' nameMap pns ds = defining ds
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
       defines' decl'@(GHC.L _l (GHC.ValD (GHC.PatBind _p _rhs _ty _fvs _)))
+        | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
+
+      defines' decl'@(GHC.L _l (GHC.TyClD _))
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
       defines' _ = []
@@ -943,8 +958,11 @@ definesRdr _ _ _= False
 
 -- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
 definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
-definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
-definesDeclRdr _ _ _ = False
+definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d))  = definesRdr nameMap nin (GHC.L l d)
+definesDeclRdr nameMap nin d = nin `elem` declared
+  where
+    (_,DN declared) = hsFreeAndDeclaredRdr nameMap d
+-- definesDeclRdr _ _ _ = False
 
 -- ---------------------------------------------------------------------
 
@@ -1049,6 +1067,7 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` hsbind
           `SYB.extQ` hslocalbinds
           `SYB.extQ` lmatch
+          `SYB.extQ` match
           `SYB.extQ` grhss
           `SYB.extQ` lgrhs
           `SYB.extQ` lexpr
@@ -1154,10 +1173,8 @@ hsVisibleDsRdr nm e t = do
 #endif
       | findNameInRdr nm e matches = do
           fds <- mapM (hsVisibleDsRdr nm e) matches
-          -- logm $ "hsVisibleDsRdr.hsbind:fds=" ++ show fds
           return $ mconcat fds
     hsbind _ = do
-      -- logm $ "hsVisibleDsRdr.hsbind:miss"
       return (DN [])
 
 
@@ -1170,17 +1187,20 @@ hsVisibleDsRdr nm e t = do
     hslocalbinds _ = return (DN [])
 
     lmatch :: (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
-    lmatch (GHC.L _ (GHC.Match _fn pats _mtyp rhs))
+    lmatch (GHC.L _ m) = match m
+
+    match :: (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
+    match (GHC.Match _fn pats _mtyp rhs)
       | findNameInRdr nm e pats = do
            -- logm $ "hsVisibleDsRdr nm.lmatch:in pats="
            return (DN []) -- TODO: extend this
       | findNameInRdr nm e rhs = do
            -- logm $ "hsVisibleDsRdr nm.lmatch:doing rhs"
-           let (pf,pd) = hsFreeAndDeclaredRdr nm pats
+           let (_pf,pd) = hsFreeAndDeclaredRdr nm pats
            -- logm $ "hsVisibleDsRdr nm.lmatch:(pf,pd)=" ++ (show (pf,pd))
-           (    rd) <- hsVisibleDsRdr nm e rhs
+           rd <- hsVisibleDsRdr nm e rhs
            return (pd <> rd)
-    lmatch _ =return  (DN [])
+    match _ =return  (DN [])
 
     grhss :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
     grhss (GHC.GRHSs guardedRhss lstmts')

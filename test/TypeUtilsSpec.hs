@@ -262,6 +262,28 @@ spec = do
       -}
       pending -- "Convert to definingDeclsNames"
 
+    -- ---------------------------------
+
+    it "finds a name declared in a RecCon data declaration" $ do
+      t <- ct $ parsedFileGhc "./Renaming/Field1.hs"
+
+      let
+        comp = do
+          parsed <- getRefactParsed
+          decls <- liftT $ hsDecls parsed
+          nm <- getRefactNameMap
+          let Just n = locToNameRdrPure nm (5,18) parsed
+          let rg = definingDeclsRdrNames nm [n] decls False False
+          return (n,rg)
+      -- ((bb,resg),_s) <- runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t }) testOptions
+      ((nn,resg),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+
+      (showGhcQual nn) `shouldBe` "Field1.pointx"
+
+      (showGhcQual resg) `shouldBe` "[data Point\n   = Pt {pointx, pointy :: Float}\n   deriving (Show)]"
+
+  -- ---------------------------------------
   -- -------------------------------------------------------------------
 {-
   describe "definingDeclsNames" $ do
@@ -3824,7 +3846,7 @@ spec = do
 
       (showGhcQual (r,n)) `shouldBe` "(bar, bar)"
 
-  -- ---------------------------------------
+  -- ---------------------------------------------------------------------
 
 myShow :: GHC.RdrName -> String
 myShow n = case n of

@@ -1074,7 +1074,7 @@ addItemsToImport ::
   -> Either [GHC.RdrName] [GHC.LIE GHC.RdrName] -- ^ The items to be added
   -> GHC.ParsedSource      -- ^ The current module
   -> RefactGhc GHC.ParsedSource -- ^ The result
-addItemsToImport mn mc ns r = addItemsToImport' mn r ns Import
+addItemsToImport mn _mc ns r = addItemsToImport' mn r ns Import
 
 -- | Add identifiers (given by the third argument) to the explicit entity list
 --   in the declaration importing the specified module name. If the ImportType

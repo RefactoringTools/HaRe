@@ -207,7 +207,7 @@ spec = do
 
     it "renames in Field4 5 23" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
-     -- ct $ rename logTestSettings Nothing "./Renaming/Field4.hs" "value2" (5,23)
+     -- ct $ rename logTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/Field4.hs"
                   ]
@@ -327,7 +327,7 @@ spec = do
 
     it "renames in LayoutIn2 8 7" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/LayoutIn2.hs" "ls" (8,7)
+     -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/LayoutIn2.hs"
                   ]

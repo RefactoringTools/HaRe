@@ -178,10 +178,10 @@ hscFrontend ref mod_summary = do
                                 (GHC.hpm_src_files   hpm)
                                 (GHC.hpm_annotations hpm)
 
-        hsc_env <- GHC.getHscEnv
-        (tc_gbl_env,rn_info) <- liftIO $ GHC.hscTypecheckRename hsc_env mod_summary hpm
+        hsc_env' <- GHC.getHscEnv
+        (tc_gbl_env,rn_info) <- liftIO $ GHC.hscTypecheckRename hsc_env' mod_summary hpm
 
-        details <- liftIO $ GHC.makeSimpleDetails hsc_env tc_gbl_env
+        details <- liftIO $ GHC.makeSimpleDetails hsc_env' tc_gbl_env
 
         let
           tc =
@@ -275,8 +275,8 @@ loadFromModSummary mtm modSum = do
       settings <- get
       put $ settings { rsCurrentTarget = Just newTargetModule }
 
-  mtm <- gets rsModule
-  case mtm of
+  mtm' <- gets rsModule
+  case mtm' of
     Just tm -> if ((rsStreamModified tm == RefacUnmodifed)
                   && oldTargetModule == Just newTargetModule)
                  then do

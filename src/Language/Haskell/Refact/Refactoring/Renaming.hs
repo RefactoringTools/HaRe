@@ -9,7 +9,7 @@ import qualified GHC.SYB.Utils         as SYB
 
 import qualified GHC
 import qualified Name                  as GHC
-import qualified OccName               as GHC
+-- import qualified OccName               as GHC
 import qualified Outputable            as GHC
 import qualified RdrName               as GHC
 
@@ -159,7 +159,8 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
             isExported oldn
           else do
             logm "doRenaming: not declared at the top level"
-            -- SYB.
+            parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc modName True False
+            putRefactParsed parsed' mempty
             return False -- Not exported
       else do
         logm "doRenaming:not isVarName"
@@ -245,12 +246,13 @@ condChecking mpn newName modName (inscps, exps, mod)
 -- Returns on success, throws an error on check failure
 condChecking2 :: NameMap -> GHC.Name -> String -> GHC.ParsedSource -> RefactGhc ()
 condChecking2 nm oldPN newName parsed = do
-  void $ applyTP (once_tdTP (failTP `adhocTP` inMod
-                             -- `adhocTP` inMatch
+  -- void $ applyTP (once_tdTP (failTP `adhocTP` inMod
+  void $ applyTP (once_buTP (failTP `adhocTP` inMod
+                             `adhocTP` inMatch
                              -- `adhocTP` inPattern
-                             -- `adhocTP` inExp
+                             `adhocTP` inExp
                              -- `adhocTP` inAlt
-                             -- `adhocTP` inStmts
+                             `adhocTP` inStmts
                              `adhocTP` inConDecl
                      )) parsed
   where
@@ -259,25 +261,33 @@ condChecking2 nm oldPN newName parsed = do
       where
         isDeclaredBy' t
           = do (_ , d) <- hsFreeAndDeclaredPNs t
-               return (elem oldPN d )
+               -- logDataWithAnns "isDeclaredBy:t" t
+               logm $ "isDeclaredBy:d=" ++ showGhc d
+               return (oldPN `elem` d )
 
     -- The name is a top-level identifier
     inMod (parsed' :: GHC.ParsedSource) = do
       decls <- liftT $ hsDeclsGeneric parsed'
       isDeclared <- isDeclaredBy decls
+      logm $ "Renaming.condChecking2.inMod:isDeclared=" ++ show isDeclared
       if isDeclared
            then condChecking' parsed'
            else mzero
 
-{-
     -- The name is declared in a function definition.
-    inMatch (match@(HsMatch loc1 fun pats rhs ds)::HsMatchP)
-      |isDeclaredBy pats
-      = condChecking' (HsMatch loc1 defaultPNT pats rhs ds)
-      |isDeclaredBy ds
-      =condChecking' (HsMatch loc1 defaultPNT [] rhs ds)
-      |otherwise = mzero
+    inMatch (match@(GHC.Match f@(GHC.FunBindMatch ln isInfix) pats  mtype (GHC.GRHSs rhs ds))
+             ::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+      decls <- liftT $ hsDeclsGeneric match
+      isDeclaredPats <- isDeclaredBy pats
+      isDeclaredDs   <- isDeclaredBy ds
+      if isDeclaredPats
+        then condChecking' (GHC.Match f pats mtype (GHC.GRHSs rhs ds))
+      else if isDeclaredDs
+        then condChecking' (GHC.Match f []  mtype (GHC.GRHSs rhs ds))
+      else mzero
+    inMatch _ = mzero
 
+{-
     -- The name is declared in a pattern binding.
     inPattern (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
       |isDeclaredBy p
@@ -286,6 +296,22 @@ condChecking2 nm oldPN newName parsed = do
       = condChecking' (Dec (HsPatBind loc defaultPat rhs ds))
     inPattern _ = mzero
 
+-}
+
+    -- The name is declared in a expression.
+    inExp expr@((GHC.L _ (GHC.HsLet ds e)):: GHC.LHsExpr GHC.RdrName) = do
+      isDeclaredDs   <- isDeclaredBy ds
+      if isDeclaredDs
+        then condChecking' expr
+        else mzero
+    inExp expr@((GHC.L _ (GHC.HsDo _ ds e)):: GHC.LHsExpr GHC.RdrName) = do
+      -- isDeclared   <- isDeclaredBy ds
+      isDeclared   <- isDeclaredBy expr
+      if isDeclared
+        then condChecking' expr
+        else mzero
+    inExp _ = mzero
+{-
     -- The name is declared in a expression.
     inExp (exp@(Exp (HsLambda pats body))::HsExpP)
       |isDeclaredBy pats
@@ -303,6 +329,15 @@ condChecking2 nm oldPN newName parsed = do
       = condChecking' (HsAlt loc defaultPat rhs ds)
       |otherwise = mzero
 
+-}
+
+    inStmts (stmt@(GHC.L _ (GHC.LetStmt binds)) :: GHC.LStmt GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+      isDeclared   <- isDeclaredBy binds
+      if isDeclared
+        then condChecking' stmt
+        else mzero
+    inStmts _ = mzero
+{-
     -- The name is declared in a do statement.
     inStmts (stmts@(HsLetStmt ds _)::HsStmtP)
       |isDeclaredBy ds
@@ -328,14 +363,16 @@ condChecking2 nm oldPN newName parsed = do
 
     condChecking' t = do
       sameGroupDecls <- declaredVarsInSameGroup nm oldPN t
-      when (elem newName sameGroupDecls)
+      when (newName `elem` sameGroupDecls)
             $ error "The new name exists in the same binding group!"
       (f, d) <- hsFreeAndDeclaredNameStrings t
-      when (elem newName f) $ error "Existing uses of the new name will be captured!"
+      when (newName `elem` f) $ error "Existing uses of the new name will be captured!"
       -- fetch all the declared variables in t that
       -- are visible to the places where oldPN occurs.
       ds <- hsVisibleNamesRdr oldPN t
-      when (elem newName ds) $ error "The new name will cause name capture!"
+      -- logm $ "Renaming.condChecking':t=" ++ showGhc t
+      -- logm $ "Renaming.condChecking':ds=" ++ showGhc ds
+      when (newName `elem` ds) $ error "The new name will cause name capture!"
       return t
 
 declaredVarsInSameGroup :: (SYB.Data t) => NameMap -> GHC.Name -> t -> RefactGhc [String]
