@@ -77,11 +77,8 @@ compRename fileName newName (row,col) = do
     -- logDataWithAnns "parsed" parsed
 
     let modName = maybe (GHC.mkModuleName "Main") fst $ getModuleName parsed
-        maybePn = locToRdrName (row, col) parsed
 
-    logm $ "Renamed.comp:maybePn=" ++ showGhc maybePn -- ++AZ++
-
-    case maybePn of
+    case locToRdrName (row, col) parsed of
         Just pn'@(GHC.L l rdrName) -> do
             let n = rdrName2NamePure nm pn'
                 pn = GHC.L l n
@@ -107,10 +104,11 @@ compRename fileName newName (row,col) = do
             when (isMainModule modu && showGhcQual pn == "Main.main") $
                 error "The 'main' function defined in a 'Main' module should not be renamed!"
 
+            newNameGhc <- mkNewGhcName (Just modu) newName
+            condChecking1 n newName newNameGhc modName True True
             condChecking2 nm n newName parsed
             logm $ "Renaming:after condChecking2"
 
-            newNameGhc <- mkNewGhcName (Just modu) newName
             (refactoredMod, nIsExported) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName)
                                            RSAlreadyLoaded
 
@@ -154,17 +152,17 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
         if isDeclaredInRdr nm oldn decls
           then do
             logm "doRenaming:renameInMod isDeclaredInRdr True"
-            parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc modName True True
+            parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc True
             putRefactParsed parsed' mempty
             isExported oldn
           else do
             logm "doRenaming: not declared at the top level"
-            parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc modName True False
+            parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc False
             putRefactParsed parsed' mempty
             return False -- Not exported
       else do
         logm "doRenaming:not isVarName"
-        parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc modName True True
+        parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc True
         putRefactParsed parsed' mempty
         isExported oldn
 {-
@@ -505,29 +503,28 @@ Original thesis end
 
 -- ---------------------------------------------------------------------
 
-renameTopLevelVarName :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName
-                      -> Bool -> Bool -> RefactGhc GHC.ParsedSource
-renameTopLevelVarName oldPN newName newNameGhc modName existChecking exportChecking = do
-    logm $ "renameTopLevelVarName:(existChecking, exportChecking)=" ++ show (existChecking, exportChecking)
-    causeAmbiguity <- causeAmbiguityInExports oldPN newNameGhc
+condChecking1 :: GHC.Name -> String -> GHC.Name -> GHC.ModuleName
+                      -> Bool -> Bool -> RefactGhc ()
+condChecking1 oldPN newName newNameGhc modName existChecking exportChecking = do
+    -- logm $ "condChecking1:(existChecking, exportChecking)=" ++ show (existChecking, exportChecking)
     parsed <- getRefactParsed
-    nm <- getRefactNameMap
+    nm     <- getRefactNameMap
      -- f' contains names imported from other modules;
      -- d' contains the top level names declared in this module;
     let (FN f', DN d') = hsFDsFromInsideRdr nm parsed
      --filter those qualified free variables in f'
     let (f, _d) = (map nameToString f', map nameToString d')
-    logm $ "renameTopLevelVarName:f=" ++ show f
+    -- logm $ "condChecking1:f=" ++ show f
 
     let newNameStr = nameToString newNameGhc
-    logm $ "renameTopLevelVarName:(newName,newNameStr)=" ++ show (newName, newNameStr)
+    -- logm $ "condChecking1:(newName,newNameStr)=" ++ show (newName, newNameStr)
 
     scopeClashNames <- inScopeNames newName
 
-    logm $ "renameTopLevelVarName:(f')=" ++ showGhc f'
-    logm $ "renameTopLevelVarName:(scopeClashNames,intersection)=" ++
-           showGhc (scopeClashNames, scopeClashNames `intersect` f')
-    logm $ "renameTopLevelVarName:(oldPN,modName)=" ++ showGhc (oldPN,modName)
+    -- logm $ "condChecking1:(f')=" ++ showGhc f'
+    -- logm $ "condChecking1:(scopeClashNames,intersection)=" ++
+    --        showGhc (scopeClashNames, scopeClashNames `intersect` f')
+    -- logm $ "condChecking1:(oldPN,modName)=" ++ showGhc (oldPN,modName)
 
     -- Another implementation option is to add the qualifier to newName automatically.
     when (nonEmptyList $ intersect scopeClashNames f') .
@@ -543,24 +540,31 @@ renameTopLevelVarName oldPN newName newNameGhc modName existChecking exportCheck
     when (exportChecking && causeNameClashInExports nm oldPN newNameGhc modName parsed) $
         error "The new name will cause conflicting exports, please select another new name!"
 
+    causeAmbiguity <- causeAmbiguityInExports oldPN newNameGhc
     when (exportChecking && causeAmbiguity) . -- causeAmbiguityInExports oldPN  newNameGhc {- inscps -} renamed
         error $ mconcat ["The new name will cause ambiguity in the exports of module '"
                         , show modName
                         , "' , please select another name!"]
     -- get all of those declared names visible to oldPN at where oldPN is used.
 
-    logm "renameTopLevelVarName:basic tests done"
+    -- logm "condChecking1:basic tests done"
 
-    isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
-    logm "renameTopLevelVarName:after isInScopeUnqual"
-    logm $ "renameTopLevelVarName:oldPN=" ++ showGhc oldPN
+    -- logm "condChecking1:after isInScopeUnqual"
+    -- logm $ "condChecking1:oldPN=" ++ showGhc oldPN
     DN ds' <- hsVisibleDsRdr nm oldPN parsed
     let dns2 = map nameToString $ filter (sameNameSpace oldPN) ds'
-    logm $ "renameTopLevelVarName:ds computed2=" ++ show dns2
+    -- logm $ "condChecking1:ds computed2=" ++ show dns2
     when (existChecking && newName `elem` nub (dns2 `union` f) \\ [nameToString oldPN]) .
         error $ mconcat [ "Name '", newName, "' already exists, or renaming '", nameToString oldPN,  "' to '"
                         , newName, "' will change the program's semantics!\n"]
 
+-- ---------------------------------------------------------------------
+
+renameTopLevelVarName :: GHC.Name -> String -> GHC.Name
+                      -> Bool -> RefactGhc GHC.ParsedSource
+renameTopLevelVarName oldPN newName newNameGhc exportChecking = do
+    parsed <- getRefactParsed
+    isInScopeUnqual <- isInScopeAndUnqualifiedGhc newName (Just newNameGhc)
     let qual = if exportChecking && isInScopeUnqual then Qualify else PreserveQualify
     renamePN oldPN newNameGhc qual parsed
 
