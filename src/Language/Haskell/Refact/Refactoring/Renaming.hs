@@ -254,6 +254,7 @@ condChecking2 nm oldPN newName parsed = do
                              -- `adhocTP` inAlt
                              `adhocTP` inStmts
                              `adhocTP` inConDecl
+                             `adhocTP` inTyClDecl
                      )) parsed
   where
     -- return True if oldPN is declared by t.
@@ -275,16 +276,15 @@ condChecking2 nm oldPN newName parsed = do
            else mzero
 
     -- The name is declared in a function definition.
-    inMatch (match@(GHC.Match f@(GHC.FunBindMatch ln isInfix) pats  mtype (GHC.GRHSs rhs ds))
+    inMatch (GHC.Match f@(GHC.FunBindMatch ln isInfix) pats  mtype (GHC.GRHSs rhs ds)
              ::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
-      decls <- liftT $ hsDeclsGeneric match
       isDeclaredPats <- isDeclaredBy pats
       isDeclaredDs   <- isDeclaredBy ds
       if isDeclaredPats
         then condChecking' (GHC.Match f pats mtype (GHC.GRHSs rhs ds))
-      else if isDeclaredDs
-        then condChecking' (GHC.Match f []  mtype (GHC.GRHSs rhs ds))
-      else mzero
+        else if isDeclaredDs
+          then condChecking' (GHC.Match f []  mtype (GHC.GRHSs rhs ds))
+          else mzero
     inMatch _ = mzero
 
 {-
@@ -352,12 +352,19 @@ condChecking2 nm oldPN newName parsed = do
       declared <- isDeclaredBy ns
       if declared then return cd else mzero
     inConDecl cd@(GHC.ConDeclH98 n _ _ dets _) = do
-      logDataWithAnns "condChecking2:inConDecl:cd==" cd
+      -- logDataWithAnns "condChecking2:inConDecl:cd==" cd
       declaredn <- isDeclaredBy n
       declaredd <- isDeclaredBy dets
       logm $ "condChecking2:inConDecl:(declaredn,declaredd)=" ++ show (declaredn,declaredd)
       if declaredn || declaredd
         then return cd else mzero
+
+    inTyClDecl dd@(GHC.DataDecl ln tyvars defn _ _ :: GHC.TyClDecl GHC.RdrName) = do
+      declared <- isDeclaredBy dd
+      declaredtv <- isDeclaredBy tyvars
+      logm $ "condChecking2:inTyClDecl:(declared,declaredtv)=" ++ show (declared,declaredtv)
+      if declared || declaredtv then return dd else mzero
+    inTyClDecl _ = mzero
 
     -- ---------------------------------
 

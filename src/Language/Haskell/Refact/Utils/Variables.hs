@@ -286,8 +286,10 @@ hsFreeAndDeclaredRdr nm t = res
 hsFreeAndDeclaredRdr':: (SYB.Data t) => NameMap -> t -> Either String (FreeNames,DeclaredNames)
 hsFreeAndDeclaredRdr' nm t = do
       (FN f,DN d) <- hsFreeAndDeclared'
-      let (f',d') = ( filter (not . GHC.isTyVarName) $ nub f
-                    , filter (not . GHC.isTyVarName) $ nub d)
+      -- let (f',d') = ( filter (not . GHC.isTyVarName) $ nub f
+      --               , filter (not . GHC.isTyVarName) $ nub d)
+      let (f',d') = ( nub f
+                    , nub d)
       return (FN f',DN d')
 
    where
@@ -303,6 +305,8 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` stmts
                                                       `adhocTU` rhs
                                                       `adhocTU` ltydecl
+                                                      `adhocTU` tyvarbndrs
+                                                      `adhocTU` lhstyvarbndr
                                                       `adhocTU` lsigtype
                                                       `adhocTU` lsig
                                                       `adhocTU` datadefn
@@ -527,13 +531,14 @@ hsFreeAndDeclaredRdr' nm t = do
           ltydecl (GHC.SynDecl ln _bndrs _rhs _fvs)
               = return (FN [],DN [rdrName2NamePure nm ln])
 #if __GLASGOW_HASKELL__ <= 710
-          ltydecl (GHC.DataDecl ln _bndrs defn _fvs) = do
+          ltydecl (GHC.DataDecl ln tyvars defn _fvs) = do
               let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
-          ltydecl (GHC.DataDecl ln _bndrs defn _c _fvs) = do
-              (f,DN dds) <- hsFreeAndDeclaredRdr' nm  defn
+          ltydecl (GHC.DataDecl ln tyvars defn _c _fvs) = do
+              (FN fs,DN dds) <- hsFreeAndDeclaredRdr' nm  defn
 #endif
-              return (f,DN (rdrName2NamePure nm ln:dds))
+              (FN _ft,DN dt) <- hsFreeAndDeclaredRdr' nm  tyvars
+              return (FN (fs \\ dt),DN (rdrName2NamePure nm ln:dds))
           ltydecl (GHC.ClassDecl ctx ln _tyvars
                            _fds sigs meths ats atds _docs _fvs) = do
              ct  <- hsFreeAndDeclaredRdr' nm ctx
@@ -542,6 +547,17 @@ hsFreeAndDeclaredRdr' nm t = do
              ad  <- hsFreeAndDeclaredRdr' nm ats
              atd <- hsFreeAndDeclaredRdr' nm atds
              return ((FN [],DN [rdrName2NamePure nm ln]) <> md <> ad <> atd <> ct <> ss)
+
+          ------------------------------
+
+          tyvarbndrs :: GHC.LHsQTyVars GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+          tyvarbndrs (GHC.HsQTvs _implicit explicit _dependent ) = recurseList explicit
+
+          lhstyvarbndr :: GHC.LHsTyVarBndr GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+          lhstyvarbndr (GHC.L _ (GHC.UserTyVar ln)) = return (FN [], DN [rdrName2NamePure nm ln])
+          lhstyvarbndr (GHC.L _ (GHC.KindedTyVar ln lk)) = do
+            ks <- hsFreeAndDeclaredRdr' nm lk
+            return ((FN [], DN [rdrName2NamePure nm ln]) <> ks)
 
           ------------------------------
 
@@ -590,7 +606,7 @@ hsFreeAndDeclaredRdr' nm t = do
           condecl :: GHC.LConDecl GHC.RdrName -> Either String (FreeNames,DeclaredNames)
           condecl (GHC.L _ (GHC.ConDeclGADT ns typ _)) = do
             (ft,_) <- hsFreeAndDeclaredRdr' nm typ
-            return (ft,DN (map (rdrName2NamePure nm) ns)) 
+            return (ft,DN (map (rdrName2NamePure nm) ns))
           condecl (GHC.L _ (GHC.ConDeclH98 n _ mctxt dets _)) = do
              cs <- maybeHelper mctxt
              ds <- hsFreeAndDeclaredRdr' nm dets
