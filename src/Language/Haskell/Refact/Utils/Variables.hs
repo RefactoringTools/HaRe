@@ -1243,30 +1243,36 @@ hsVisibleDsRdr nm e t = do
     match :: (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
     match (GHC.Match _fn pats _mtyp rhs)
       | findNameInRdr nm e rhs || findNameInRdr nm e pats = do
-           -- logm $ "hsVisibleDsRdr nm.lmatch:doing rhs"
+           logm $ "hsVisibleDsRdr nm.lmatch:doing rhs"
            let (_pf,pd) = hsFreeAndDeclaredRdr nm pats
-           -- logm $ "hsVisibleDsRdr nm.lmatch:(pf,pd)=" ++ (show (pf,pd))
+           logm $ "hsVisibleDsRdr nm.lmatch:(pf,pd)=" ++ (show (_pf,pd))
            rd <- hsVisibleDsRdr nm e rhs
+           logm $ "hsVisibleDsRdr nm.lmatch:rd=" ++ (show rd)
            return (pd <> rd)
     match _ =return  (DN [])
 
     grhss :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
     grhss (GHC.GRHSs guardedRhss lstmts')
-      | findNameInRdr nm e guardedRhss = do
-          -- logm "hsVisibleDsRdr nm.grhss:about to do grhss"
+      | findNameInRdr nm e guardedRhss || findNameInRdr nm e lstmts' = do
+          logm "hsVisibleDsRdr nm.grhss:about to do lstmts"
           fds <- mapM (hsVisibleDsRdr nm e) guardedRhss
-          -- logm "hsVisibleDsRdr nm.grhss:grhss done"
-          return $ mconcat fds
-      | findNameInRdr nm e lstmts' = do
-          -- logm "hsVisibleDsRdr nm.grhss:about to do lstmts"
-          hsVisibleDsRdr nm e lstmts'
-    grhss _ = return (DN [])
+          -- sfds <- hsVisibleDsRdr nm e lstmts'
+          let (_,sfds) = hsFreeAndDeclaredRdr nm lstmts'
+          return $ mconcat (sfds:fds)
+    grhss _ = do
+      logm $ "hsVisibleDsRdr.grhss: no match"
+      return (DN [])
 
     lgrhs :: GHC.LGRHS GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc DeclaredNames
     lgrhs (GHC.L _ (GHC.GRHS guards ex))
       | findNameInRdr nm e guards = hsVisibleDsRdr nm e guards
-      | findNameInRdr nm e ex     = hsVisibleDsRdr nm e ex
-    lgrhs _ = return (DN [])
+      | findNameInRdr nm e ex     = do
+        r <- hsVisibleDsRdr nm e ex
+        logm $ "hsVisibleDsRdr.lgrhs:r=" ++ show r
+        return r
+    lgrhs _ = do
+      logm $ "hsVisibleDsRdr.lgrhs: no match"
+      return (DN [])
 
 
     lexpr :: GHC.LHsExpr GHC.RdrName -> RefactGhc DeclaredNames
@@ -1288,11 +1294,10 @@ hsVisibleDsRdr nm e t = do
     lexpr expr
       | findNameInRdr nm e expr = do
         -- logm $ "hsVisibleDsRdr nm.lexpr.(e,expr):" ++ (showGhc (e,expr))
-        let (FN efs,_)         = hsFreeAndDeclaredRdr nm expr
+        let (FN efs,eds)         = hsFreeAndDeclaredRdr nm expr
         let (FN _eefs,DN eeds) = hsFreeAndDeclaredRdr nm e
-        -- logm $ "hsVisibleDsRdr nm.lexpr done"
-        -- return (DN e1fs <> DN eofs <> DN e2fs)
-        return (DN (efs \\ eeds))
+        -- logm $ "hsVisibleDsRdr nm.lexpr (efs,_d,_eefs,eeds) " ++ show (efs,_d,_eefs,eeds)
+        return (DN (efs \\ eeds) <> eds)
 
     lexpr x = do
       logm $ "hsVisibleDsRdr.lexpr:miss for:" ++ SYB.showData SYB.Parser 0 x

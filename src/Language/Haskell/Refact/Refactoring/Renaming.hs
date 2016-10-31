@@ -291,6 +291,7 @@ condChecking2 nm oldPN newName t = do
              ::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
       isDeclaredPats <- isDeclaredBy pats
       isDeclaredDs   <- isDeclaredBy ds
+      logm $ "Renaming.condChecking2.inMatch:isDeclared=" ++ show (isDeclaredPats,isDeclaredDs)
       if isDeclaredPats
         then condChecking' (GHC.Match f pats mtype (GHC.GRHSs rhs ds))
         else if isDeclaredDs
@@ -317,8 +318,9 @@ condChecking2 nm oldPN newName t = do
         then condChecking' expr
         else mzero
     inExp expr@((GHC.L _ (GHC.HsDo _ ds e)):: GHC.LHsExpr GHC.RdrName) = do
-      -- isDeclared   <- isDeclaredBy ds
-      isDeclared   <- isDeclaredBy expr
+      isDeclared   <- isDeclaredBy ds
+      -- logDataWithAnns "inExp.HsDo:expr" expr
+      logm $ "inExp.HsDo:isDeclared=" ++ show isDeclared
       if isDeclared
         then condChecking' expr
         else mzero
@@ -399,6 +401,7 @@ condChecking2 nm oldPN newName t = do
       -- DN vd <- hsVisibleDsRdr nm oldPN t
       -- logm $ "condChecking':vd=" ++ showGhc vd
       sameGroupDecls <- declaredVarsInSameGroup nm oldPN t
+      logm $ "condChecking':sameGroupDecls=" ++ showGhc sameGroupDecls
       when (newName `elem` sameGroupDecls)
             $ error "The new name exists in the same binding group!"
       (f, d) <- hsFreeAndDeclaredNameStrings t
@@ -407,7 +410,7 @@ condChecking2 nm oldPN newName t = do
       -- are visible to the places where oldPN occurs.
       ds <- hsVisibleNamesRdr oldPN t
       -- logm $ "Renaming.condChecking':t=" ++ showGhc t
-      -- logm $ "Renaming.condChecking':ds=" ++ showGhc ds
+      logm $ "Renaming.condChecking':ds=" ++ showGhc ds
       when (newName `elem` ds) $ error "The new name will cause name capture!"
       return t
 

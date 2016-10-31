@@ -209,19 +209,19 @@ isInScopeAndUnqualifiedGhc ::
   -> RefactGhc Bool   -- ^ The result.
 isInScopeAndUnqualifiedGhc n maybeExising = do
   names <- ghandle handler (GHC.parseName n)
-  logm $ "isInScopeAndUnqualifiedGhc:(n,(maybeExising,names))=" ++ (show n) ++ ":" ++  (showGhc (maybeExising,names))
+  -- logm $ "isInScopeAndUnqualifiedGhc:(n,(maybeExising,names))=" ++ (show n) ++ ":" ++  (showGhc (maybeExising,names))
   ctx <- GHC.getContext
-  logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
+  -- logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
   let nameList = case maybeExising of
                   Nothing -> names
                   Just n' -> filter (\x -> (showGhcQual x) /= (showGhcQual n')) names
-  logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (show n) ++ ":" ++  (showGhc nameList)
+  -- logm $ "isInScopeAndUnqualifiedGhc:(n,nameList)=" ++ (show n) ++ ":" ++  (showGhc nameList)
   return $ nameList /= []
 
   where
     handler:: SomeException -> RefactGhc [GHC.Name]
     handler e = do
-      logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
+      -- logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
       return []
 
 -- ---------------------------------------------------------------------
