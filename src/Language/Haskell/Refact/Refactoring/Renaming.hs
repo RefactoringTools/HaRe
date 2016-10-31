@@ -105,9 +105,6 @@ compRename fileName newName (row,col) = do
                 error "The 'main' function defined in a 'Main' module should not be renamed!"
 
             newNameGhc <- mkNewGhcName (Just modu) newName
-            -- condChecking1 n newName newNameGhc modName parsed True True
-            -- condChecking2 nm n newName parsed
-
             (refactoredMod, nIsExported) <- applyRefac (doRenaming pn rdrNameStr newName newNameGhc modName)
                                            RSAlreadyLoaded
 
@@ -315,6 +312,7 @@ condChecking2 nm oldPN newName t = do
     -- The name is declared in a expression.
     inExp expr@((GHC.L _ (GHC.HsLet ds e)):: GHC.LHsExpr GHC.RdrName) = do
       isDeclaredDs   <- isDeclaredBy ds
+      -- logm $ "inExp.HsLet:isDeclaredDs=" ++ show isDeclaredDs
       if isDeclaredDs
         then condChecking' expr
         else mzero
@@ -364,32 +362,42 @@ condChecking2 nm oldPN newName t = do
 
     inDataDefn dd@(GHC.HsDataDefn _ ctxt mctype mkindsig cons derivs :: GHC.HsDataDefn GHC.RdrName) = do
       declared <- isDeclaredBy cons
-      -- TODO: what about condChecking' ?
-      if declared then return dd else mzero
+      if declared
+        then condChecking' dd
+        else mzero
 
     -- The name is declared in a ConDecl
     inConDecl cd@(GHC.ConDeclGADT ns _ _ :: GHC.ConDecl GHC.RdrName) = do
       declared <- isDeclaredBy ns
       -- TODO: what about condChecking' ?
-      if declared then return cd else mzero
+      if declared
+        then condChecking' cd
+        else mzero
     inConDecl cd@(GHC.ConDeclH98 n _ _ dets _) = do
       -- logDataWithAnns "condChecking2:inConDecl:cd==" cd
       declaredn <- isDeclaredBy n
       declaredd <- isDeclaredBy dets
       logm $ "condChecking2:inConDecl:(declaredn,declaredd)=" ++ show (declaredn,declaredd)
       if declaredn || declaredd
-        then return cd else mzero
+        then condChecking' cd
+        else mzero
 
     inTyClDecl dd@(GHC.DataDecl ln tyvars defn _ _ :: GHC.TyClDecl GHC.RdrName) = do
       declared <- isDeclaredBy dd
       declaredtv <- isDeclaredBy tyvars
       logm $ "condChecking2:inTyClDecl:(declared,declaredtv)=" ++ show (declared,declaredtv)
-      if declared || declaredtv then return dd else mzero
+      if declared || declaredtv
+        then condChecking' dd
+        else mzero
     inTyClDecl _ = mzero
 
     -- ---------------------------------
 
     condChecking' t = do
+      -- logDataWithAnns "condChecking':t=" t
+      -- nm <- getRefactNameMap
+      -- DN vd <- hsVisibleDsRdr nm oldPN t
+      -- logm $ "condChecking':vd=" ++ showGhc vd
       sameGroupDecls <- declaredVarsInSameGroup nm oldPN t
       when (newName `elem` sameGroupDecls)
             $ error "The new name exists in the same binding group!"

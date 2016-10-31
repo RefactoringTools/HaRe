@@ -27,9 +27,9 @@ module Language.Haskell.Refact.Utils.Variables
   , getDeclaredTypesRdr
   , getDeclaredVarsRdr
 
-  , hsVisibleNamesRdr
+  , hsVisibleNamesRdr, hsVisibleDsRdr
   , hsFDsFromInsideRdr, hsFDNamesFromInsideRdr, hsFDNamesFromInsideRdrPure
-  , hsVisibleDsRdr
+
   , rdrName2Name, rdrName2NamePure
   , eqRdrNamePure
   -- , rdrName2Name'
@@ -1123,7 +1123,10 @@ hsVisibleDsRdr nm e t = do
           `SYB.extQ` tyclgroup
           `SYB.extQ` tycldeclss
           `SYB.extQ` tycldecls
+          `SYB.extQ` ltycldecl
           `SYB.extQ` tycldecl
+          `SYB.extQ` hsdatadefn
+          `SYB.extQ` condecl
           `SYB.extQ` instdecls
           `SYB.extQ` instdecl
           `SYB.extQ` lhstype
@@ -1239,10 +1242,7 @@ hsVisibleDsRdr nm e t = do
 
     match :: (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
     match (GHC.Match _fn pats _mtyp rhs)
-      | findNameInRdr nm e pats = do
-           -- logm $ "hsVisibleDsRdr nm.lmatch:in pats="
-           return (DN []) -- TODO: extend this
-      | findNameInRdr nm e rhs = do
+      | findNameInRdr nm e rhs || findNameInRdr nm e pats = do
            -- logm $ "hsVisibleDsRdr nm.lmatch:doing rhs"
            let (_pf,pd) = hsFreeAndDeclaredRdr nm pats
            -- logm $ "hsVisibleDsRdr nm.lmatch:(pf,pd)=" ++ (show (pf,pd))
@@ -1328,12 +1328,33 @@ hsVisibleDsRdr nm e t = do
         return $ mconcat fds
     tycldecls _ = return (DN [])
 
-    tycldecl :: GHC.LTyClDecl GHC.RdrName -> RefactGhc DeclaredNames
+    ltycldecl :: GHC.LTyClDecl GHC.RdrName -> RefactGhc DeclaredNames
+    ltycldecl tcd
+      | findNameInRdr nm e tcd = do
+        let (_,ds) = hsFreeAndDeclaredRdr nm tcd
+        return ds
+    ltycldecl _ = return (DN [])
+
+    tycldecl :: GHC.TyClDecl GHC.RdrName -> RefactGhc DeclaredNames
     tycldecl tcd
       | findNameInRdr nm e tcd = do
         let (_,ds) = hsFreeAndDeclaredRdr nm tcd
         return ds
     tycldecl _ = return (DN [])
+
+    hsdatadefn :: GHC.HsDataDefn GHC.RdrName -> RefactGhc DeclaredNames
+    hsdatadefn tcd
+      | findNameInRdr nm e tcd = do
+        let (_,ds) = hsFreeAndDeclaredRdr nm tcd
+        return ds
+    hsdatadefn _ = return (DN [])
+
+    condecl :: GHC.ConDecl GHC.RdrName -> RefactGhc DeclaredNames
+    condecl tcd
+      | findNameInRdr nm e tcd = do
+        let (_,ds) = hsFreeAndDeclaredRdr nm tcd
+        return ds
+    condecl _ = return (DN [])
 
     -- ---------------------------------
 
