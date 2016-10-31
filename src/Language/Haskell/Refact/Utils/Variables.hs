@@ -43,7 +43,7 @@ module Language.Haskell.Refact.Utils.Variables
   , definedPNsRdr,definedNamesRdr
   , definingDeclsRdrNames,definingDeclsRdrNames',definingSigsRdrNames
   , definingTyClDeclsNames
-  , definesRdr,definesDeclRdr
+  , definesRdr,definesDeclRdr,definesNameRdr
   , definesTypeSigRdr,definesSigDRdr
 
   , hsTypeVbls
@@ -73,6 +73,7 @@ import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Bag           as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
+import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 
 import qualified Data.Generics as SYB
@@ -308,7 +309,7 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` tyvarbndrs
                                                       `adhocTU` lhstyvarbndr
                                                       `adhocTU` lsigtype
-                                                      `adhocTU` lsig
+                                                      `adhocTU` sig
                                                       `adhocTU` datadefn
                                                       `adhocTU` condecl
                                                       `adhocTU` condetails
@@ -539,14 +540,16 @@ hsFreeAndDeclaredRdr' nm t = do
 #endif
               (FN _ft,DN dt) <- hsFreeAndDeclaredRdr' nm  tyvars
               return (FN (fs \\ dt),DN (rdrName2NamePure nm ln:dds))
-          ltydecl (GHC.ClassDecl ctx ln _tyvars
+          ltydecl (GHC.ClassDecl ctx ln tyvars
                            _fds sigs meths ats atds _docs _fvs) = do
              ct  <- hsFreeAndDeclaredRdr' nm ctx
+             (_,DN tv)  <- hsFreeAndDeclaredRdr' nm tyvars
              ss  <- recurseList sigs
              md  <- hsFreeAndDeclaredRdr' nm meths
              ad  <- hsFreeAndDeclaredRdr' nm ats
              atd <- hsFreeAndDeclaredRdr' nm atds
-             return ((FN [],DN [rdrName2NamePure nm ln]) <> md <> ad <> atd <> ct <> ss)
+             let (FN ff,DN df) = ((FN [],DN [rdrName2NamePure nm ln]) <> md <> ad <> atd <> ct <> ss)
+             return (FN (nub ff \\ tv), DN df)
 
           ------------------------------
 
@@ -567,25 +570,27 @@ hsFreeAndDeclaredRdr' nm t = do
 
           ------------------------------
 
-          lsig :: GHC.LSig GHC.RdrName -> Either String (FreeNames,DeclaredNames)
-          lsig (GHC.L _ (GHC.TypeSig lns typ)) = do
-            ts <- hsFreeAndDeclaredRdr' nm typ
-            return ((FN [],DN (map (rdrName2NamePure nm ) lns)) <> ts)
-          lsig (GHC.L _ (GHC.PatSynSig ln typ)) = do
+          sig :: GHC.Sig GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+          sig (GHC.TypeSig lns typ) = do
+            (FN ft, dt) <- hsFreeAndDeclaredRdr' nm typ
+            -- error $ "sig:ft=" ++ (intercalate "," $ map (\n -> showGhc n ++ (occAttributes $ GHC.occName n)) ft)
+            return ((FN [],DN (map (rdrName2NamePure nm ) lns))
+                     <> (FN (filter (not . GHC.isTyVarName) ft), dt))
+          sig (GHC.PatSynSig ln typ) = do
             ts <- hsFreeAndDeclaredRdr' nm typ
             return ((FN [],DN [rdrName2NamePure nm ln]) <> ts)
-          lsig (GHC.L _ (GHC.ClassOpSig _ lns typ)) = do
+          sig (GHC.ClassOpSig _ lns typ) = do
             ts <- hsFreeAndDeclaredRdr' nm typ
             return ((FN [],DN (map (rdrName2NamePure nm) lns)) <> ts)
-          lsig (GHC.L _ (GHC.IdSig _ )) = error $ "hsFreeAndDeclaredRdr:IdSig should not occur"
-          lsig (GHC.L _ (GHC.FixSig sig)) = hsFreeAndDeclaredRdr' nm sig
-          lsig (GHC.L _ (GHC.InlineSig ln _)) = do
+          sig (GHC.IdSig _ ) = error $ "hsFreeAndDeclaredRdr:IdSig should not occur"
+          sig (GHC.FixSig sig) = hsFreeAndDeclaredRdr' nm sig
+          sig (GHC.InlineSig ln _) = do
             return ((FN [],DN [rdrName2NamePure nm ln]) )
-          lsig (GHC.L _ (GHC.SpecSig ln typs _)) = do
+          sig (GHC.SpecSig ln typs _) = do
             ts <- recurseList typs
             return ((FN [rdrName2NamePure nm ln],DN []) <> ts)
-          lsig (GHC.L _ (GHC.SpecInstSig _ sig)) = hsFreeAndDeclaredRdr' nm sig
-          lsig (GHC.L _ (GHC.MinimalSig _ _)) = return mempty
+          sig (GHC.SpecInstSig _ sig) = hsFreeAndDeclaredRdr' nm sig
+          sig (GHC.MinimalSig _ _) = return mempty
 
           ------------------------------
 
@@ -706,6 +711,21 @@ hsFreeAndDeclaredRdr' nm t = do
 
 -- ---------------------------------------------------------------------
 
+-- TODO: Temporary copy from ghc-exactpring WIP. Remove this
+occAttributes :: GHC.OccName -> String
+occAttributes o = "(" ++ ns ++ vo ++ tv ++ tc ++ d ++ ds ++ s ++ v ++ ")"
+  where
+    ns = (GHC.showSDocUnsafe $ GHC.pprNameSpaceBrief $ GHC.occNameSpace o) ++ ", "
+    vo = if GHC.isVarOcc     o then "Var "     else ""
+    tv = if GHC.isTvOcc      o then "Tv "      else ""
+    tc = if GHC.isTcOcc      o then "Tc "      else ""
+    d  = if GHC.isDataOcc    o then "Data "    else ""
+    ds = if GHC.isDataSymOcc o then "DataSym " else ""
+    s  = if GHC.isSymOcc     o then "Sym "     else ""
+    v  = if GHC.isValOcc     o then "Val "     else ""
+
+-- ---------------------------------------------------------------------
+
 -- |Get the names of all types declared in the given declaration
 -- getDeclaredTypesRdr :: GHC.LTyClDecl GHC.RdrName -> RefactGhc [GHC.Name]
 getDeclaredTypesRdr :: GHC.LHsDecl GHC.RdrName -> RefactGhc [GHC.Name]
@@ -816,8 +836,7 @@ definingDeclsRdrNames ::
             -> Bool       -- ^ True means to include the type signature.
             -> Bool       -- ^ True means to look at the local declarations as well.
             -> [GHC.LHsDecl GHC.RdrName]  -- ^ The result.
-definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining ds
--- ++AZ++:TODO: now we are processing decls again, reinstate incTypeSig function
+definingDeclsRdrNames nameMap pns ds incTypeSig recursive = concatMap defining ds
 -- TODO: Maybe Use hsFreeAndDeclaredRdr to see what is declared in a decl. Recursive?
   where
    defining decl
@@ -836,8 +855,11 @@ definingDeclsRdrNames nameMap pns ds _incTypeSig recursive = concatMap defining 
       definesDecl decl'@(GHC.L _l (GHC.ValD (GHC.PatBind _p _rhs _ty _fvs _)))
         | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
 
-      definesDecl decl'@(GHC.L _l (GHC.TyClD d))
-        | any (\n -> definesDeclRdr nameMap n decl') pns = [decl']
+      definesDecl decl'@(GHC.L _l (GHC.TyClD _))
+        | any (\n -> definesNameRdr nameMap n decl') pns = [decl']
+
+      definesDecl decl'@(GHC.L _l (GHC.SigD _))
+        | incTypeSig && any (\n -> definesNameRdr nameMap n decl') pns = [decl']
 
       definesDecl _ = []
 
@@ -919,7 +941,7 @@ definingTyClDeclsNames:: (SYB.Data t)
             => NameMap
             -> [GHC.Name]   -- ^ The specified identifiers.
             -> t -- ^ A collection of declarations.
-            ->[GHC.LTyClDecl GHC.RdrName]  -- ^ The result.
+            -> [GHC.LTyClDecl GHC.RdrName]  -- ^ The result.
 definingTyClDeclsNames nm pns t = defining t
   where
    defining decl
@@ -945,8 +967,12 @@ definingTyClDeclsNames nm pns t = defining t
 #else
       defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _ _))
 #endif
-        | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
+        --   elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
+        | not $ null (dus `intersect` uns) = [decl']
         | otherwise = []
+        where
+          (_,DN ds) = hsFreeAndDeclaredRdr nm decl'
+          dus = map GHC.nameUnique ds
 
       defines' decl'@(GHC.L _ (GHC.ClassDecl _ pname _ _ _ _ _ _ _ _))
         | elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
@@ -972,10 +998,16 @@ definesRdr nm n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
   = elem n (map (rdrName2NamePure nm) (hsNamessRdr p))
 definesRdr _ _ _= False
 
+
 -- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
 definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
-definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d))  = definesRdr nameMap nin (GHC.L l d)
-definesDeclRdr nameMap nin d = nin `elem` declared
+definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
+definesDeclRdr _ _ _ = False
+
+-- | Returns True if the provided Name is defined in the LHsDecl
+definesNameRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
+definesNameRdr nameMap nin (GHC.L l (GHC.ValD d))  = definesRdr nameMap nin (GHC.L l d)
+definesNameRdr nameMap nin d = nin `elem` declared
   where
     (_,DN declared) = hsFreeAndDeclaredRdr nameMap d
 -- definesDeclRdr _ _ _ = False
@@ -1292,18 +1324,14 @@ hsVisibleDsRdr nm e t = do
     tycldecls :: [GHC.LTyClDecl GHC.RdrName] -> RefactGhc DeclaredNames
     tycldecls tcds
       | findNameInRdr nm e tcds = do
-        logm $ "hsVisibleDsRdr.tycldecls"
         fds <- mapM (hsVisibleDsRdr nm e) tcds
-        logm $ "hsVisibleDsRdr.tycldecls done"
         return $ mconcat fds
     tycldecls _ = return (DN [])
 
     tycldecl :: GHC.LTyClDecl GHC.RdrName -> RefactGhc DeclaredNames
     tycldecl tcd
       | findNameInRdr nm e tcd = do
-        logm $ "hsVisibleDsRdr.tycldecl"
         let (_,ds) = hsFreeAndDeclaredRdr nm tcd
-        logm $ "hsVisibleDsRdr.tycldecl done"
         return ds
     tycldecl _ = return (DN [])
 

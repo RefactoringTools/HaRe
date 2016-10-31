@@ -407,7 +407,7 @@ causeNameClashInExports::  NameMap
                         -> GHC.Name          -- ^ The original name
                         -> GHC.Name          -- ^ The new name
                         -> GHC.ModuleName    -- ^ The identity of the module
-                        -> GHC.ParsedSource -- ^ The AST of the module
+                        -> GHC.ParsedSource  -- ^ The AST of the module
                         -> Bool              -- ^ The result
 
 -- Note that in the abstract representation of exps, there is no qualified entities.
@@ -1830,10 +1830,10 @@ rmDecl:: (SYB.Data t)
 
 rmDecl pn incSig t = do
   setStateStorage StorageNone
-  t' <- everywhereMStaged' SYB.Parser (SYB.mkM   inModule
-                                      `SYB.extM` inLet
-                                      `SYB.extM` inMatch
-                                      ) t -- top down
+  t' <- everywhereM' (SYB.mkM   inModule
+                     `SYB.extM` inLet
+                     `SYB.extM` inMatch
+                     ) t -- top down
          -- applyTP (once_tdTP (failTP `adhocTP` inBinds)) t
   storage <- getStateStorage
   let decl' = case storage of

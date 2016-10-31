@@ -422,7 +422,7 @@ spec = do
     it "cannot rename x InScopes" $ do
      -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (6,22))
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (6,22))
-     show res `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
+     show res `shouldBe` "Just \"Still need to clarify what error should be reported. But there should be one.\""
 
 
     -- ---------------------------------

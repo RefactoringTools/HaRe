@@ -464,6 +464,17 @@ spec = do
 
     -- ---------------------------------
 
+    it "finds field names in data declarations" $ do
+      t <- ct $ parsedFileGhc "./Renaming/Field4.hs"
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
+          nm = initRdrNameMap t
+
+      let Just n = locToNameRdrPure nm (5,23) parsed
+      let res = definingTyClDeclsNames nm [n] parsed
+      (unspace $ showGhcQual res) `shouldBe` "[data Vtree a\n = Vleaf {value1 :: a} |\n Vnode {value2 :: a, left, right :: Vtree a}]"
+
+    -- ---------------------------------
+
     it "finds type declarations" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/TyClDecls.hs"
       let parsed = GHC.pm_parsed_source $ tmParsedModule t
@@ -784,7 +795,7 @@ spec = do
       ((bb,resg),_s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
 
 
-      (showGhcQual bb) `shouldBe` "class SameOrNot a where\n  isSame :: a -> a -> Bool\n  isNotSame :: a -> a -> Bool"
+      (showGhcQual bb) `shouldBe` "class SameOrNot c where\n  isSame :: c -> c -> Bool\n  isNotSame :: c -> c -> Bool"
 
       -- (SYB.showData SYB.Renamer 0 bb) `shouldBe` ""
 
@@ -1559,7 +1570,7 @@ spec = do
 
          (parent',Just (funBinding,declsToDup,declsp')) <- modifyValD (GHC.getLoc parent) parent $ \_m declsp -> do
            let
-             declsToDup = definingDeclsRdrNames nm [n] declsp True True
+             declsToDup = definingDeclsRdrNames nm [n] declsp False True
              funBinding = filter isFunOrPatBindP declsToDup     --get the fun binding.
 
            declsp' <- duplicateDecl declsp n newName2
@@ -2171,7 +2182,7 @@ spec = do
          let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls False False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
@@ -2198,7 +2209,7 @@ spec = do
          let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls False False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
@@ -2225,7 +2236,7 @@ spec = do
          let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls False False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
@@ -2250,7 +2261,7 @@ spec = do
          let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls False False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
 
@@ -2276,7 +2287,7 @@ spec = do
          let Just tl = locToNameRdrPure nm (4, 1) parsed
          decls <- liftT (hsDecls parsed)
          let
-             [tlDecl] = definingDeclsRdrNames nm [tl] decls True False
+             [tlDecl] = definingDeclsRdrNames nm [tl] decls False False
 
          (decl,declAnns) <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "decl" "nn = nn2")
          (sig, sigAnns)  <- GHC.liftIO $ withDynFlags (\df -> parseDeclToAnnotated df "sig"  "nn :: Int")
