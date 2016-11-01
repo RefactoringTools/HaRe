@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.Renaming
   ( rename
@@ -287,8 +288,13 @@ condChecking2 nm oldPN newName t = do
            else mzero
 
     -- The name is declared in a function definition.
+#if __GLASGOW_HASKELL__ <= 710
+    inMatch (GHC.Match f@(Just (ln,_)) pats  mtype (GHC.GRHSs rhs ds)
+             ::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+#else
     inMatch (GHC.Match f@(GHC.FunBindMatch ln isInfix) pats  mtype (GHC.GRHSs rhs ds)
              ::GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) = do
+#endif
       isDeclaredPats <- isDeclaredBy pats
       isDeclaredDs   <- isDeclaredBy ds
       logm $ "Renaming.condChecking2.inMatch:isDeclared=" ++ show (isDeclaredPats,isDeclaredDs)
@@ -369,6 +375,23 @@ condChecking2 nm oldPN newName t = do
         else mzero
 
     -- The name is declared in a ConDecl
+#if __GLASGOW_HASKELL__ <= 710
+
+    inConDecl (cd@(GHC.ConDecl ns _expr (GHC.HsQTvs _ns bndrs) ctxt
+                               dets res _ depc_syntax) :: GHC.ConDecl GHC.RdrName ) =
+      case res of
+        GHC.ResTyGADT ls typ -> do
+          declared <- isDeclaredBy ns
+          if declared
+            then condChecking' cd
+            else mzero
+        GHC.ResTyH98 -> do
+          declaredn <- isDeclaredBy ns
+          declaredd <- isDeclaredBy dets
+          if declaredn || declaredd
+            then condChecking' cd
+            else mzero
+#else
     inConDecl cd@(GHC.ConDeclGADT ns _ _ :: GHC.ConDecl GHC.RdrName) = do
       declared <- isDeclaredBy ns
       -- TODO: what about condChecking' ?
@@ -376,18 +399,22 @@ condChecking2 nm oldPN newName t = do
         then condChecking' cd
         else mzero
     inConDecl cd@(GHC.ConDeclH98 n _ _ dets _) = do
-      -- logDataWithAnns "condChecking2:inConDecl:cd==" cd
       declaredn <- isDeclaredBy n
       declaredd <- isDeclaredBy dets
-      logm $ "condChecking2:inConDecl:(declaredn,declaredd)=" ++ show (declaredn,declaredd)
       if declaredn || declaredd
         then condChecking' cd
         else mzero
+#endif
 
+
+#if __GLASGOW_HASKELL__ <= 710
+    inTyClDecl dd@(GHC.DataDecl ln (GHC.HsQTvs _ns tyvars) defn _ :: GHC.TyClDecl GHC.RdrName) = do
+#else
     inTyClDecl dd@(GHC.DataDecl ln tyvars defn _ _ :: GHC.TyClDecl GHC.RdrName) = do
+#endif
       declared <- isDeclaredBy dd
       declaredtv <- isDeclaredBy tyvars
-      logm $ "condChecking2:inTyClDecl:(declared,declaredtv)=" ++ show (declared,declaredtv)
+      -- logm $ "condChecking2:inTyClDecl:(declared,declaredtv)=" ++ show (declared,declaredtv)
       if declared || declaredtv
         then condChecking' dd
         else mzero

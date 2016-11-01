@@ -306,9 +306,14 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` stmts
                                                       `adhocTU` rhs
                                                       `adhocTU` ltydecl
+#if __GLASGOW_HASKELL__ <= 710
+#else
                                                       `adhocTU` tyvarbndrs
+#endif
                                                       `adhocTU` lhstyvarbndr
+#if __GLASGOW_HASKELL__ < 710
                                                       `adhocTU` lsigtype
+#endif
                                                       `adhocTU` sig
                                                       `adhocTU` datadefn
                                                       `adhocTU` condecl
@@ -454,7 +459,7 @@ hsFreeAndDeclaredRdr' nm t = do
           -- -----------------------
 
 #if __GLASGOW_HASKELL__ <= 710
-          bndrs :: GHC.HsWithBndrs GHC.RdrName (GHC.LHsType GHC.RdrName) -> Maybe (FreeNames,DeclaredNames)
+          bndrs :: GHC.HsWithBndrs GHC.RdrName (GHC.LHsType GHC.RdrName) -> Either String (FreeNames,DeclaredNames)
           bndrs (GHC.HsWB thing _ _ _) = do
             (FN ft,DN _dt) <- hsFreeAndDeclaredRdr' nm thing
             return (FN ft,DN [])
@@ -533,11 +538,11 @@ hsFreeAndDeclaredRdr' nm t = do
               = return (FN [],DN [rdrName2NamePure nm ln])
 #if __GLASGOW_HASKELL__ <= 710
           ltydecl (GHC.DataDecl ln tyvars defn _fvs) = do
-              let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
+              -- let dds = map (rdrName2NamePure nm) $ concatMap (GHC.con_names . GHC.unLoc) $ GHC.dd_cons defn
 #else
           ltydecl (GHC.DataDecl ln tyvars defn _c _fvs) = do
-              (FN fs,DN dds) <- hsFreeAndDeclaredRdr' nm  defn
 #endif
+              (FN fs,DN dds) <- hsFreeAndDeclaredRdr' nm  defn
               (FN _ft,DN dt) <- hsFreeAndDeclaredRdr' nm  tyvars
               return (FN (fs \\ dt),DN (rdrName2NamePure nm ln:dds))
           ltydecl (GHC.ClassDecl ctx ln tyvars
@@ -553,33 +558,64 @@ hsFreeAndDeclaredRdr' nm t = do
 
           ------------------------------
 
+#if __GLASGOW_HASKELL__ <= 710
+          tyvarbndrs :: GHC.LHsTyVarBndrs GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+          tyvarbndrs (GHC.HsQTvs _implicit explicit) = do
+            recurseList explicit
+#else
           tyvarbndrs :: GHC.LHsQTyVars GHC.RdrName -> Either String (FreeNames,DeclaredNames)
           tyvarbndrs (GHC.HsQTvs _implicit explicit _dependent ) = recurseList explicit
+#endif
 
           lhstyvarbndr :: GHC.LHsTyVarBndr GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+#if __GLASGOW_HASKELL__ <= 710
+          lhstyvarbndr (GHC.L l (GHC.UserTyVar n)) = return (FN [], DN [rdrName2NamePure nm (GHC.L l n)])
+#else
           lhstyvarbndr (GHC.L _ (GHC.UserTyVar ln)) = return (FN [], DN [rdrName2NamePure nm ln])
+#endif
           lhstyvarbndr (GHC.L _ (GHC.KindedTyVar ln lk)) = do
             ks <- hsFreeAndDeclaredRdr' nm lk
             return ((FN [], DN [rdrName2NamePure nm ln]) <> ks)
 
           ------------------------------
 
+#if __GLASGOW_HASKELL__ > 710
           lsigtype :: GHC.LHsSigType GHC.RdrName -> Either String (FreeNames,DeclaredNames)
           lsigtype (GHC.HsIB _ typ) = do
             hsFreeAndDeclaredRdr' nm typ
+#endif
 
           ------------------------------
 
           sig :: GHC.Sig GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+#if __GLASGOW_HASKELL__ <= 710
+          sig (GHC.TypeSig lns typ _) = do
+#else
           sig (GHC.TypeSig lns typ) = do
+#endif
             (FN ft, dt) <- hsFreeAndDeclaredRdr' nm typ
             -- error $ "sig:ft=" ++ (intercalate "," $ map (\n -> showGhc n ++ (occAttributes $ GHC.occName n)) ft)
             return ((FN [],DN (map (rdrName2NamePure nm ) lns))
                      <> (FN (filter (not . GHC.isTyVarName) ft), dt))
+#if __GLASGOW_HASKELL__ <= 710
+          sig (GHC.PatSynSig ln (_ef,GHC.HsQTvs _ns bndrs) ctx1 ctx2 typ) = do
+            (_, DN bs) <- hsFreeAndDeclaredRdr' nm bndrs
+            c1s <- hsFreeAndDeclaredRdr' nm ctx1
+            c2s <- hsFreeAndDeclaredRdr' nm ctx2
+            ts  <- hsFreeAndDeclaredRdr' nm typ
+            let (FN f,DN d) = c1s <> c2s <> ts
+                fd = (FN (f \\ bs), DN d )
+            return ((FN [],DN [rdrName2NamePure nm ln]) <> fd)
+#else
           sig (GHC.PatSynSig ln typ) = do
             ts <- hsFreeAndDeclaredRdr' nm typ
             return ((FN [],DN [rdrName2NamePure nm ln]) <> ts)
+#endif
+#if __GLASGOW_HASKELL__ <= 710
+          sig (GHC.GenericSig lns typ) = do
+#else
           sig (GHC.ClassOpSig _ lns typ) = do
+#endif
             ts <- hsFreeAndDeclaredRdr' nm typ
             return ((FN [],DN (map (rdrName2NamePure nm) lns)) <> ts)
           sig (GHC.IdSig _ ) = error $ "hsFreeAndDeclaredRdr:IdSig should not occur"
@@ -609,6 +645,18 @@ hsFreeAndDeclaredRdr' nm t = do
           ------------------------------
 
           condecl :: GHC.LConDecl GHC.RdrName -> Either String (FreeNames,DeclaredNames)
+#if __GLASGOW_HASKELL__ <= 710
+          condecl (GHC.L _ (GHC.ConDecl ns _expr (GHC.HsQTvs _ns bndrs) ctxt
+                                        dets res _ depc_syntax)) =
+            case res of
+              GHC.ResTyGADT ls typ -> do
+                (ft,_) <- hsFreeAndDeclaredRdr' nm typ
+                return (ft,DN (map (rdrName2NamePure nm) ns))
+              GHC.ResTyH98 -> do
+                cs <- hsFreeAndDeclaredRdr' nm ctxt
+                ds <- hsFreeAndDeclaredRdr' nm dets
+                return ((FN [], DN (map (rdrName2NamePure nm) ns)) <> cs <> ds)
+#else
           condecl (GHC.L _ (GHC.ConDeclGADT ns typ _)) = do
             (ft,_) <- hsFreeAndDeclaredRdr' nm typ
             return (ft,DN (map (rdrName2NamePure nm) ns))
@@ -616,6 +664,7 @@ hsFreeAndDeclaredRdr' nm t = do
              cs <- maybeHelper mctxt
              ds <- hsFreeAndDeclaredRdr' nm dets
              return ((FN [], DN ([rdrName2NamePure nm n])) <> cs <> ds)
+#endif
 
           ------------------------------
 
@@ -635,7 +684,11 @@ hsFreeAndDeclaredRdr' nm t = do
 
           condeclfield :: GHC.LConDeclField GHC.RdrName -> Either String (FreeNames,DeclaredNames)
           condeclfield (GHC.L _ (GHC.ConDeclField fns typ _)) = do
+#if __GLASGOW_HASKELL__ <= 710
+            let ns = fns
+#else
             let ns = map (GHC.rdrNameFieldOcc . GHC.unLoc) fns
+#endif
             dt <- hsFreeAndDeclaredRdr' nm typ
             return ((FN [],DN (map (rdrName2NamePure nm) ns)) <> dt)
 
