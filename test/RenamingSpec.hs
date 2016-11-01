@@ -207,7 +207,7 @@ spec = do
 
     it "renames in Field4 5 23" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
-     -- ct $ rename logTestSettings Nothing "./Renaming/Field4.hs" "value2" (5,23)
+     -- ct $ rename logTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/Field4.hs"
                   ]
@@ -327,7 +327,7 @@ spec = do
 
     it "renames in LayoutIn2 8 7" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/LayoutIn2.hs" "ls" (8,7)
+     -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/LayoutIn2.hs"
                   ]
@@ -416,6 +416,34 @@ spec = do
      -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 1" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (6,22))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (6,22))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 2" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (10,10))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (10,10))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 3" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (12,8))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (12,8))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 4" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (21,12))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (21,12))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
 
     -- ---------------------------------
 

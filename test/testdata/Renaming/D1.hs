@@ -5,17 +5,17 @@ module Renaming.D1 where
 
 data Tree a = Leaf a | Branch (Tree a) (Tree a)
 
-fringe :: Tree a -> [a]
+fringe :: Tree b -> [b]
 fringe (Leaf x ) = [x]
 fringe (Branch left right) = fringe left ++ fringe right
 
-class SameOrNot a where
-   isSame  :: a -> a -> Bool
-   isNotSame :: a -> a -> Bool
+class SameOrNot c where
+   isSame  :: c -> c -> Bool
+   isNotSame :: c -> c -> Bool
 
 instance SameOrNot Int where
-   isSame a  b = a == b
-   isNotSame a b = a /= b
+   isSame d  e = d == e
+   isNotSame d e = d /= e
 
 sumSquares (x:xs) = sq x + sumSquares xs
     where sq x = x ^pow
