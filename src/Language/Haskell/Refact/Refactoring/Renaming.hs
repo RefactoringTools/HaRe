@@ -24,6 +24,7 @@ import System.Directory
 import qualified Language.Haskell.GhcMod as GM (Options(..))
 import qualified Data.Map as Map
 
+{-# ANN module "HLint: ignore Redunant do" #-}
 {-# ANN module "HLint: ignore Eta reduce" #-}
 
 {-This refactoring renames an indentifier to a user-specified name.
@@ -178,13 +179,7 @@ doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
         parsed' <- renameTopLevelVarName oldn newNameStr newNameGhc True
         putRefactParsed parsed' mempty
         isExported oldn
-{-
-doRenaming pn@(GHC.L _ oldn) rdrNameStr newNameStr newNameGhc modName = do
-    logm $ "doRenaming:(pn,rdrNameStr,newNameStr) = " ++ showGhc (pn,rdrNameStr,newNameStr)
-    renameTopLevelVarName oldn newNameStr newNameGhc modName True True
-    logm "doRenaming done"
-    isExported oldn
--}
+
 -- ---------------------------------------------------------------------
 {-
 From Huiqing Li thesis
@@ -224,45 +219,13 @@ syntax phrase but in an outer scope.
 
 -}
 
-{-
--- Condition checking in the current module.
-condChecking mpn newName modName (inscps, exps, mod)
-  = do condChecking1 mpn newName modName
-       condChecking2 mpn newName modName (inscps, exps, mod)
-  where
-    defMod = if isTopLevelPN oldPN
-      then fromJust (hasModName oldPN)
-      else modName
-
-    -- Some trivial condition checking.
-    condChecking1 moldPN newName modName
-      = do let old = pNtoName oldPN
-           unless (oldPN /= defaultPN && isVarId old)
-             $ error "Invalid cursor position!"
-           unless (isVarId newName)
-             $ error "The new name is invalid!"
-           unless (oldName /= newName)
-             $ error "The new name is the same as the old name!"
-           unless (defMod == modName)
-             $ error "The identifier is not defined in this module!"
-           when (isTopLevelPN oldPN && old=="main" && isMainModule modName)
-             $ error "This ’main’ function should not be renamed!"
-           when (isTopLevelPN oldPN
-             && causeConflictInExports oldPN newName exps)
-             $ error "Renaming will cause conflicting exports!"
-           return ()
--}
-
 -- |Some non-trivial condition checking.
 -- Returns on success, throws an error on check failure
 condChecking2 :: (SYB.Data t) => NameMap -> GHC.Name -> String -> t -> RefactGhc ()
 condChecking2 nm oldPN newName t = do
-  -- void $ applyTP (once_tdTP (failTP `adhocTP` inMod
   void $ applyTP (once_buTP (failTP `adhocTP` inMod
                              `adhocTP` inMatch
-                             -- `adhocTP` inPattern
                              `adhocTP` inExp
-                             -- `adhocTP` inAlt
                              `adhocTP` inStmts
                              `adhocTP` inDataDefn
                              `adhocTP` inConDecl
@@ -305,17 +268,6 @@ condChecking2 nm oldPN newName t = do
           else mzero
     inMatch _ = mzero
 
-{-
-    -- The name is declared in a pattern binding.
-    inPattern (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
-      |isDeclaredBy p
-      = condChecking' pat
-      |isDeclaredBy ds
-      = condChecking' (Dec (HsPatBind loc defaultPat rhs ds))
-    inPattern _ = mzero
-
--}
-
     -- The name is declared in a expression.
     inExp expr@((GHC.L _ (GHC.HsLet ds e)):: GHC.LHsExpr GHC.RdrName) = do
       isDeclaredDs   <- isDeclaredBy ds
@@ -357,16 +309,6 @@ condChecking2 nm oldPN newName t = do
         then condChecking' stmt
         else mzero
     inStmts _ = mzero
-{-
-    -- The name is declared in a do statement.
-    inStmts (stmts@(HsLetStmt ds _)::HsStmtP)
-      |isDeclaredBy ds
-      = condChecking' stmts
-    inStmts (stmts@(HsGenerator _ pat exp _)::HsStmtP)
-      |isDeclaredBy pat
-      = condChecking' stmts
-    inStmts _ = mzero
--}
 
     inDataDefn dd@(GHC.HsDataDefn _ ctxt mctype mkindsig cons derivs :: GHC.HsDataDefn GHC.RdrName) = do
       declared <- isDeclaredBy cons
@@ -376,7 +318,6 @@ condChecking2 nm oldPN newName t = do
 
     -- The name is declared in a ConDecl
 #if __GLASGOW_HASKELL__ <= 710
-
     inConDecl (cd@(GHC.ConDecl ns _expr (GHC.HsQTvs _ns bndrs) ctxt
                                dets res _ depc_syntax) :: GHC.ConDecl GHC.RdrName ) =
       case res of
@@ -423,12 +364,8 @@ condChecking2 nm oldPN newName t = do
     -- ---------------------------------
 
     condChecking' t = do
-      -- logDataWithAnns "condChecking':t=" t
-      -- nm <- getRefactNameMap
-      -- DN vd <- hsVisibleDsRdr nm oldPN t
-      -- logm $ "condChecking':vd=" ++ showGhc vd
       sameGroupDecls <- declaredVarsInSameGroup nm oldPN t
-      logm $ "condChecking':sameGroupDecls=" ++ showGhc sameGroupDecls
+      -- logm $ "condChecking':sameGroupDecls=" ++ showGhc sameGroupDecls
       when (newName `elem` sameGroupDecls)
             $ error "The new name exists in the same binding group!"
       (f, d) <- hsFreeAndDeclaredNameStrings t
@@ -437,7 +374,7 @@ condChecking2 nm oldPN newName t = do
       -- are visible to the places where oldPN occurs.
       ds <- hsVisibleNamesRdr oldPN t
       -- logm $ "Renaming.condChecking':t=" ++ showGhc t
-      logm $ "Renaming.condChecking':ds=" ++ showGhc ds
+      -- logm $ "Renaming.condChecking':ds=" ++ showGhc ds
       when (newName `elem` ds) $ error "The new name will cause name capture!"
       return t
 
@@ -448,118 +385,7 @@ declaredVarsInSameGroup nm n t = do
   -- level of @t@
   decls <- liftT $ hsDeclsGeneric t
   let declared = nub $ map showGhc $ getDeclaredVarsRdr nm decls
-  return $ filter (/= (showGhc n)) declared
-
-
-{- Original thesis code start
-
--- Condition checking in the current module.
-condChecking pn newName modName (inscps, exps, mod)
-  = do condChecking1 pn newName modName
-       condChecking2 pn newName modName (inscps, exps, mod)
-  where
-    defMod = if isTopLevelPN oldPN
-      then fromJust (hasModName oldPN)
-      else modName
-
-    -- Some trivial condition checking.
-    condChecking1 oldPN newName modName
-      = do let old = pNtoName oldPN
-           unless (oldPN /= defaultPN && isVarId old)
-             $ error "Invalid cursor position!"
-           unless (isVarId newName)
-             $ error "The new name is invalid!"
-           unless (oldName /= newName)
-             $ error "The new name is the same as the old name!"
-           unless (defMod == modName)
-             $ error "The identifier is not defined in this module!"
-           when (isTopLevelPN oldPN && old=="main" && isMainModule modName)
-             $ error "This ’main’ function should not be renamed!"
-           when (isTopLevelPN oldPN
-             && causeConflictInExports oldPN newName exps)
-             $ error "Renaming will cause conflicting exports!"
-           return ()
-
--- Some non-trivial condition checking.
-condChecking2 oldPN newName modName (inscps, exps, mod)
-  = applyTP (once_tdTP (failTP `adhocTP` inMod
-                               `adhocTP` inMatch
-                               `adhocTP` inPattern
-                               `adhocTP` inExp
-                               `adhocTP` inAlt
-                               `adhocTP` inStmts)) mod
-  where
-    -- return True if oldPN is declared by t.
-    isDeclaredBy t = isDeclaredBy’ t == Just True
-      where
-        isDeclaredBy’ t
-          = do (_ , d) <- hsFreeAndDeclaredPNs t
-               Just (elem oldPN d )
-
-        -- The name is a top-level identifier
-        inMod (mod::HsModuleP)
-          | isDeclaredBy (hsModDecls mod)
-               = condChecking’ mod
-        inMod _ = mzero
-
-
-        -- The name is declared in a function definition.
-        inMatch (match@(HsMatch loc1 fun pats rhs ds)::HsMatchP)
-          |isDeclaredBy pats
-          = condChecking’ (HsMatch loc1 defaultPNT pats rhs ds)
-          |isDeclaredBy ds
-          =condChecking’ (HsMatch loc1 defaultPNT [] rhs ds)
-          |otherwise = mzero
-
-        -- The name is declared in a pattern binding.
-        inPattern (pat@(Dec (HsPatBind loc p rhs ds)):: HsDeclP)
-          |isDeclaredBy p
-          = condChecking’ pat
-          |isDeclaredBy ds
-          = condChecking’ (Dec (HsPatBind loc defaultPat rhs ds))
-        inPattern _ = mzero
-
-        -- The name is declared in a expression.
-        inExp (exp@(Exp (HsLambda pats body))::HsExpP)
-          |isDeclaredBy pats
-          = condChecking’ exp
-        inExp (exp@(Exp (HsLet ds e)):: HsExpP)
-          |isDeclaredBy ds
-          = condChecking’ exp
-        inExp _ = mzero
-
-        -- The name is declared in a case alternative.
-        inAlt (alt@(HsAlt loc p rhs ds)::HsAltP)
-          |isDeclaredBy p
-          = condChecking’ alt
-          |isDeclaredBy ds
-          = condChecking’ (HsAlt loc defaultPat rhs ds)
-          |otherwise = mzero
-
-        -- The name is declared in a do statement.
-        inStmts (stmts@(HsLetStmt ds _)::HsStmtP)
-          |isDeclaredBy ds
-          = condChecking’ stmts
-        inStmts (stmts@(HsGenerator _ pat exp _)::HsStmtP)
-          |isDeclaredBy pat
-          = condChecking’ stmts
-        inStmts _ = mzero
-
--- -------------------------------------
-condChecking' t = do
-  when (elem newName (map pNtoName
-          (declaredVarsInSameGroup oldPN t)))
-        $ error "The new name exists in the same binding group!"
-  (f, d) <- hsFreeAndDeclaredNames t
-  when (elem newName f) $ error "Existing uses of the new name will be captured!"
-  -- fetch all the declared variables in t that
-  -- are visible to the places where oldPN occurs.
-  ds<-hsVisibleNames oldPN t
-  when (elem newName ds) $ error "The new name will cause name capture!"
-  return t
-
-Original thesis end
--}
+  return $ filter (/= showGhc n) declared
 
 
 -- ---------------------------------------------------------------------
@@ -650,21 +476,6 @@ renameLocalVarName oldPN newName newNameGhc t = do
                           "' will change the program's semantics!\n")
               else renamePN oldPN newNameGhc qual t
 
-{-
-
-renameLocalVarName oldPN newName t
-  =do (f,d) <- hsFDNamesFromInside t
-      if elem newName (d \\ [pNtoName oldPN])  --only check the declared names here.
-        then error ("Name '"++newName++"'  already existed\n")
-        else do -- get all of those declared names visible to oldPN at where oldPN is used.
-                ds<-hsVisibleNames oldPN t
-                -- '\\[pNtoName oldPN]' handles the case in which the new name is same as the old name
-                if elem newName ((nub (ds `union` f)) \\[pNtoName oldPN])
-                  then error ("Name '"++newName++"'  already existed, or rename '"
-                               ++pNtoName oldPN++ "' to '"++newName++
-                              "' will change the program's semantics!\n")
-                  else renamePN oldPN Nothing newName True t
--}
 ------------------------------------------------------------------------
 
 renameInClientMod :: GHC.Name -> String -> GHC.Name -> TargetModule
@@ -681,23 +492,12 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
     -- We need to find the old name in the module, and get it as a
     -- GHC.Name to know what to look for in the call to renamePN', as it
     -- checks the GHC.nameUnique value.
-    -- gnames <- GHC.getNamesInScope
-    -- let clientModule = GHC.nameModule oldPN
-    -- let clientInscopes = filter (\n -> clientModule == GHC.nameModule n) gnames
-    -- logm $ "renameInClientMod:(clientInscopes)=" ++ showGhcQual (clientInscopes)
-    -- let newNames = filter (\n -> showGhcQual n == showGhcQual oldPN) clientInscopes
     newNames <- equivalentNameInNewMod oldPN
     logm $ "renameInClientMod:(newNames)=" ++ showGhcQual newNames
 
-    -- newNames       <- inScopeNames (showGhcQual oldPN)
-    -- newNamesUnqual <- inScopeNames (showGhc     oldPN)
-    -- logm $ "renameInClientMod:(newNamesUnqual,oldPN)=" ++ showGhcQual (newNamesUnqual,oldPN)
-    -- logm $ "renameInClientMod:(newNames,oldPN)=" ++ showGhcQual (newNames,oldPN)
-    -- logm $ "renameInClientMod:(uniques:newNames,oldPN)=" ++ showGhcQual (map GHC.nameUnique newNames,GHC.nameUnique oldPN)
     let newNames' = filter (sameNameSpace oldPN) newNames
     case newNames' of
         []        -> return []
-        -- [oldName] | findPN oldName renamed -> doRenameInClientMod oldName modName renamed
         [oldName] | findNameInRdr nm oldName parsed -> doRenameInClientMod nm oldName modName parsed
                   | otherwise -> do
                       logm "renameInClientMod: name not present in module, returning"
@@ -720,7 +520,6 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
 
         if isInScopeUnqualNew -- ++AZ++: should this be negated?
             then do
-                -- (refactoredMod, _) <- applyRefac (refactRenameSimple oldNameGhc newName newNameGhc True)
                 (refactoredMod, _) <- applyRefac (refactRenameSimple oldNameGhc newName newNameGhc Qualify)
                                                 RSAlreadyLoaded
                 return [refactoredMod]
@@ -728,7 +527,6 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
                 when (causeNameClashInExports nm oldPN newNameGhc modName parsed) .
                     error $ mconcat [ "The new name will cause conflicting exports in module"
                                     , show newName, ", please select another name!"]
-                -- (refactoredMod,_) <- applyRefac (refactRenameComplex oldPN newName newNameGhc) RSAlreadyLoaded
                 (refactoredMod, _) <- applyRefac (refactRenameComplex oldNameGhc newName newNameGhc)
                                                 RSAlreadyLoaded
                 -- TODO: implement rest of this
@@ -773,6 +571,8 @@ renameInClientMod oldPN newName newNameGhc targetModule = do
         putRefactParsed parsed mempty
         return ()
 
+-- ---------------------------------------------------------------------
+
 causeAmbiguityInExports :: GHC.Name -> GHC.Name -> RefactGhc Bool
 causeAmbiguityInExports old newName {- inscps -} = do
     (GHC.L _ (GHC.HsModule _ exps _imps _decls _ _)) <- getRefactParsed
@@ -780,6 +580,8 @@ causeAmbiguityInExports old newName {- inscps -} = do
     let usedUnqual = usedWithoutQualR newName exps
     logm $ "causeAmbiguityInExports:(isInScopeUnqual,usedUnqual)" ++ show (isInScopeUnqual, usedUnqual)
     return (isInScopeUnqual && usedUnqual)
+
+-- ---------------------------------------------------------------------
 
 isValidNewName :: GHC.Name -> String -> String -> Bool
 isValidNewName oldName rdrNameStr newName = res
@@ -810,12 +612,5 @@ isValidNewName oldName rdrNameStr newName = res
         | otherwise = True
 
     res = tyconOk && dataConOk {- && fieldOk && instanceOk -} && tyVarOk && matchNamesOk
-
--- ---------------------------------------------------------------------
-
--- |At each usage site of the old name, check if there can be a name clash.
-causesNameClash :: GHC.Name -> String -> RefactGhc Bool
-causesNameClash oldPn newNameString = do
-  error "causesNameClash"
 
 -- EOF
