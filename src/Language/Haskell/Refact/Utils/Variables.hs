@@ -306,10 +306,7 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` stmts
                                                       `adhocTU` rhs
                                                       `adhocTU` ltydecl
-#if __GLASGOW_HASKELL__ <= 710
-#else
                                                       `adhocTU` tyvarbndrs
-#endif
                                                       `adhocTU` lhstyvarbndr
 #if __GLASGOW_HASKELL__ < 710
                                                       `adhocTU` lsigtype
