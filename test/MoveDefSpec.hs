@@ -193,7 +193,7 @@ spec = do
      res <- catchException (ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/PatBindIn2.hs" (17,7))
      -- ct $ liftToTopLevel logTestSettings testOptions "./LiftToToplevel/PatBindIn2.hs" (17,7)
 
-     (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
+     (show res) `shouldBe`  "Just \"Cannot lift a declaration assigning to a tuple pattern\""
 
     -- ---------------------------------
 
@@ -212,7 +212,7 @@ spec = do
      res <- catchException (ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/PatBindIn4.hs" (12,30))
      -- ct $ liftToTopLevel logTestSettings testOptions "./LiftToToplevel/PatBindIn4.hs" (12,30)
 
-     (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
+     (show res) `shouldBe` "Just \"Cannot lift a declaration assigning to a tuple pattern\""
 
 
     -- ---------------------------------

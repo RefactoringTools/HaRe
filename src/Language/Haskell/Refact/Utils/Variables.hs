@@ -1293,24 +1293,24 @@ hsVisibleDsRdr nm e t = do
     match :: (GHC.Match GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
     match (GHC.Match _fn pats _mtyp rhs)
       | findNameInRdr nm e rhs || findNameInRdr nm e pats = do
-           logm $ "hsVisibleDsRdr nm.lmatch:doing rhs"
+           -- logm $ "hsVisibleDsRdr nm.lmatch:doing rhs"
            let (_pf,pd) = hsFreeAndDeclaredRdr nm pats
-           logm $ "hsVisibleDsRdr nm.lmatch:(pf,pd)=" ++ (show (_pf,pd))
+           -- logm $ "hsVisibleDsRdr nm.lmatch:(pf,pd)=" ++ (show (_pf,pd))
            rd <- hsVisibleDsRdr nm e rhs
-           logm $ "hsVisibleDsRdr nm.lmatch:rd=" ++ (show rd)
+           -- logm $ "hsVisibleDsRdr nm.lmatch:rd=" ++ (show rd)
            return (pd <> rd)
     match _ =return  (DN [])
 
     grhss :: (GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName)) -> RefactGhc DeclaredNames
     grhss (GHC.GRHSs guardedRhss lstmts')
       | findNameInRdr nm e guardedRhss || findNameInRdr nm e lstmts' = do
-          logm "hsVisibleDsRdr nm.grhss:about to do lstmts"
+          -- logm "hsVisibleDsRdr nm.grhss:about to do lstmts"
           fds <- mapM (hsVisibleDsRdr nm e) guardedRhss
           -- sfds <- hsVisibleDsRdr nm e lstmts'
           let (_,sfds) = hsFreeAndDeclaredRdr nm lstmts'
           return $ mconcat (sfds:fds)
     grhss _ = do
-      logm $ "hsVisibleDsRdr.grhss: no match"
+      -- logm $ "hsVisibleDsRdr.grhss: no match"
       return (DN [])
 
     lgrhs :: GHC.LGRHS GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc DeclaredNames
@@ -1318,10 +1318,10 @@ hsVisibleDsRdr nm e t = do
       | findNameInRdr nm e guards = hsVisibleDsRdr nm e guards
       | findNameInRdr nm e ex     = do
         r <- hsVisibleDsRdr nm e ex
-        logm $ "hsVisibleDsRdr.lgrhs:r=" ++ show r
+        -- logm $ "hsVisibleDsRdr.lgrhs:r=" ++ show r
         return r
     lgrhs _ = do
-      logm $ "hsVisibleDsRdr.lgrhs: no match"
+      -- logm $ "hsVisibleDsRdr.lgrhs: no match"
       return (DN [])
 
 
@@ -1350,7 +1350,7 @@ hsVisibleDsRdr nm e t = do
         return (DN (efs \\ eeds) <> eds)
 
     lexpr x = do
-      logm $ "hsVisibleDsRdr.lexpr:miss for:" ++ SYB.showData SYB.Parser 0 x
+      -- logm $ "hsVisibleDsRdr.lexpr:miss for:" ++ SYB.showData SYB.Parser 0 x
       return (DN [])
 
     -- ---------------------------------
@@ -1448,7 +1448,7 @@ hsVisibleDsRdr nm e t = do
         = return (DN [])
     lhstype (GHC.L _ (GHC.HsFunTy{})) = return (DN [])
     lhstype ty = do
-      logm $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
+      -- logm $ "lshtype: TypeUtils 1588" ++ SYB.showData SYB.Renamer 0 ty
       return (DN [])
 
     -- -----------------------
