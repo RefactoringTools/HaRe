@@ -178,6 +178,9 @@ spec = do
 
     -- ---------------------------------
 
+{-
+   This is trying to test an invalid lift
+
     it "liftToTopLevel PatBindIn1 18 7" $ do
      r <- ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/PatBindIn1.hs" (18,7)
      -- r <- ct $ liftToTopLevel logTestSettings  testOptions "./LiftToToplevel/PatBindIn1.hs" (18,7)
@@ -186,6 +189,15 @@ spec = do
      diff <- compareFiles "./test/testdata/LiftToToplevel/PatBindIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/PatBindIn1.refactored.hs"
      diff `shouldBe` []
+-}
+
+    -- ---------------------------------
+
+    it "liftToTopLevel PatBindIn2 17 7 fails" $ do
+     res <- catchException (ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/PatBindIn2.hs" (17,7))
+     -- ct $ liftToTopLevel logTestSettings testOptions "./LiftToToplevel/PatBindIn2.hs" (17,7)
+
+     (show res) `shouldBe`  "Just \"Cannot lift a declaration assigning to a tuple pattern\""
 
     -- ---------------------------------
 
@@ -197,6 +209,14 @@ spec = do
      diff <- compareFiles "./test/testdata/LiftToToplevel/PatBindIn3.hs.expected"
                           "./test/testdata/LiftToToplevel/PatBindIn3.refactored.hs"
      diff `shouldBe` []
+
+    -- ---------------------------------
+
+    it "liftToTopLevel PatBindIn4 12 30 fails" $ do
+     res <- catchException (ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/PatBindIn4.hs" (12,30))
+     -- ct $ liftToTopLevel logTestSettings testOptions "./LiftToToplevel/PatBindIn4.hs" (12,30)
+
+     (show res) `shouldBe` "Just \"Cannot lift a declaration assigning to a tuple pattern\""
 
 
     -- ---------------------------------
@@ -210,18 +230,6 @@ spec = do
                           "./test/testdata/LiftToToplevel/CaseIn1.refactored.hs"
      diff `shouldBe` []
 
-
-    -- ---------------------------------
-
-    it "liftToTopLevel PatBindIn2 17 7 fails" $ do
-{-
-     res <- catchException (doLiftToTopLevel ["./test/testdata/LiftToToplevel/PatBindIn2.hs","17","7"])
-     -- liftToTopLevel logTestSettings     Nothing "./test/testdata/LiftToToplevel/PatBindIn2.hs" (17,7)
-
-     (show res) `shouldBe` "Just \"\\nThe identifier is not a local function/pattern name!\""
--}
-     pending -- Not clear that this was covered in the original, will
-             -- come back to it
 
     -- ---------------------------------
 

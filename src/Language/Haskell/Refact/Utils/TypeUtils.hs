@@ -209,9 +209,6 @@ isInScopeAndUnqualifiedGhc ::
   -> RefactGhc Bool   -- ^ The result.
 isInScopeAndUnqualifiedGhc n maybeExising = do
   names <- ghandle handler (GHC.parseName n)
-  -- logm $ "isInScopeAndUnqualifiedGhc:(n,(maybeExising,names))=" ++ (show n) ++ ":" ++  (showGhc (maybeExising,names))
-  ctx <- GHC.getContext
-  -- logm $ "isInScopeAndUnqualifiedGhc:ctx=" ++ (showGhc ctx)
   let nameList = case maybeExising of
                   Nothing -> names
                   Just n' -> filter (\x -> (showGhcQual x) /= (showGhcQual n')) names
@@ -220,8 +217,8 @@ isInScopeAndUnqualifiedGhc n maybeExising = do
 
   where
     handler:: SomeException -> RefactGhc [GHC.Name]
-    handler e = do
-      -- logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show e)
+    handler _e = do
+      -- logm $ "isInScopeAndUnqualifiedGhc.handler e=" ++ (show _e)
       return []
 
 -- ---------------------------------------------------------------------
@@ -1586,7 +1583,7 @@ addItemsToExport mod@(HsModule _  (SN modName (SrcLoc _ c row col))  Nothing _ _
 addActualParamsToRhs :: (SYB.Data t) =>
                         GHC.Name -> [GHC.RdrName] -> t -> RefactGhc t
 addActualParamsToRhs pn paramPNames rhs = do
-    logm $ "addActualParamsToRhs:entered:(pn,paramPNames)=" ++ showGhc (pn,paramPNames)
+    -- logm $ "addActualParamsToRhs:entered:(pn,paramPNames)=" ++ showGhc (pn,paramPNames)
     nameMap <- getRefactNameMap
     let
        worker :: (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LHsExpr GHC.RdrName)
@@ -1597,7 +1594,7 @@ addActualParamsToRhs pn paramPNames rhs = do
 #endif
         | eqRdrNamePure nameMap (GHC.L l2 pname) pn
           = do
-              logDataWithAnns "addActualParamsToRhs:oldExp=" oldExp
+              -- logDataWithAnns "addActualParamsToRhs:oldExp=" oldExp
               newExp' <- foldlM addParamToExp oldExp paramPNames
 
               edp <- liftT $ getEntryDPT oldExp
@@ -1613,7 +1610,7 @@ addActualParamsToRhs pn paramPNames rhs = do
        addParamToExp expr param = do
          ss1 <- liftT $ uniqueSrcSpanT
          ss2 <- liftT $ uniqueSrcSpanT
-         logm $ "addActualParamsToRhs.addParamsToExp:(ss1,ss2):" ++ showGhc (ss1,ss2)
+         -- logm $ "addActualParamsToRhs.addParamsToExp:(ss1,ss2):" ++ showGhc (ss1,ss2)
          registerRdrName (GHC.L ss2 param)
 #if __GLASGOW_HASKELL__ <= 710
          let var   = GHC.L ss2 (GHC.HsVar param)
