@@ -178,6 +178,9 @@ spec = do
 
     -- ---------------------------------
 
+{-
+   This is trying to test an invalid lift
+
     it "liftToTopLevel PatBindIn1 18 7" $ do
      r <- ct $ liftToTopLevel defaultTestSettings testOptions "./LiftToToplevel/PatBindIn1.hs" (18,7)
      -- r <- ct $ liftToTopLevel logTestSettings  testOptions "./LiftToToplevel/PatBindIn1.hs" (18,7)
@@ -186,6 +189,7 @@ spec = do
      diff <- compareFiles "./test/testdata/LiftToToplevel/PatBindIn1.hs.expected"
                           "./test/testdata/LiftToToplevel/PatBindIn1.refactored.hs"
      diff `shouldBe` []
+-}
 
     -- ---------------------------------
 

@@ -183,6 +183,9 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              liftedSigs  = definingSigsRdrNames nm declaredPns parent
              mLiftedSigs = liftedSigs
 
+
+         -- logDataWithAnns "liftedDecls" liftedDecls
+
          -- Check that the lifted declaration does not include a tuple pattern on the lhs
          when (any isTupleDecl liftedDecls) $ do
            error "Cannot lift a declaration assigning to a tuple pattern"
@@ -213,6 +216,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
 isTupleDecl :: GHC.LHsDecl GHC.RdrName -> Bool
 isTupleDecl (GHC.L _ (GHC.ValD (GHC.PatBind (GHC.L _ GHC.TuplePat {}) _ _ _ _))) = True
+isTupleDecl (GHC.L _ (GHC.ValD (GHC.PatBind (GHC.L _ (GHC.AsPat _ (GHC.L _ GHC.TuplePat {}))) _ _ _ _))) = True
 isTupleDecl _ = False
 
 -- ---------------------------------------------------------------------
