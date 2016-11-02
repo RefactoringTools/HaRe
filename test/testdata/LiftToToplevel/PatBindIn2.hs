@@ -1,4 +1,4 @@
-module PatBindIn2 where
+module LiftToToplevel.PatBindIn2 where
 
 --A definition can be lifted from a where or let into the surrounding binding group.
 --Lifting a definition widens the scope of the definition.

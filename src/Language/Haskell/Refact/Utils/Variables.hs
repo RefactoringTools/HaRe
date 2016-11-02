@@ -308,7 +308,7 @@ hsFreeAndDeclaredRdr' nm t = do
                                                       `adhocTU` ltydecl
                                                       `adhocTU` tyvarbndrs
                                                       `adhocTU` lhstyvarbndr
-#if __GLASGOW_HASKELL__ < 710
+#if __GLASGOW_HASKELL__ > 710
                                                       `adhocTU` lsigtype
 #endif
                                                       `adhocTU` sig
@@ -616,13 +616,13 @@ hsFreeAndDeclaredRdr' nm t = do
             ts <- hsFreeAndDeclaredRdr' nm typ
             return ((FN [],DN (map (rdrName2NamePure nm) lns)) <> ts)
           sig (GHC.IdSig _ ) = error $ "hsFreeAndDeclaredRdr:IdSig should not occur"
-          sig (GHC.FixSig sig) = hsFreeAndDeclaredRdr' nm sig
+          sig (GHC.FixSig fsig) = hsFreeAndDeclaredRdr' nm fsig
           sig (GHC.InlineSig ln _) = do
             return ((FN [],DN [rdrName2NamePure nm ln]) )
           sig (GHC.SpecSig ln typs _) = do
             ts <- recurseList typs
             return ((FN [rdrName2NamePure nm ln],DN []) <> ts)
-          sig (GHC.SpecInstSig _ sig) = hsFreeAndDeclaredRdr' nm sig
+          sig (GHC.SpecInstSig _ ssig) = hsFreeAndDeclaredRdr' nm ssig
           sig (GHC.MinimalSig _ _) = return mempty
 
           ------------------------------
@@ -1013,9 +1013,9 @@ definingTyClDeclsNames nm pns t = defining t
         | otherwise = []
 
 #if __GLASGOW_HASKELL__ <= 710
-      defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _))
+      defines' decl'@(GHC.L _ (GHC.DataDecl _ _ _ _))
 #else
-      defines' decl'@(GHC.L _ (GHC.DataDecl pname _ _ _ _))
+      defines' decl'@(GHC.L _ (GHC.DataDecl _ _ _ _ _))
 #endif
         --   elem (GHC.nameUnique $ rdrName2NamePure nm pname) uns = [decl']
         | not $ null (dus `intersect` uns) = [decl']
