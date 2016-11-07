@@ -56,26 +56,44 @@ getReturnRhs funBind = SYB.something (Nothing `SYB.mkQ` retStmt) funBind
 
 
 constructAppChain :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedExpr
-constructAppChain retRhs lst@(st:stmts) = do
+constructAppChain retRhs lst = do
   effects <- buildChain lst
-  return undefined
-
+  lRet <- locate retRhs
+  lOp <- locate infixFmap
+  rhs <- locate effects
+  return (GHC.OpApp lRet lOp GHC.PlaceHolder rhs)
   where
     getStmtExpr :: GHC.ExprLStmt GHC.RdrName -> GHC.LHsExpr GHC.RdrName
     getStmtExpr (GHC.L _ (GHC.BodyStmt body _ _ _)) = body
     getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _)) = body
     buildChain :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedExpr
-    buildChain (st:stmts) = do           
-      let (op, rst) = buildChain' stmts
-          useApply = op && isBindStmt st
-          stExpr = getStmtExpr st
-      if useApply then do
-        lap <- locate fApp
-        return (GHC.OpApp rst lap (GHC.PlaceHolder) stExpr)
-      else do
-        return undefined
-    buildChain' = undefined
-
+    buildChain lst@(st:stmts) = do
+      case (length lst) of
+        1 -> return $ GHC.unLoc (getStmtExpr st)
+        _ -> do
+          (GHC.OpApp _ op _ rhsExpr) <- buildChain' stmts
+          return $ (GHC.OpApp (getStmtExpr st) op GHC.PlaceHolder rhsExpr)
+    buildChain' lst@(st:stmts) =
+      case (length lst) of
+        1 -> do
+          let op = if (isBindStmt st)
+                   then fApp
+                   else lApp
+              expr = getStmtExpr st
+          lOp <- locate op
+          return (GHC.OpApp undefined lOp GHC.PlaceHolder expr)
+        _ -> do
+          (GHC.OpApp _ op1 _ rhsExpr) <- buildChain' stmts
+          newOp <- if (not (isBindStmt st)) && (isFApp op1)
+                   then (locate rApp)
+                   else return op1
+          newRHS <- locate (GHC.OpApp (getStmtExpr st) newOp GHC.PlaceHolder rhsExpr)
+          let op2 = if (isBindStmt st)
+                    then fApp
+                    else lApp
+          lOp <- locate op2
+          return (GHC.OpApp undefined lOp GHC.PlaceHolder newRHS)
+          
 --Checks if a name occurs in the given ast chunk
 nameOccurs :: Data a => GHC.RdrName -> a -> Bool
 nameOccurs nm = SYB.everything (||) (False `SYB.mkQ` isName)
@@ -90,6 +108,10 @@ fApp :: ParsedExpr
 fApp = let nm = fsLit "<*>" in
   (GHC.HsVar (GHC.mkVarUnqual nm))
 
+isFApp :: ParsedLExpr -> Bool
+isFApp (GHC.L _ (GHC.HsVar rdrNm)) = (GHC.mkVarUnqual (fsLit "<*>")) == rdrNm
+isFApp _ = False
+
 lApp :: ParsedExpr
 lApp = let nm = fsLit "<*" in
   (GHC.HsVar (GHC.mkVarUnqual nm))
@@ -98,3 +120,6 @@ rApp :: ParsedExpr
 rApp = let nm = fsLit "*>" in
   (GHC.HsVar (GHC.mkVarUnqual nm))
 
+infixFmap :: ParsedExpr
+infixFmap = let nm = fsLit "<$>" in
+  (GHC.HsVar (GHC.mkVarUnqual nm))
