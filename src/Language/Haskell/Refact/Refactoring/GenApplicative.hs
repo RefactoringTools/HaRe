@@ -31,8 +31,11 @@ doGenApplicative :: FilePath -> String -> SimpPos -> RefactGhc ()
 doGenApplicative fileName funNm pos = do
   parsed <- getRefactParsed
   let Just funBind = getHsBind pos funNm parsed
-      mRetRhs = getReturnRhs funBind
-      doStmts = getDoStmts funBind
+      (Just retRhs) = getReturnRhs funBind
+      (Just doStmts) = getDoStmts funBind
+      retBVars = findBoundVars doStmts
+  appChain <- constructAppChain retRhs doStmts
+  logm $ SYB.showData SYB.Parser 3 retBVars
   return ()
 
 getDoStmts :: GHC.HsBind GHC.RdrName -> Maybe [GHC.ExprLStmt GHC.RdrName]
@@ -40,6 +43,12 @@ getDoStmts funBind = SYB.something (Nothing `SYB.mkQ` stmtLst) funBind
   where stmtLst :: GHC.HsExpr GHC.RdrName -> Maybe [GHC.ExprLStmt GHC.RdrName]
         stmtLst (GHC.HsDo _ stmtLst _) = Just stmtLst
         stmtLst _ = Nothing
+
+findBoundVars :: [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName]
+findBoundVars = SYB.everything (++) ([] `SYB.mkQ` findVarPats)
+  where findVarPats :: GHC.Pat GHC.RdrName -> [GHC.RdrName]
+        findVarPats (GHC.VarPat rdr) = [rdr]
+        findVarPats _ = []
 
 getReturnRhs :: UnlocParsedHsBind -> Maybe ParsedExpr
 getReturnRhs funBind = SYB.something (Nothing `SYB.mkQ` retStmt) funBind
@@ -71,8 +80,11 @@ constructAppChain retRhs lst = do
       case (length lst) of
         1 -> return $ GHC.unLoc (getStmtExpr st)
         _ -> do
-          (GHC.OpApp _ op _ rhsExpr) <- buildChain' stmts
-          return $ (GHC.OpApp (getStmtExpr st) op GHC.PlaceHolder rhsExpr)
+          (GHC.OpApp _ op1 _ rhsExpr) <- buildChain' stmts
+          newOp <- if (not (isBindStmt st)) && (isFApp op1)
+                   then (locate rApp)
+                   else return op1
+          return $ (GHC.OpApp (getStmtExpr st) newOp GHC.PlaceHolder rhsExpr)
     buildChain' lst@(st:stmts) =
       case (length lst) of
         1 -> do
