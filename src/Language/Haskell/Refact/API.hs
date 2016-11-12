@@ -238,6 +238,7 @@ module Language.Haskell.Refact.API
   , balanceAllComments
 
   , exactPrintParsed
+  , exactPrintExpr
   , zeroDP
   , handleParseResult
   , getAllAnns

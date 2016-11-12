@@ -13,6 +13,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , clearPriorComments
   , balanceAllComments
   , exactPrintParsed
+  , exactPrintExpr
   , locate
   , addEmptyAnn
   , addAnnVal
@@ -35,6 +36,7 @@ import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.Refact.Utils.GhcUtils
 
 import Language.Haskell.Refact.Utils.Monad
@@ -181,6 +183,15 @@ exactPrintParsed = do
   parsed <- getRefactParsed
   anns <- fetchAnnsFinal
   let str = exactPrint parsed anns
+  logm str
+
+-- ---------------------------------------------------------------------
+--A helper function that logs chunks of ast
+
+exactPrintExpr :: Annotate ast => GHC.Located ast -> RefactGhc ()
+exactPrintExpr ast = do
+  anns <- fetchAnnsFinal
+  let str = exactPrint ast anns
   logm str
 
 -- ---------------------------------------------------------------------
