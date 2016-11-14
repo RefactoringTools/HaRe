@@ -19,7 +19,7 @@ genApplicative settings cradle fileName funNm pos = do
 
 comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName funNm pos = do
-  (refRes@((_fp,ismod),_), ()) <- applyRefac (doGenApplicative fileName funNm pos) (RSFile fileName)
+  (refRes@((_fp,ismod),_), ()f) <- applyRefac (doGenApplicative fileName funNm pos) (RSFile fileName)
   case ismod of
     RefacUnmodifed -> error "Generalise to Applicative failed"
     RefacModified -> return ()
