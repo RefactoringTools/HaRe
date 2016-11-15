@@ -11,6 +11,7 @@ import Data.Generics as SYB
 import GHC.SYB.Utils as SYB
 import Data.List
 import Control.Monad
+import Language.Haskell.GHC.ExactPrint.Types
 
 genApplicative :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 genApplicative settings cradle fileName funNm pos = do
@@ -19,7 +20,7 @@ genApplicative settings cradle fileName funNm pos = do
 
 comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
 comp fileName funNm pos = do
-  (refRes@((_fp,ismod),_), ()f) <- applyRefac (doGenApplicative fileName funNm pos) (RSFile fileName)
+  (refRes@((_fp,ismod),_), ()) <- applyRefac (doGenApplicative fileName funNm pos) (RSFile fileName)
   case ismod of
     RefacUnmodifed -> error "Generalise to Applicative failed"
     RefacModified -> return ()
@@ -101,6 +102,7 @@ constructAppChain retRhs lst = do
       let (before,(bindSt:after)) = break isBindStmt lst
       leftOfBnds <- buildApps rApp (map getStmtExpr before)
       rightOfBnds <- buildApps lApp (map getStmtExpr after)
+      mapM_ (\ex -> (setDP (DP (0,1))) (getStmtExpr ex)) (tail lst)
       lROp <- locate rApp
       addAnnVal lROp
       lLOp <- locate lApp
@@ -122,7 +124,6 @@ constructAppChain retRhs lst = do
     cluster [i] l c = [[c..(l-1)]]
     cluster (i1:i2:is) l c = let b = i1 + ((i2-i1) `div` 2) in
       [c .. b]:(cluster (i2:is) l (b+1))
-        
 
 --Checks if a name occurs in the given ast chunk
 nameOccurs :: Data a => GHC.RdrName -> a -> Bool

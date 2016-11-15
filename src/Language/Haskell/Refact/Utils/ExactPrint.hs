@@ -19,6 +19,7 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , addAnnVal
   , addAnn
   , zeroDP
+  , setDP
   , handleParseResult
   , getAllAnns
   , removeAnns
@@ -222,15 +223,19 @@ addAnn a ann = do
   let k = mkAnnKey a
   setRefactAnns $ Map.insert k ann currAnns
 
---Resets the given AST chunk's delta position to zero.
-zeroDP :: (SYB.Data a) => GHC.Located a -> RefactGhc ()
-zeroDP ast = do
+--Sets the entry delta position of an ast chunk
+setDP :: (SYB.Data a) => DeltaPos -> GHC.Located a -> RefactGhc ()
+setDP dp ast = do
   currAnns <- fetchAnnsFinal
   let k = mkAnnKey ast
       mv = Map.lookup k currAnns
   case mv of
     Nothing -> return ()
-    Just v -> addAnn ast (v {annEntryDelta = DP (0,0)})
+    Just v -> addAnn ast (v {annEntryDelta = dp})
+
+--Resets the given AST chunk's delta position to zero.
+zeroDP :: (SYB.Data a) => GHC.Located a -> RefactGhc ()
+zeroDP = setDP (DP (0,0))
 
 --This just pulls out the successful result from an exact print parser or throws an error if the parse was unsuccessful.
 handleParseResult :: String -> Either (GHC.SrcSpan, String) (Anns, a) -> RefactGhc (Anns, a)

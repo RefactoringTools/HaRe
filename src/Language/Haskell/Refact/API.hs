@@ -240,6 +240,7 @@ module Language.Haskell.Refact.API
   , exactPrintParsed
   , exactPrintExpr
   , zeroDP
+  , setDP
   , handleParseResult
   , getAllAnns
   , removeAnns
