@@ -7,12 +7,14 @@ import qualified GHC as GHC
 import qualified RdrName as GHC
 import System.Directory
 import FastString
+import Data.Map as Map (union)
 import Data.Generics as SYB
 import GHC.SYB.Utils as SYB
 import Data.List
 import Control.Monad
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Print
+import Language.Haskell.GHC.ExactPrint.Parsers
 
 genApplicative :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 genApplicative settings cradle fileName funNm pos = do
@@ -41,7 +43,6 @@ doGenApplicative fileName funNm pos = do
   logm $ SYB.showData SYB.Parser 3 retRhs
   appChain <- constructAppChain retRhs doStmts
   replaceFunRhs funNm pos appChain
-  logm $ SYB.showData SYB.Parser 3 funBind
 
 replaceFunRhs :: String -> SimpPos -> ParsedLExpr -> RefactGhc ()
 replaceFunRhs funNm pos newRhs = do
@@ -73,7 +74,28 @@ replaceFunRhs funNm pos newRhs = do
 processReturnStatement :: ParsedExpr -> [GHC.RdrName] -> RefactGhc (Maybe ParsedLExpr)
 processReturnStatement retExpr boundVars
   | isJustBoundVar retExpr boundVars = return Nothing
-  | otherwise = return Nothing
+  | otherwise =
+      case retExpr of
+        (GHC.ExplicitTuple lst _) -> do
+          dFlags <- GHC.getSessionDynFlags
+          let commas = repeat ','
+              constr = "(" ++ (take ((length lst)-1) commas) ++ ")"
+              parseRes = parseExpr dFlags "hare" constr
+          case parseRes of
+            (Left (_, errMsg)) -> do
+              logm "processReturnStatement: error parsing tuple constructor"
+              return Nothing
+            (Right (anns, expr)) -> do
+              mergeAnns anns
+              setDP (DP (0,1)) expr
+              return (Just expr)
+        _ -> return Nothing
+
+mergeAnns :: Anns -> RefactGhc ()
+mergeAnns anns = do
+  currAnns <- fetchAnnsFinal
+  let newAnns = Map.union anns currAnns
+  setRefactAnns newAnns
 
 isJustBoundVar :: ParsedExpr -> [GHC.RdrName] -> Bool
 isJustBoundVar (GHC.HsVar nm) names = elem nm names

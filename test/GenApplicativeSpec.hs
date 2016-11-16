@@ -13,7 +13,7 @@ spec :: Spec
 spec = do
   describe "doGenApplicative" $ do
     it "Simple parser that can be easily rewritten in the applicative style." $ do
-      res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/GA1.hs" "parseStr" (4,1)
+      res <- ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA1.hs" "parseStr" (4,1)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["GenApplicative/GA1.hs"]
       diff <- ct $ compareFiles "./GenApplicative/GA1.refactored.hs"
