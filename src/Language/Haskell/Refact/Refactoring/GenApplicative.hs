@@ -12,6 +12,7 @@ import GHC.SYB.Utils as SYB
 import Data.List
 import Control.Monad
 import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Print
 
 genApplicative :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 genApplicative settings cradle fileName funNm pos = do
@@ -39,10 +40,44 @@ doGenApplicative fileName funNm pos = do
       retBVars = findBoundVars doStmts
   logm $ SYB.showData SYB.Parser 3 retRhs
   appChain <- constructAppChain retRhs doStmts
-  return ()
+  replaceFunRhs funNm pos appChain
+  logm $ SYB.showData SYB.Parser 3 funBind
+
+replaceFunRhs :: String -> SimpPos -> ParsedLExpr -> RefactGhc ()
+replaceFunRhs funNm pos newRhs = do
+  parsed <- getRefactParsed
+  let rdrNm = locToRdrName pos parsed
+  case rdrNm of
+    Nothing -> error "replaceFunRhs: Position does not correspond to a binding."
+    (Just (GHC.L _ rNm)) -> do
+      newParsed <- everywhereMStaged SYB.Parser (SYB.mkM (worker rNm)) parsed
+      fetchAnnsFinal >>= putRefactParsed newParsed
+  where worker :: GHC.RdrName -> GHC.HsBind GHC.RdrName -> RefactGhc (GHC.HsBind GHC.RdrName)
+        worker rNm fBind@(GHC.FunBind (GHC.L _ fNm) _ mg _ _ _)
+          | fNm == rNm = do
+              let newMg = replaceMG mg fBind
+              return $ fBind{GHC.fun_matches = newMg}
+          | otherwise = return fBind
+        worker _ bind = return bind
+        replaceMG mg newBind =
+          let [(GHC.L l match)] = GHC.mg_alts mg
+              oldGrhss = GHC.m_grhss match
+              newGrhss = mkGrhss oldGrhss newRhs
+              newLMatch = (GHC.L l (match{GHC.m_grhss = newGrhss})) in
+            mg{GHC.mg_alts = [newLMatch]}
+        mkGrhss old newExpr = let [(GHC.L l (GHC.GRHS lst _))] = GHC.grhssGRHSs old in
+          old{GHC.grhssGRHSs = [(GHC.L l (GHC.GRHS lst newExpr))]}              
+                                   
+          
 
 processReturnStatement :: ParsedExpr -> [GHC.RdrName] -> RefactGhc (Maybe ParsedLExpr)
-processReturnStatement retExpr boundVars = return Nothing
+processReturnStatement retExpr boundVars
+  | isJustBoundVar retExpr boundVars = return Nothing
+  | otherwise = return Nothing
+
+isJustBoundVar :: ParsedExpr -> [GHC.RdrName] -> Bool
+isJustBoundVar (GHC.HsVar nm) names = elem nm names
+isJustBoundVar _ _ = False
 
 getDoStmts :: GHC.HsBind GHC.RdrName -> Maybe [GHC.ExprLStmt GHC.RdrName]
 getDoStmts funBind = SYB.something (Nothing `SYB.mkQ` stmtLst) funBind
@@ -69,21 +104,31 @@ getReturnRhs funBind = SYB.something (Nothing `SYB.mkQ` retStmt) funBind
         retRHS :: ParsedExpr -> ParsedExpr
         retRHS (GHC.HsApp _  (GHC.L _ rhs)) = rhs
 
+removePars :: ParsedLExpr -> RefactGhc ParsedLExpr
+removePars (GHC.L _ (GHC.HsPar expr)) = do
+  setDP (DP (0,1)) expr
+  return expr
+removePars expr = return expr
+
 constructAppChain :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedLExpr
 constructAppChain retRhs lst = do
   let clusters = clusterStmts lst
       boundVars = findBoundVars lst
   pars <- mapM buildSingleExpr clusters
-  effects <- buildChain pars
+  pars2 <- if length pars == 1
+              then do newP <- (removePars (head pars))
+                      return [newP]
+              else return pars
+  effects <- buildChain pars2
   mPure <- processReturnStatement retRhs boundVars
-  lOp <- locate infixFmap
-  addAnnVal lOp
-  logm $ "PRINTING!!!!!!!!!!!!!!!!!!"
-  exactPrintExpr effects
+  --logm $ "PRINTING!!!!!!!!!!!!!!!!!!"
+  --logm $ SYB.showData SYB.Parser 3 retRhs
   case mPure of
     Nothing -> do
       return effects
     (Just pure) -> do
+      lOp <- locate infixFmap
+      addAnnVal lOp
       locate (GHC.OpApp pure lOp GHC.PlaceHolder effects)
   where
     buildChain :: [ParsedLExpr] -> RefactGhc ParsedLExpr
