@@ -20,9 +20,16 @@ spec = do
                                 "./GenApplicative/GA1.hs.expected"
       diff `shouldBe` []
     it "A slightly more complicated parser" $ do
-      res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/GA2.hs" "parseStr" (7,1)
+      res <- ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA2.hs" "objEntry" (7,1)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["GenApplicative/GA2.hs"]
       diff <- ct $ compareFiles "./GenApplicative/GA2.refactored.hs"
                                 "./GenApplicative/GA2.hs.expected"
+      diff `shouldBe` []
+    it "A more complicated pure expression needs to be formed." $ do
+      res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/GA3.hs" "zipperM" (4,1)
+      res' <- ct $ mapM makeRelativeToCurrentDirectory res
+      res' `shouldBe` ["GenApplicative/GA3.hs"]
+      diff <- ct $ compareFiles "./GenApplicative/GA3.refactored.hs"
+                                "./GenApplicative/GA3.hs.expected"
       diff `shouldBe` []
