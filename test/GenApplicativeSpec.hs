@@ -27,7 +27,7 @@ spec = do
                                 "./GenApplicative/GA2.hs.expected"
       diff `shouldBe` []
     it "A more complicated pure expression needs to be formed." $ do
-      res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/GA3.hs" "zipperM" (4,1)
+      res <- ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA3.hs" "zipperM" (4,1)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["GenApplicative/GA3.hs"]
       diff <- ct $ compareFiles "./GenApplicative/GA3.refactored.hs"

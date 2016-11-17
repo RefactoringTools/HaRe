@@ -40,7 +40,6 @@ doGenApplicative fileName funNm pos = do
       (Just retRhs) = getReturnRhs funBind
       (Just doStmts) = getDoStmts funBind
       retBVars = findBoundVars doStmts
-  logm $ SYB.showData SYB.Parser 3 retRhs
   appChain <- constructAppChain retRhs doStmts
   replaceFunRhs funNm pos appChain
 
@@ -87,9 +86,22 @@ processReturnStatement retExpr boundVars
               return Nothing
             (Right (anns, expr)) -> do
               mergeAnns anns
-              setDP (DP (0,1)) expr
               return (Just expr)
-        _ -> return Nothing
+        _ -> do
+          logm $ SYB.showData SYB.Parser 3 retExpr
+          lRet <- locate retExpr
+          stripBoundVars lRet boundVars
+      where stripBoundVars :: ParsedLExpr -> [GHC.RdrName] -> RefactGhc (Maybe ParsedLExpr)
+            stripBoundVars le@(GHC.L l (GHC.HsVar nm)) names =
+              if (elem nm names)
+              then return Nothing
+              else return (Just le)
+            stripBoundVars (GHC.L l (GHC.HsApp expr1 expr2)) names = do
+              ne1 <- stripBoundVars expr1 names
+              ne2 <- stripBoundVars expr2 names
+              case ne2 of
+                Nothing -> return ne1
+                (Just e2) -> return (ne1 >>= (\e1 -> Just (GHC.L l (GHC.HsApp e1 e2))))
 
 mergeAnns :: Anns -> RefactGhc ()
 mergeAnns anns = do
@@ -114,12 +126,17 @@ findBoundVars = SYB.everything (++) ([] `SYB.mkQ` findVarPats)
         findVarPats _ = []
 
 getReturnRhs :: UnlocParsedHsBind -> Maybe ParsedExpr
-getReturnRhs funBind = SYB.something (Nothing `SYB.mkQ` retStmt) funBind
+getReturnRhs funBind = SYB.something (Nothing `SYB.mkQ` retStmt `SYB.extQ` dollarRet) funBind
   where retStmt :: GHC.ExprLStmt GHC.RdrName -> Maybe ParsedExpr
         retStmt (GHC.L _ (GHC.BodyStmt (GHC.L _ body)  _ _ _)) = if isRet body
           then Just (retRHS body)
           else Nothing
         retStmt _ = Nothing
+        dollarRet :: ParsedExpr -> Maybe ParsedExpr
+        dollarRet (GHC.OpApp ret dollar _ expr) = if (isHsVar "return" $ GHC.unLoc ret) && (isHsVar "$" $ GHC.unLoc dollar)
+          then Just (GHC.unLoc expr)
+          else Nothing
+        dollarRet _ = Nothing
         isRet :: ParsedExpr -> Bool
         isRet (GHC.HsApp (GHC.L _ mRet) _) = isHsVar "return" mRet
         isRet _ = False
@@ -143,12 +160,11 @@ constructAppChain retRhs lst = do
               else return pars
   effects <- buildChain pars2
   mPure <- processReturnStatement retRhs boundVars
-  --logm $ "PRINTING!!!!!!!!!!!!!!!!!!"
-  --logm $ SYB.showData SYB.Parser 3 retRhs
   case mPure of
     Nothing -> do
       return effects
     (Just pure) -> do
+      setDP (DP (0,1)) pure
       lOp <- locate infixFmap
       addAnnVal lOp
       locate (GHC.OpApp pure lOp GHC.PlaceHolder effects)
@@ -165,6 +181,7 @@ constructAppChain retRhs lst = do
     getStmtExpr (GHC.L _ (GHC.BodyStmt body _ _ _)) = body
     getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _)) = body
     buildSingleExpr :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedLExpr
+    buildSingleExpr [st] = return $ getStmtExpr st
     buildSingleExpr lst@(st:stmts) = do
       let (before,(bindSt:after)) = break isBindStmt lst
       leftOfBnds <- buildApps rApp (map getStmtExpr before)
