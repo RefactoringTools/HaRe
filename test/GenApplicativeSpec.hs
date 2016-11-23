@@ -33,3 +33,7 @@ spec = do
       diff <- ct $ compareFiles "./GenApplicative/GA3.refactored.hs"
                                 "./GenApplicative/GA3.hs.expected"
       diff `shouldBe` []
+    it "This function should not pass the precondition because a bound variable is used in a rhs." $ do
+      res <- catchException (ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA4.hs" "failBoundPrecon" (4,1))
+      (show res) `shouldBe` "Just \"A precondition failed to pass.\""                       
+                            

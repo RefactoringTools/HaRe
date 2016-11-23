@@ -40,22 +40,24 @@ doGenApplicative fileName funNm pos = do
       (Just retRhs) = getReturnRhs funBind
       (Just doStmts) = getDoStmts funBind
       boundVars = findBoundVars doStmts
-  if checkPreconditions retRhs doStmts boundVars
+  precon <- checkPreconditions retRhs doStmts boundVars
+  if precon
     then do
     appChain <- constructAppChain retRhs doStmts
     replaceFunRhs funNm pos appChain
     else error "A precondition failed to pass."
 
-checkPreconditions :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName] -> Bool
-checkPreconditions retRhs doStmts boundVars = let boundVarsPrecon = checkBVars doStmts boundVars
-                                                  orderingPrecon = True in
-                                                boundVarsPrecon && orderingPrecon
+checkPreconditions :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName] -> RefactGhc Bool
+checkPreconditions retRhs doStmts boundVars = do
+  let boundVarsPrecon = checkBVars doStmts boundVars
+  return $ boundVarsPrecon
   where checkBVars [] _ = True
         checkBVars (stmt:stmts) vars = case stmt of
-          (GHC.L _ (GHC.BodyStmt body _ _ _)) -> not (lexprContainsNames vars body)
-          (GHC.L _ (GHC.BindStmt _ body _ _)) -> not (lexprContainsNames vars body)
+          (GHC.L _ (GHC.BodyStmt body _ _ _)) -> (not (lexprContainsNames vars body)) && (checkBVars stmts vars)
+          (GHC.L _ (GHC.BindStmt _ body _ _)) -> (not (lexprContainsNames vars body)) && (checkBVars stmts vars)
         lexprContainsNames :: [GHC.RdrName] -> ParsedLExpr -> Bool
-        lexprContainsNames vars = SYB.everything (&&) (True `SYB.mkQ` (\nm -> elem nm vars))
+        lexprContainsNames vars = SYB.everything (||) (False `SYB.mkQ` (\nm -> elem nm vars))
+        
                                                          
 replaceFunRhs :: String -> SimpPos -> ParsedLExpr -> RefactGhc ()
 replaceFunRhs funNm pos newRhs = do
@@ -102,7 +104,6 @@ processReturnStatement retExpr boundVars
               mergeAnns anns
               return (Just expr)
         _ -> do
-          logm $ SYB.showData SYB.Parser 3 retExpr
           lRet <- locate retExpr
           stripBoundVars lRet boundVars
       where stripBoundVars :: ParsedLExpr -> [GHC.RdrName] -> RefactGhc (Maybe ParsedLExpr)
