@@ -40,24 +40,43 @@ doGenApplicative fileName funNm pos = do
       (Just retRhs) = getReturnRhs funBind
       (Just doStmts) = getDoStmts funBind
       boundVars = findBoundVars doStmts
-  precon <- checkPreconditions retRhs doStmts boundVars
-  if precon
-    then do
-    appChain <- constructAppChain retRhs doStmts
-    replaceFunRhs funNm pos appChain
-    else error "A precondition failed to pass."
+  checkPreconditions retRhs doStmts boundVars
+  appChain <- constructAppChain retRhs doStmts
+  replaceFunRhs funNm pos appChain
+  
 
-checkPreconditions :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName] -> RefactGhc Bool
+checkPreconditions :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName] -> RefactGhc ()
 checkPreconditions retRhs doStmts boundVars = do
   let boundVarsPrecon = checkBVars doStmts boundVars
-  return $ boundVarsPrecon
+      retVarsOrder = varOrdering boundVars retRhs
+      orderingPrecon = checkOrdering retVarsOrder doStmts
+  logm $ SYB.showData SYB.Parser 3 boundVars
+  logm $ SYB.showData SYB.Parser 3 retVarsOrder
+  --logm $ "Here's the stmts: " ++ (SYB.showData SYB.Parser 3 doStmts)
+  if (not boundVarsPrecon)
+    then error "GenApplicative Precondition: The function given uses a bound variable in a RHS expression."
+    else if (not orderingPrecon)
+         then error "GenApplicative Precondition: Variables are not bound in the order that they appear in the return statement."
+         else return ()
   where checkBVars [] _ = True
         checkBVars (stmt:stmts) vars = case stmt of
           (GHC.L _ (GHC.BodyStmt body _ _ _)) -> (not (lexprContainsNames vars body)) && (checkBVars stmts vars)
           (GHC.L _ (GHC.BindStmt _ body _ _)) -> (not (lexprContainsNames vars body)) && (checkBVars stmts vars)
         lexprContainsNames :: [GHC.RdrName] -> ParsedLExpr -> Bool
         lexprContainsNames vars = SYB.everything (||) (False `SYB.mkQ` (\nm -> elem nm vars))
-        
+        varOrdering :: [GHC.RdrName] -> ParsedExpr -> [GHC.RdrName]
+        varOrdering boundVars = SYB.everything (++) ([] `SYB.mkQ` (\nm -> if (elem nm boundVars) then [nm] else []))
+        checkOrdering :: [GHC.RdrName] -> [GHC.ExprLStmt GHC.RdrName] -> Bool
+        checkOrdering [] [] = True
+        checkOrdering [] ((GHC.L _ (GHC.BodyStmt _ _ _ _)):stmts) = checkOrdering [] stmts
+        checkOrdering vars ((GHC.L _ (GHC.BodyStmt _ _ _ _)):stmts) = checkOrdering vars stmts
+        checkOrdering (var:vars) ((GHC.L _ (GHC.BindStmt pat _ _ _)):stmts) = 
+          if (checkPat var pat)
+          then (checkOrdering vars stmts)
+          else False
+        checkPat var pat = gContains var pat
+gContains :: (Data t, Eq a, Data a) => a -> t -> Bool
+gContains item t = SYB.everything (||) (False `SYB.mkQ` (\b -> item == b)) t
                                                          
 replaceFunRhs :: String -> SimpPos -> ParsedLExpr -> RefactGhc ()
 replaceFunRhs funNm pos newRhs = do

@@ -35,5 +35,8 @@ spec = do
       diff `shouldBe` []
     it "This function should not pass the precondition because a bound variable is used in a rhs." $ do
       res <- catchException (ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA4.hs" "failBoundPrecon" (4,1))
-      (show res) `shouldBe` "Just \"A precondition failed to pass.\""                       
+      (show res) `shouldBe` "Just \"GenApplicative Precondition: The function given uses a bound variable in a RHS expression.\""
+    it "This function should not pass the precondition because variables are bound out of order" $ do
+      res <- catchException (ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA4.hs" "failOrderPrecon" (10,1))
+      (show res) `shouldBe` "Just \"GenApplicative Precondition: Variables are not bound in the order that they appear in the return statement.\""
                             
