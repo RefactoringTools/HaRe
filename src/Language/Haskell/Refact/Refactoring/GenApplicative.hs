@@ -39,10 +39,24 @@ doGenApplicative fileName funNm pos = do
   let Just funBind = getHsBind pos funNm parsed
       (Just retRhs) = getReturnRhs funBind
       (Just doStmts) = getDoStmts funBind
-      retBVars = findBoundVars doStmts
-  appChain <- constructAppChain retRhs doStmts
-  replaceFunRhs funNm pos appChain
+      boundVars = findBoundVars doStmts
+  if checkPreconditions retRhs doStmts boundVars
+    then do
+    appChain <- constructAppChain retRhs doStmts
+    replaceFunRhs funNm pos appChain
+    else error "A precondition failed to pass."
 
+checkPreconditions :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName] -> Bool
+checkPreconditions retRhs doStmts boundVars = let boundVarsPrecon = checkBVars doStmts boundVars
+                                                  orderingPrecon = True in
+                                                boundVarsPrecon && orderingPrecon
+  where checkBVars [] _ = True
+        checkBVars (stmt:stmts) vars = case stmt of
+          (GHC.L _ (GHC.BodyStmt body _ _ _)) -> not (lexprContainsNames vars body)
+          (GHC.L _ (GHC.BindStmt _ body _ _)) -> not (lexprContainsNames vars body)
+        lexprContainsNames :: [GHC.RdrName] -> ParsedLExpr -> Bool
+        lexprContainsNames vars = SYB.everything (&&) (True `SYB.mkQ` (\nm -> elem nm vars))
+                                                         
 replaceFunRhs :: String -> SimpPos -> ParsedLExpr -> RefactGhc ()
 replaceFunRhs funNm pos newRhs = do
   parsed <- getRefactParsed
