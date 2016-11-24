@@ -50,9 +50,6 @@ checkPreconditions retRhs doStmts boundVars = do
   let boundVarsPrecon = checkBVars doStmts boundVars
       retVarsOrder = varOrdering boundVars retRhs
       orderingPrecon = checkOrdering retVarsOrder doStmts
-  logm $ SYB.showData SYB.Parser 3 boundVars
-  logm $ SYB.showData SYB.Parser 3 retVarsOrder
-  --logm $ "Here's the stmts: " ++ (SYB.showData SYB.Parser 3 doStmts)
   if (not boundVarsPrecon)
     then error "GenApplicative Precondition: The function given uses a bound variable in a RHS expression."
     else if (not orderingPrecon)
@@ -60,10 +57,10 @@ checkPreconditions retRhs doStmts boundVars = do
          else return ()
   where checkBVars [] _ = True
         checkBVars (stmt:stmts) vars = case stmt of
-          (GHC.L _ (GHC.BodyStmt body _ _ _)) -> (not (lexprContainsNames vars body)) && (checkBVars stmts vars)
-          (GHC.L _ (GHC.BindStmt _ body _ _)) -> (not (lexprContainsNames vars body)) && (checkBVars stmts vars)
-        lexprContainsNames :: [GHC.RdrName] -> ParsedLExpr -> Bool
-        lexprContainsNames vars = SYB.everything (||) (False `SYB.mkQ` (\nm -> elem nm vars))
+          (GHC.L _ (GHC.BodyStmt body _ _ _)) -> (not (lexprContainsVars vars body)) && (checkBVars stmts vars)
+          (GHC.L _ (GHC.BindStmt _ body _ _)) -> (not (lexprContainsVars vars body)) && (checkBVars stmts vars)
+        lexprContainsVars :: [GHC.RdrName] -> ParsedLExpr -> Bool
+        lexprContainsVars vars = SYB.everything (||) (False `SYB.mkQ` (\nm -> elem nm vars))
         varOrdering :: [GHC.RdrName] -> ParsedExpr -> [GHC.RdrName]
         varOrdering boundVars = SYB.everything (++) ([] `SYB.mkQ` (\nm -> if (elem nm boundVars) then [nm] else []))
         checkOrdering :: [GHC.RdrName] -> [GHC.ExprLStmt GHC.RdrName] -> Bool
@@ -75,6 +72,7 @@ checkPreconditions retRhs doStmts boundVars = do
           then (checkOrdering vars stmts)
           else False
         checkPat var pat = gContains var pat
+        
 gContains :: (Data t, Eq a, Data a) => a -> t -> Bool
 gContains item t = SYB.everything (||) (False `SYB.mkQ` (\b -> item == b)) t
                                                          
