@@ -39,3 +39,4 @@ getHsBind pos funNm a =
 isHsVar :: String -> ParsedExpr -> Bool
 isHsVar str (GHC.HsVar rNm) = let nm = mkVarUnqual (fsLit str) in
   rNm == nm
+isHsVar _ _ = False
