@@ -22,7 +22,7 @@ module Language.Haskell.Refact.API
        , logDataWithAnns
        , logExactprint
        , logParsedSource
-
+       , logAst
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
        -- ** Managing the GHC / project environment
@@ -266,6 +266,7 @@ module Language.Haskell.Refact.API
   , wrapInLambda
   , wrapInPars
   , addNewLines
+  , wrapInParsWithDPs
   , locate
 -- from Language.Haskell.Refact.Utils.Query
   , getVarAndRHS

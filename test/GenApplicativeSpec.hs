@@ -39,4 +39,12 @@ spec = do
     it "This function should not pass the precondition because variables are bound out of order" $ do
       res <- catchException (ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA4.hs" "failOrderPrecon" (10,1))
       (show res) `shouldBe` "Just \"GenApplicative Precondition: Variables are not bound in the order that they appear in the return statement.\""
+    it "Debugging a function from html-tokenizer" $ do
+      res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/HTMLTokenizer.hs" "openingTag" (88,1)
+      res' <- ct $ mapM makeRelativeToCurrentDirectory res
+      res' `shouldBe` ["GenApplicative/HTMLTokenizer.hs"]
+      diff <- ct $ compareFiles "./GenApplicative/HTMLTokenizer.refactored.hs"
+                                "./GenApplicative/HTMLTokenizer.hs.expected"
+      diff `shouldBe` []
+
                             

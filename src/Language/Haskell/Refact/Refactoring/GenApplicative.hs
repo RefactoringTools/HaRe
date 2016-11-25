@@ -209,30 +209,51 @@ constructAppChain retRhs lst = do
       addAnnVal lOp
       let opApp = (GHC.OpApp e lOp GHC.PlaceHolder rhs)
       locate opApp      
-    getStmtExpr :: GHC.ExprLStmt GHC.RdrName -> GHC.LHsExpr GHC.RdrName
+    getStmtExpr :: GHC.ExprLStmt GHC.RdrName -> ParsedLExpr
     getStmtExpr (GHC.L _ (GHC.BodyStmt body _ _ _)) = body
     getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _)) = body
     buildSingleExpr :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedLExpr
     buildSingleExpr [st] = return $ getStmtExpr st
     buildSingleExpr lst@(st:stmts) = do
       let (before,(bindSt:after)) = break isBindStmt lst
-      leftOfBnds <- buildApps rApp (map getStmtExpr before)
-      rightOfBnds <- buildApps lApp (map getStmtExpr after)
+      mLeftOfBnds <- buildApps rApp (map getStmtExpr before)
+      mRightOfBnds <- buildApps lApp (map getStmtExpr after)
       mapM_ (\ex -> (setDP (DP (0,1))) (getStmtExpr ex)) (tail lst)
       lROp <- locate rApp
       addAnnVal lROp
       lLOp <- locate lApp
       addAnnVal lLOp
-      lOpApp <- locate (GHC.OpApp leftOfBnds lROp GHC.PlaceHolder (getStmtExpr bindSt))
-      fullApp <- locate (GHC.OpApp lOpApp lLOp GHC.PlaceHolder rightOfBnds)
-      wrapInPars fullApp
-    buildApps :: ParsedExpr -> [ParsedLExpr] -> RefactGhc ParsedLExpr
-    buildApps op [st] = return st
+      newBndStmt <- mkBind (getStmtExpr bindSt)
+      case (mLeftOfBnds,mRightOfBnds) of
+        (Nothing,Nothing) -> error "buildSingleExpr was passed an empty list."
+        ((Just leftOfBnds),Nothing) -> do
+          app <- locate (GHC.OpApp leftOfBnds lROp GHC.PlaceHolder newBndStmt)
+          wrapInPars app          
+        (Nothing, (Just rightOfBnds)) -> do          
+          app <- locate (GHC.OpApp newBndStmt lLOp GHC.PlaceHolder rightOfBnds)
+          wrapInPars app
+        ((Just leftOfBnds),(Just rightOfBnds)) -> do
+          setDP (DP (0,1)) newBndStmt
+          lOpApp <- locate (GHC.OpApp leftOfBnds lROp GHC.PlaceHolder newBndStmt)
+          fullApp <- locate (GHC.OpApp lOpApp lLOp GHC.PlaceHolder rightOfBnds)
+          wrapInPars fullApp
+    mkBind :: ParsedLExpr -> RefactGhc ParsedLExpr
+    mkBind e@(GHC.L _ (GHC.HsVar _)) = return e
+    mkBind expr = do
+      zeroDP expr
+      wrapInParsWithDPs (DP (0,0)) (DP (0,0)) expr
+    buildApps :: ParsedExpr -> [ParsedLExpr] -> RefactGhc (Maybe ParsedLExpr)
+    buildApps op [] = return Nothing
+    buildApps op [st] = return (Just st)
     buildApps op (st:stmts) = do
-      rhs <- buildApps op stmts
-      lOp <- locate op
-      addAnnVal lOp
-      locate (GHC.OpApp st lOp GHC.PlaceHolder rhs)
+      mRhs <- buildApps op stmts
+      case mRhs of
+        Nothing -> return (Just st)
+        (Just rhs) -> do
+          lOp <- locate op
+          addAnnVal lOp
+          lExpr <- locate (GHC.OpApp st lOp GHC.PlaceHolder rhs)
+          return (Just lExpr)
     clusterStmts :: [GHC.ExprLStmt GHC.RdrName] -> [[GHC.ExprLStmt GHC.RdrName]]
     clusterStmts lst = let indices = findIndices isBindStmt lst
                            clusters = cluster indices (length lst) 0 in

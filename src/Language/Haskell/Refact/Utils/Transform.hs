@@ -3,6 +3,7 @@ module Language.Haskell.Refact.Utils.Transform
     addSimpleImportDecl
   , wrapInLambda
   , wrapInPars
+  , wrapInParsWithDPs
   , addNewLines
   , locate
   ) where
@@ -62,15 +63,19 @@ mkMatch varPat rhs = do
   addAnn lMatch newAnn
   return lMatch
 
---Wraps a given expression in parenthesis and add the appropriate annotations, returns the modified ast chunk. 
-wrapInPars :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
-wrapInPars expr = do
+wrapInParsWithDPs :: DeltaPos -> DeltaPos -> GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+wrapInParsWithDPs openDP closeDP expr = do
   newAst <- locate (GHC.HsPar expr)
-  let dp = [(G GHC.AnnOpenP, DP (0,1)), (G GHC.AnnCloseP, DP (0,0))]
+  let dp = [(G GHC.AnnOpenP, openDP), (G GHC.AnnCloseP, closeDP)]
       newAnn = annNone {annsDP = dp}
   addAnn newAst newAnn
   return newAst
 
+
+--Wraps a given expression in parenthesis and add the appropriate annotations, returns the modified ast chunk. 
+wrapInPars :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
+wrapInPars = wrapInParsWithDPs (DP (0,1)) (DP (0,0))
+  
 --Takes a piece of AST and adds an n row offset
 addNewLines :: (Data a) => Int -> GHC.Located a -> RefactGhc ()
 addNewLines n ast = do
