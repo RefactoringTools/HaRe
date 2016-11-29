@@ -22,7 +22,7 @@ module Language.Haskell.Refact.API
        , logDataWithAnns
        , logExactprint
        , logParsedSource
-
+       , logAst
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
        -- ** Managing the GHC / project environment
@@ -238,7 +238,42 @@ module Language.Haskell.Refact.API
   , copyAnn
   , clearPriorComments
   , balanceAllComments
-   
+
+  , exactPrintParsed
+  , exactPrintExpr
+  , zeroDP
+  , setDP
+  , handleParseResult
+  , getAllAnns
+  , removeAnns
+  , synthesizeAnns
+  , addNewKeyword
+  , addNewKeywords
+
+  , addEmptyAnn
+  , addAnnVal
+  , addAnn
+
+   -- from Language.Haskell.Refact.Utils.Synonyms
+ , UnlocParsedHsBind
+ , ParsedGRHSs
+ , ParsedMatchGroup
+ , ParsedLMatch
+ , ParsedExpr
+ , ParsedLStmt
+ , ParsedLExpr
+
+ -- from Language.Haskell.Refact.Utils.Transform
+  , addSimpleImportDecl
+  , wrapInLambda
+  , wrapInPars
+  , addNewLines
+  , wrapInParsWithDPs
+  , locate
+-- from Language.Haskell.Refact.Utils.Query
+  , getVarAndRHS
+  , getHsBind
+  , isHsVar
  ) where
 
 import Language.Haskell.Refact.Utils.ExactPrint
@@ -252,5 +287,7 @@ import Language.Haskell.Refact.Utils.TypeUtils
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.Refact.Utils.Utils
 import Language.Haskell.Refact.Utils.Variables
-
+import Language.Haskell.Refact.Utils.Transform
 import Language.Haskell.GHC.ExactPrint.Utils
+import Language.Haskell.Refact.Utils.Synonyms
+import Language.Haskell.Refact.Utils.Query
