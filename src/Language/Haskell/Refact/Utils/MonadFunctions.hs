@@ -1,10 +1,12 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE CPP #-}
+
+{-# OPTIONS_GHC -fno-warn-orphans #-} -- For HasTransform
 
 -- |
 
@@ -110,7 +112,7 @@ fetchAnnsFinal = do
 
 -- ---------------------------------------------------------------------
 
-getTypecheckedModule :: RefactGhc GHC.TypecheckedModule
+getTypecheckedModule :: RefactGhc TypecheckedModule
 getTypecheckedModule = do
   mtm <- gets rsModule
   case mtm of
@@ -138,7 +140,7 @@ getRefactRenamed :: RefactGhc GHC.RenamedSource
 getRefactRenamed = do
   mtm <- gets rsModule
   let tm = gfromJust "getRefactRenamed" mtm
-  return $ gfromJust "getRefactRenamed2" $ GHC.tm_renamed_source $ rsTypecheckedMod tm
+  return $ tmRenamedSource $ rsTypecheckedMod tm
 
 putRefactRenamed :: GHC.RenamedSource -> RefactGhc ()
 putRefactRenamed renamed = do
@@ -146,7 +148,7 @@ putRefactRenamed renamed = do
   mrm <- gets rsModule
   let rm = gfromJust "putRefactRenamed" mrm
   let tm = rsTypecheckedMod rm
-  let tm' = tm { GHC.tm_renamed_source = Just renamed }
+  let tm' = tm { tmRenamedSource = renamed }
   let rm' = rm { rsTypecheckedMod = tm' }
   put $ st {rsModule = Just rm'}
 
@@ -156,7 +158,7 @@ getRefactParsed = do
   let tm = gfromJust "getRefactParsed" mtm
   let t  = rsTypecheckedMod tm
 
-  let pm = GHC.tm_parsed_module t
+  let pm = tmParsedModule t
   return $ GHC.pm_parsed_source pm
 
 putRefactParsed :: GHC.ParsedSource -> Anns -> RefactGhc ()
@@ -169,8 +171,8 @@ putRefactParsed parsed newAnns = do
   -- let tk' = modifyAnns (rsTokenCache rm) (const newAnns)
   let tk' = modifyAnns (rsTokenCache rm) (mergeAnns newAnns)
 
-  let pm = (GHC.tm_parsed_module tm) { GHC.pm_parsed_source = parsed }
-  let tm' = tm { GHC.tm_parsed_module = pm }
+  let pm = (tmParsedModule tm) { GHC.pm_parsed_source = parsed }
+  let tm' = tm { tmParsedModule = pm }
   let rm' = rm { rsTypecheckedMod = tm', rsTokenCache = tk', rsStreamModified = RefacModified }
   put $ st {rsModule = Just rm'}
 
@@ -212,7 +214,7 @@ modifyAnns tk f = tk'
 
 -- ----------------------------------------------------------------------
 
-putParsedModule :: [Comment] -> GHC.TypecheckedModule -> RefactGhc ()
+putParsedModule :: [Comment] -> TypecheckedModule -> RefactGhc ()
 putParsedModule cppComments tm = do
   st <- get
   put $ st { rsModule = initRefactModule cppComments tm }
@@ -311,7 +313,7 @@ getRefactFileName = do
   case mtm of
     Nothing  -> return Nothing
     Just tm -> return $ Just (fileNameFromModSummary $ GHC.pm_mod_summary
-                              $ GHC.tm_parsed_module $ rsTypecheckedMod tm)
+                              $ tmParsedModule $ rsTypecheckedMod tm)
 
 -- ---------------------------------------------------------------------
 
@@ -331,7 +333,7 @@ getRefactModule = do
     Nothing  -> error $ "Hare.MonadFunctions.getRefactModule:no module loaded"
     Just tm -> do
       let t  = rsTypecheckedMod tm
-      let pm = GHC.tm_parsed_module t
+      let pm = tmParsedModule t
       return (GHC.ms_mod $ GHC.pm_mod_summary pm)
 
 -- ---------------------------------------------------------------------
@@ -426,14 +428,14 @@ logParsedSource str = do
 
 -- ---------------------------------------------------------------------
 
-initRefactModule :: [Comment] -> GHC.TypecheckedModule -> Maybe RefactModule
+initRefactModule :: [Comment] -> TypecheckedModule -> Maybe RefactModule
 initRefactModule cppComments tm
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsNameMap = initRdrNameMap tm
                  , rsTokenCache = initTokenCacheLayout (relativiseApiAnnsWithComments
                                      cppComments
-                                    (GHC.pm_parsed_source $ GHC.tm_parsed_module tm)
-                                    (GHC.pm_annotations $ GHC.tm_parsed_module tm))
+                                    (GHC.pm_parsed_source $ tmParsedModule tm)
+                                    (GHC.pm_annotations $ tmParsedModule tm))
                  , rsStreamModified = RefacUnmodifed
                  })
 
@@ -450,13 +452,13 @@ initTokenCacheLayout a = TK (Map.fromList [((TId 0),a)]) (TId 0)
 -- with the wrinkle that we need to Location of the RdrName to make sure we have
 -- the right Name, but not all RdrNames have a Location.
 -- This function is called before the RefactGhc monad is active.
-initRdrNameMap :: GHC.TypecheckedModule -> NameMap
+initRdrNameMap :: TypecheckedModule -> NameMap
 initRdrNameMap tm = r
   where
-    parsed  = GHC.pm_parsed_source $ GHC.tm_parsed_module tm
-    renamed = gfromJust "initRdrNameMap" $ GHC.tm_renamed_source tm
+    parsed  = GHC.pm_parsed_source $ tmParsedModule tm
+    renamed = tmRenamedSource tm
 #if __GLASGOW_HASKELL__ > 710
-    typechecked = GHC.tm_typechecked_source tm
+    typechecked = tmTypecheckedSource tm
 #endif
 
     checkRdr :: GHC.Located GHC.RdrName -> Maybe [(GHC.SrcSpan,GHC.RdrName)]

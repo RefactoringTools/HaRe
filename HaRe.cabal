@@ -115,33 +115,33 @@ extra-source-files:             ChangeLog
 Library
         -- GHC 7.10.2 ships with base 4.8.1.0
         Build-Depends:          base >= 4.8.1.0  && < 5
-                                , containers
-                                , directory
+                               , Strafunski-StrategyLib
+                               , cabal-helper
+                               , containers
+                               , directory
+                               , filepath
+                               , ghc
+                               , ghc-exactprint >= 0.5.2.1
+                               , ghc-mod >= 5.6.0.0
+                               , ghc-syb-utils
+                               , hslogger
+                               , monad-control
+                               , mtl
+                               , syb
+                               , syz
 
-                                , semigroups
-                                , monoid-extras
-                                , cabal-helper
-                                , filepath
-                                , ghc
-                                , ghc-paths
-                                , ghc-prim  
-                                , ghc-syb-utils
-                                , ghc-mod >= 5.6.0.0
-                                , mtl
-                                , old-time
-                                , pretty
-                                , rosezipper
-                                , syb
-                                , hslogger
-                                , transformers
-                                , transformers-base
-                                , time
-                                , Strafunski-StrategyLib
-                                , syz
-                                , ghc-exactprint >= 0.5.2.1
-                                , monad-control
-                                , Cabal >= 1.22
-
+        -- optimisation disabled otherwise the compile takes too long
+        -- With normal optimisation, we get
+        -- $ rm -fr dist-newstyle/
+        -- $ cabal new-configure --enable-test
+        -- $ time cabal new-build
+        -- real	6m54.778s
+        -- user	7m3.156s
+        -- sys	0m4.504s
+        -- With -O0, the timing is
+        -- real	0m36.427s
+        -- user 0m41.448s
+        -- sys 0m2.544s
         GHC-Options:            -O0
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
@@ -184,45 +184,18 @@ Executable ghc-hare
         GHC-Options:            -O0
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
-          ./src
+          ./app
 
         -- GHC 7.10.2 ships with base 4.8.1.0
         Build-Depends:          base >= 4.8.1.0  && < 5
-                                , array
-                                , containers
-                                , directory
-
-                                , semigroups
-                                , monoid-extras
-
-                                , cabal-helper
-                                , filepath
-                                , ghc
-                                , ghc-paths
-                                , ghc-prim
-                                , ghc-syb-utils
+                                , ghc-mod
                                 , gitrev >= 1.1
-                                , ghc-mod >= 5.6.0.0
                                 , mtl
                                 , optparse-applicative
                                 , optparse-simple
-                                , old-time
-                                , parsec >= 3.1.6
-                                , pretty
-                                , rosezipper
-                                , syb
-                                , time
-                                , transformers
-                                , transformers-base
-                                , hslogger
-                                , Strafunski-StrategyLib
-                                , syz
-                                , ghc-exactprint >= 0.5.2.1
-                                , monad-control
-                                , Cabal >= 1.22
-                                , syb-with-class
+                                , Cabal
                                 -- , Paths_HaRe
-                                , HaRe >= 0.8.2.1
+                                , HaRe
         Extensions:      CPP
         if impl (ghc < 7.10.2)
             buildable: False
@@ -242,7 +215,7 @@ test-suite spec
   main-is:
       Main.hs
   Hs-Source-Dirs:
-    src
+    -- src
     test
   other-modules:
       AddRmParamSpec
@@ -286,43 +259,19 @@ test-suite spec
       base        >= 4.8.1.0  && < 5
     , Diff >= 0.3.0
     , HUnit
-    , QuickCheck  >= 2.5
     , containers
-
-    , cabal-helper
-    , semigroups
-    , monoid-extras
-
-    , deepseq
     , directory
-    , filepath
+    , foldl
     , ghc
-    , ghc-paths
-    , ghc-prim
-    , ghc-syb-utils
+    , ghc-exactprint >= 0.5.2.1
     , ghc-mod >= 5.6.0.0
+    , ghc-syb-utils
+    , hslogger
     , hspec
     , mtl
-    , old-time
-    , process
-    , silently
-    , stringbuilder
-    , rosezipper
-    , syb
-    , transformers
-    , transformers-base
-    , time
-    , hslogger
-    , Strafunski-StrategyLib
-    , syz
-    , ghc-exactprint >= 0.5.2.1
-    , monad-control
-    , Cabal >= 1.22
     , turtle
-    , foldl
-    , syb-with-class
-    -- , Paths_HaRe
-    , HaRe >= 0.8.2.1
+
+    , HaRe
   Extensions:      CPP
   if impl (ghc < 7.10.2)
     buildable: False

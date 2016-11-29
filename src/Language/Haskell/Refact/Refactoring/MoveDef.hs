@@ -131,7 +131,7 @@ compLiftToTopLevel fileName (row,col) = do
                mod -- the scoped abstract syntax tree of the module.
                pn  -- the function/pattern name to be lifted.
 -}
-liftToTopLevel' :: GHC.ModuleName -- -> (ParseResult,[PosToken]) -> FilePath
+liftToTopLevel' :: GHC.ModuleName
                 -> GHC.Located GHC.Name
                 -> RefactGhc [ApplyRefacResult]
 liftToTopLevel' modName pn@(GHC.L _ n) = do
@@ -167,7 +167,7 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          parsed' <- getRefactParsed
          parsed  <- liftT $ balanceAllComments parsed'
          nm      <- getRefactNameMap
-         logDataWithAnns "parsed after balanceAllComments" parsed
+         -- logDataWithAnns "parsed after balanceAllComments" parsed
          declsp <- liftT $ hsDecls parsed
          (before,parent,after) <- divideDecls declsp pn
          {- ++AZ++TODO: reinstate this, hsDecls does : hsBinds does not return class or instance definitions
@@ -176,13 +176,19 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          when (isInstDecl $ ghead "liftToMod" parent)
                $ error "Sorry, the refactorer cannot lift a definition from an instance declaration!"
          -}
-         nameMap <- getRefactNameMap
          -- declsParent <- liftT $ hsDecls (ghead "liftToMod" parent)
          -- logm $ "liftToMod:(declsParent)=" ++ (showGhc declsParent)
-         let liftedDecls = definingDeclsRdrNames nameMap [n] parent True True
-             declaredPns = nub $ concatMap (definedNamesRdr nameMap) liftedDecls
-             liftedSigs  = definingSigsRdrNames nameMap declaredPns parent
+         let liftedDecls = definingDeclsRdrNames nm [n] parent True True
+             declaredPns = nub $ concatMap (definedNamesRdr nm) liftedDecls
+             liftedSigs  = definingSigsRdrNames nm declaredPns parent
              mLiftedSigs = liftedSigs
+
+
+         -- logDataWithAnns "liftedDecls" liftedDecls
+
+         -- Check that the lifted declaration does not include a tuple pattern on the lhs
+         when (any isTupleDecl liftedDecls) $ do
+           error "Cannot lift a declaration assigning to a tuple pattern"
 
          -- TODO: what about declarations between this
          -- one and the top level that are used in this one?
@@ -194,11 +200,11 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
          let dd = getDeclaredVarsRdr nm decls
          logm $ "liftToMod:(ddd)=" ++ (showGhc dd)
 
-         if pns == []
+         if null pns
            then do
              (parent',liftedDecls',mLiftedSigs') <- addParamsToParentAndLiftedDecl n dd parent liftedDecls mLiftedSigs
 
-             let defName  = (ghead "liftToMod" (definedNamesRdr nameMap (ghead "liftToMod2" parent')))
+             let defName  = ghead "liftToMod" (definedNamesRdr nm (ghead "liftToMod2" parent'))
              parsed1 <- liftT $ replaceDecls parsed (before++parent'++after)
              parsed2 <- moveDecl1 parsed1 (Just defName) [GHC.unLoc pn] liftedDecls'
                                                             declaredPns mLiftedSigs'
@@ -208,7 +214,10 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
 
            else askRenamingMsg pns "lifting"
 
-
+isTupleDecl :: GHC.LHsDecl GHC.RdrName -> Bool
+isTupleDecl (GHC.L _ (GHC.ValD (GHC.PatBind (GHC.L _ GHC.TuplePat {}) _ _ _ _))) = True
+isTupleDecl (GHC.L _ (GHC.ValD (GHC.PatBind (GHC.L _ (GHC.AsPat _ (GHC.L _ GHC.TuplePat {}))) _ _ _ _))) = True
+isTupleDecl _ = False
 
 -- ---------------------------------------------------------------------
 

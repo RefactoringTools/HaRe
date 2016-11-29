@@ -207,7 +207,7 @@ spec = do
 
     it "renames in Field4 5 23" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
-     -- ct $ rename logTestSettings Nothing "./Renaming/Field4.hs" "value2" (5,23)
+     -- ct $ rename logTestSettings testOptions "./Renaming/Field4.hs" "value2" (5,23)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/Field4.hs"
                   ]
@@ -301,6 +301,18 @@ spec = do
 
     -- ---------------------------------
 
+    it "renames in Constructor 5 16" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/Constructor.hs" "MyType" (5,16)
+     -- ct $ rename logTestSettings testOptions "./Renaming/Constructor.hs" "MyType" (5,16)
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     r' `shouldBe` [ "Renaming/Constructor.hs"
+                  ]
+     diff <- ct $ compareFiles "./Renaming/Constructor.expected.hs"
+                               "./Renaming/Constructor.refactored.hs"
+     diff `shouldBe` []
+
+    -- ---------------------------------
+
     it "renames in LayoutIn1 7 17" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
      -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn1.hs" "square" (7,17)
@@ -315,7 +327,7 @@ spec = do
 
     it "renames in LayoutIn2 8 7" $ do
      r <- ct $ rename defaultTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
-     -- ct $ rename logTestSettings testOptions Nothing "./Renaming/LayoutIn2.hs" "ls" (8,7)
+     -- ct $ rename logTestSettings testOptions "./Renaming/LayoutIn2.hs" "ls" (8,7)
      r' <- ct $ mapM makeRelativeToCurrentDirectory r
      r' `shouldBe` [ "Renaming/LayoutIn2.hs"
                   ]
@@ -366,8 +378,8 @@ spec = do
     -- ---------------------------------
 
     it "naming clash IdIn5" $ do
-     -- ct $ rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1)
-     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (10,1))
+     -- ct $ rename logTestSettings testOptions "./Renaming/IdIn5.hs" "y" (13,1)
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/IdIn5.hs" "y" (13,1))
      (show res) `shouldBe` "Just \"Name 'y' already exists, or renaming 'IdIn5.x' to 'y' will change the program's semantics!\\n\""
 
     -- ---------------------------------
@@ -404,6 +416,34 @@ spec = do
      -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
      res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/Main2.hs" "main1" (4,1))
      (show res) `shouldBe` "Just \"The 'main' function defined in a 'Main' module should not be renamed!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 1" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (6,22))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (6,22))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 2" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (10,10))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (10,10))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 3" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (12,8))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (12,8))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
+
+    -- ---------------------------------
+
+    it "cannot rename x InScopes 4" $ do
+     -- res <- catchException (ct $ rename logTestSettings testOptions "./Renaming/InScopes.hs" "g" (21,12))
+     res <- catchException (ct $ rename defaultTestSettings testOptions "./Renaming/InScopes.hs" "g" (21,12))
+     show res `shouldBe` "Just \"The new name will cause name capture!\""
 
     -- ---------------------------------
 
@@ -584,6 +624,48 @@ negative=[(["IdIn3.hs"],["foo","10","1"]),
      (show r') `shouldBe` "[\"Renaming/RenameInExportedType2.hs\"]"
      diff <- ct $ compareFiles "./Renaming/RenameInExportedType2.refactored.hs"
                                "./Renaming/RenameInExportedType2.expected.hs"
+     diff `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "passes ExportedType.hs for type name" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,7)
+     -- ct $ rename logTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,7)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/ExportedType.hs\",\"Renaming/ExportedTypeClient.hs\"]"
+     diff <- ct $ compareFiles "./Renaming/ExportedType.refactored.hs"
+                               "./Renaming/ExportedType.expected.hs"
+     diff `shouldBe` []
+     diff2 <- ct $ compareFiles "./Renaming/ExportedTypeClient.refactored.hs"
+                                "./Renaming/ExportedTypeClient.expected.hs"
+     diff2 `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "passes ExportedType.hs for type constructor" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,16)
+     -- ct $ rename logTestSettings testOptions "./Renaming/ExportedType.hs" "NewType" (4,16)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/ExportedType.hs\",\"Renaming/ExportedTypeClient.hs\"]"
+     diff <- ct $ compareFiles "./Renaming/ExportedType.refactored.hs"
+                               "./Renaming/ExportedType.expected2.hs"
+     diff `shouldBe` []
+     diff2 <- ct $ compareFiles "./Renaming/ExportedTypeClient.refactored.hs"
+                                "./Renaming/ExportedTypeClient.expected2.hs"
+     diff2 `shouldBe` []
+
+    -- -----------------------------------------------------------------
+
+    it "passes WildCard.hs" $ do
+     r <- ct $ rename defaultTestSettings testOptions "./Renaming/WildCard.hs" "taggedPlugins2" (7,1)
+     -- r <- ct $ rename logTestSettings testOptions "./Renaming/WildCard.hs" "taggedPlugins2" (7,1)
+
+     r' <- ct $ mapM makeRelativeToCurrentDirectory r
+     (show r') `shouldBe` "[\"Renaming/WildCard.hs\"]"
+     diff <- ct $ compareFiles "./Renaming/WildCard.refactored.hs"
+                               "./Renaming/WildCard.expected.hs"
      diff `shouldBe` []
 
     -- -----------------------------------------------------------------

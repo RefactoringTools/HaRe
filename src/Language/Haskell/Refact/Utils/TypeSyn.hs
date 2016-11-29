@@ -76,11 +76,14 @@ instance GHC.Outputable (GHC.HsTupArg GHC.Name) where
   ppr (GHC.Missing _typ) = GHC.text "Missing"
 
 
+#if !defined(MIN_VERSION_GLASGOW_HASKELL) || !(MIN_VERSION_GLASGOW_HASKELL(8,0,2,0))
 instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
   ppr (GHC.ConDeclField name typ doc) = GHC.text "ConDeclField"
                                           GHC.<+> GHC.ppr name
                                           GHC.<+> GHC.ppr typ
                                           GHC.<+> GHC.ppr doc
+#endif
+
 #if __GLASGOW_HASKELL__ <= 710
 instance GHC.Outputable (GHC.TyFamEqn GHC.Name (GHC.LHsTyVarBndrs GHC.Name)) where
   ppr (GHC.TyFamEqn name pats rhs) = GHC.text "TyFamEqn"

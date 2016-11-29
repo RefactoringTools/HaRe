@@ -129,7 +129,7 @@ runCmd (RmOneParam fileName r c) (opt, gOpt)
 
 rmOneParamCmdOpts :: Parser HareParams
 rmOneParamCmdOpts =
-    LiftOneLevel
+    RmOneParam
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"
@@ -185,7 +185,7 @@ renameCmdOpts =
 
 liftToTopLevelCmdOpts :: Parser HareParams
 liftToTopLevelCmdOpts =
-    LiftOneLevel
+    LiftToTopLevel
       <$> strArgument
             ( metavar "FILE"
            <> help "Specify Haskell file to process"
@@ -297,7 +297,8 @@ runFunc f = do
   putStrLn ret
 
 showLisp :: [String] -> String
-showLisp xs = "(" ++ (intercalate " " $ map (\str -> "\"" ++ str ++ "\"") xs) ++ ")"
+showLisp xs = "(" ++ (intercalate " " $ map (\str -> "\"" ++ unixSlashes str ++ "\"") xs) ++ ")"
+  where unixSlashes = map (\c -> if c == '\\' then '/' else c)
 
 catchException :: (IO t) -> IO (Either String t)
 catchException f = do

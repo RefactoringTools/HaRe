@@ -4,6 +4,7 @@ module Language.Haskell.Refact.Utils.Types
        (
         ApplyRefacResult
        , RefacResult(..)
+       , TypecheckedModule(..)
        -- *
        , TreeId(..)
        , mainTid
@@ -14,9 +15,9 @@ module Language.Haskell.Refact.Utils.Types
 
        ) where
 
+import qualified Avail      as GHC
 import qualified GHC        as GHC
--- import qualified Name       as GHC
--- import qualified Outputable as GHC
+import qualified RdrName    as GHC
 
 import Language.Haskell.GHC.ExactPrint
 -- import Language.Haskell.GHC.ExactPrint.Utils
@@ -31,6 +32,22 @@ type ApplyRefacResult = ((FilePath, RefacResult), (Anns,GHC.ParsedSource))
 
 data RefacResult = RefacModified | RefacUnmodifed
                  deriving (Show,Ord,Eq)
+
+-- ---------------------------------------------------------------------
+
+data TypecheckedModule = TypecheckedModule
+  { tmParsedModule      :: !GHC.ParsedModule
+  , tmRenamedSource     :: !GHC.RenamedSource
+  , tmTypecheckedSource :: !GHC.TypecheckedSource
+  -- , tmMinfExports       :: ![GHC.AvailInfo]
+  -- , tmMinfRdrEnv        :: !(Maybe GHC.GlobalRdrEnv)   -- Nothing for a compiled/package mod
+  , tmMinfExports       :: [GHC.AvailInfo]
+  , tmMinfRdrEnv        :: (Maybe GHC.GlobalRdrEnv)   -- Nothing for a compiled/package mod
+  }
+
+-- TODO: improve this, or remove it's need
+instance Show TypecheckedModule where
+  show _ = "TypeCheckedModule(..)"
 
 -- ---------------------------------------------------------------------
 

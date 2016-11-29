@@ -15,7 +15,8 @@ import qualified Spec
 
 main :: IO ()
 main = do
-  cleanupStackDirs
+  cleanupDirs (Tu.ends "/.stack-work")
+  cleanupDirs (Tu.ends "/dist")
   setupStackFiles
   hspec Spec.spec
 
@@ -69,15 +70,16 @@ stackFileContents = unlines
 
 -- ---------------------------------------------------------------------
 
-cleanupStackDirs :: IO ()
-cleanupStackDirs = do
-  dirs <- getStackDirs
+cleanupDirs :: Tu.Pattern t -> IO ()
+cleanupDirs ending = do
+  dirs <- getDirs ending
   forM_ dirs  $ \dir -> Tu.rmtree dir
 
-getStackDirs :: IO [Tu.FilePath]
-getStackDirs = do
+getDirs :: Tu.Pattern t -> IO [Tu.FilePath]
+getDirs ending = do
   let
-    dirs = Tu.find (Tu.ends "/.stack-work") "./test"
+    -- dirs = Tu.find (Tu.ends "/.stack-work") "./test"
+    dirs = Tu.find ending "./test"
   Tu.fold dirs Fold.list
 
 listStackDirs :: IO ()
