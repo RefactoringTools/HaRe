@@ -435,7 +435,7 @@ logAst str a = logm $ str ++ "\n[" ++ (SYB.showData SYB.Parser 3 a) ++ "]"
 
 -- ---------------------------------------------------------------------
 
-initRefactModule :: [Comment] -> GHC.TypecheckedModule -> Maybe RefactModule
+initRefactModule :: [Comment] -> TypecheckedModule -> Maybe RefactModule
 initRefactModule cppComments tm
   = Just (RefMod { rsTypecheckedMod = tm
                  , rsNameMap = initRdrNameMap tm
