@@ -1,5 +1,0 @@
-module MMP1 where
-import Control.Monad
-
-f :: (MonadPlus m) => m Int -> m Int
-f m_i = m_i >>= (\i -> (return (i + 1)))
