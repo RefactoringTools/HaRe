@@ -276,6 +276,13 @@ test-suite spec
     , turtle
     , foldl
     -- , Paths_HaRe
+    , attoparsec
+    , base-prelude
+    , conversion-case-insensitive
+    , conversion
+    , conversion-text
+    , parsec
+    , case-insensitive          
     , HaRe >= 0.8.2.1
   Extensions:      CPP
   if impl (ghc < 7.10.2)

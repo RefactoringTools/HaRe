@@ -159,6 +159,7 @@ Note:A consistent coding layout style is more important than what specific on is
  * Huiqing Li
  * Matthew Pickering
  * Simon Thompson
+ * Stephen Adams
 
 Please put a pull request for this list if you are missing.
 
