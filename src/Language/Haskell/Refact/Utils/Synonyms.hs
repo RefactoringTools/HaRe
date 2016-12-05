@@ -12,3 +12,4 @@ type ParsedLMatch = LMatch RdrName (LHsExpr RdrName)
 type ParsedExpr = HsExpr RdrName
 type ParsedLExpr = LHsExpr RdrName
 type ParsedLStmt = LStmt RdrName (LHsExpr RdrName)
+type ParsedBind = HsBind RdrName 

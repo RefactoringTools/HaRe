@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.DeleteDef where
 
@@ -63,13 +64,21 @@ pnUsedInScope pn t' = do
   res <- applyTU (stop_tdTU (failTU `adhocTU` bind `adhocTU` var)) t'
   return $ (length res) > 0
     where
+#if __GLASGOW_HASKELL__ <= 710
       bind ((GHC.FunBind (GHC.L l name) _ match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
+#else
+      bind ((GHC.FunBind (GHC.L l name)  match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
+#endif
         | name == pn = do
             logm $ "Found Binding at: " ++ (showGhc l) 
             return []
       bind other = do
         mzero
+#if __GLASGOW_HASKELL__ <= 710
       var ((GHC.HsVar name) :: GHC.HsExpr GHC.Name)
+#else
+      var ((GHC.HsVar (GHC.L _ name)) :: GHC.HsExpr GHC.Name)
+#endif
         | name == pn = do
             logm $ "Found var"
             return [pn]

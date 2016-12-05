@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Language.Haskell.Refact.Utils.Transform
   (
     addSimpleImportDecl
@@ -42,7 +43,12 @@ wrapInLambda :: String -> GHC.LPat GHC.RdrName -> ParsedGRHSs -> RefactGhc (GHC.
 wrapInLambda funNm varPat rhs = do
   match@(GHC.L l match') <- mkMatch varPat rhs
   --logm $ "Match: " ++ (SYB.showData SYB.Parser 3 match)
+#if __GLASGOW_HASKELL__ <= 710
   let mg = GHC.MG [match] [] GHC.PlaceHolder GHC.Generated
+#else
+  lMatchLst <- locate [match]
+  let mg = GHC.MG lMatchLst [] GHC.PlaceHolder GHC.Generated
+#endif
   currAnns <- fetchAnnsFinal
   --logm $ "Anns :" ++ (show $ getAllAnns currAnns match)
   let l_lam = (GHC.L l (GHC.HsLam mg))
@@ -56,7 +62,11 @@ wrapInLambda funNm varPat rhs = do
   --This function makes a match suitable for use inside of a lambda expression. Should change name or define it elsewhere to show that this is not a general-use function. 
 mkMatch :: GHC.LPat GHC.RdrName -> GHC.GRHSs GHC.RdrName (GHC.LHsExpr GHC.RdrName) -> RefactGhc (GHC.LMatch GHC.RdrName (GHC.LHsExpr GHC.RdrName))
 mkMatch varPat rhs = do
+#if __GLASGOW_HASKELL__ <= 710
   lMatch@(GHC.L l m) <- locate (GHC.Match Nothing [varPat] Nothing rhs)
+#else
+  lMatch@(GHC.L l m) <- locate (GHC.Match GHC.NonFunBindMatch [varPat] Nothing rhs)
+#endif
   let dp = [(G GHC.AnnRarrow, DP (0,1))]
       newAnn = annNone {annsDP = dp, annEntryDelta = DP (0,-1)}
   zeroDP varPat

@@ -262,6 +262,7 @@ module Language.Haskell.Refact.API
  , ParsedExpr
  , ParsedLStmt
  , ParsedLExpr
+ , ParsedBind
 
  -- from Language.Haskell.Refact.Utils.Transform
   , addSimpleImportDecl

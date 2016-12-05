@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 module Language.Haskell.Refact.Refactoring.GenApplicative where
 
@@ -58,7 +59,11 @@ checkPreconditions retRhs doStmts boundVars = do
   where checkBVars [] _ = True
         checkBVars (stmt:stmts) vars = case stmt of
           (GHC.L _ (GHC.BodyStmt body _ _ _)) -> (not (lexprContainsVars vars body)) && (checkBVars stmts vars)
+#if __GLASGOW_HASKELL__ <= 710
           (GHC.L _ (GHC.BindStmt _ body _ _)) -> (not (lexprContainsVars vars body)) && (checkBVars stmts vars)
+#else
+          (GHC.L _ (GHC.BindStmt _ body _ _ _)) -> (not (lexprContainsVars vars body)) && (checkBVars stmts vars)
+#endif
         lexprContainsVars :: [GHC.RdrName] -> ParsedLExpr -> Bool
         lexprContainsVars vars = SYB.everything (||) (False `SYB.mkQ` (\nm -> elem nm vars))
         varOrdering :: [GHC.RdrName] -> ParsedExpr -> [GHC.RdrName]
@@ -67,7 +72,11 @@ checkPreconditions retRhs doStmts boundVars = do
         checkOrdering [] [] = True
         checkOrdering [] ((GHC.L _ (GHC.BodyStmt _ _ _ _)):stmts) = checkOrdering [] stmts
         checkOrdering vars ((GHC.L _ (GHC.BodyStmt _ _ _ _)):stmts) = checkOrdering vars stmts
-        checkOrdering (var:vars) ((GHC.L _ (GHC.BindStmt pat _ _ _)):stmts) = 
+#if __GLASGOW_HASKELL__ <= 710
+        checkOrdering (var:vars) ((GHC.L _ (GHC.BindStmt pat _ _ _)):stmts) =
+#else
+        checkOrdering (var:vars) ((GHC.L _ (GHC.BindStmt pat _ _ _ _)):stmts) =
+#endif
           if (checkPat var pat)
           then (checkOrdering vars stmts)
           else False
@@ -85,19 +94,33 @@ replaceFunRhs funNm pos newRhs = do
     (Just (GHC.L _ rNm)) -> do
       newParsed <- everywhereMStaged SYB.Parser (SYB.mkM (worker rNm)) parsed
       fetchAnnsFinal >>= putRefactParsed newParsed
-  where worker :: GHC.RdrName -> GHC.HsBind GHC.RdrName -> RefactGhc (GHC.HsBind GHC.RdrName)
+  where worker :: GHC.RdrName -> ParsedBind -> RefactGhc (GHC.HsBind GHC.RdrName)
+#if __GLASGOW_HASKELL__ <= 710
         worker rNm fBind@(GHC.FunBind (GHC.L _ fNm) _ mg _ _ _)
+#else
+        worker rNm fBind@(GHC.FunBind (GHC.L _ fNm) mg _ _ _)
+#endif
           | fNm == rNm = do
-              let newMg = replaceMG mg fBind
+              newMg <- replaceMG mg
               return $ fBind{GHC.fun_matches = newMg}
           | otherwise = return fBind
         worker _ bind = return bind
-        replaceMG mg newBind =
+        replaceMG :: ParsedMatchGroup -> RefactGhc ParsedMatchGroup
+        replaceMG mg = do
+#if __GLASGOW_HASKELL__ <= 710
           let [(GHC.L l match)] = GHC.mg_alts mg
+#else
+          let (GHC.L _ [(GHC.L l match)]) = GHC.mg_alts mg
+#endif
               oldGrhss = GHC.m_grhss match
               newGrhss = mkGrhss oldGrhss newRhs
-              newLMatch = (GHC.L l (match{GHC.m_grhss = newGrhss})) in
-            mg{GHC.mg_alts = [newLMatch]}
+              newLMatch = (GHC.L l (match{GHC.m_grhss = newGrhss}))
+#if __GLASGOW_HASKELL__ <= 710              
+          return mg{GHC.mg_alts = [newLMatch]}
+#else
+          lMatchLst <- locate [newLMatch]
+          return mg{GHC.mg_alts = lMatchLst}
+#endif
         mkGrhss old newExpr = let [(GHC.L l (GHC.GRHS lst _))] = GHC.grhssGRHSs old in
           old{GHC.grhssGRHSs = [(GHC.L l (GHC.GRHS lst newExpr))]}              
                                    
@@ -124,7 +147,11 @@ processReturnStatement retExpr boundVars
           lRet <- locate retExpr
           stripBoundVars lRet boundVars
       where stripBoundVars :: ParsedLExpr -> [GHC.RdrName] -> RefactGhc (Maybe ParsedLExpr)
+#if __GLASGOW_HASKELL__ <= 710
             stripBoundVars le@(GHC.L l (GHC.HsVar nm)) names =
+#else
+            stripBoundVars le@(GHC.L l (GHC.HsVar (GHC.L _ nm))) names =
+#endif
               if (elem nm names)
               then return Nothing
               else return (Just le)
@@ -142,19 +169,31 @@ mergeAnns anns = do
   setRefactAnns newAnns
 
 isJustBoundVar :: ParsedExpr -> [GHC.RdrName] -> Bool
+#if __GLASGOW_HASKELL__ <= 710
 isJustBoundVar (GHC.HsVar nm) names = elem nm names
+#else
+isJustBoundVar (GHC.HsVar (GHC.L _ nm)) names = elem nm names
+#endif
 isJustBoundVar _ _ = False
 
 getDoStmts :: GHC.HsBind GHC.RdrName -> Maybe [GHC.ExprLStmt GHC.RdrName]
 getDoStmts funBind = SYB.something (Nothing `SYB.mkQ` stmtLst) funBind
   where stmtLst :: GHC.HsExpr GHC.RdrName -> Maybe [GHC.ExprLStmt GHC.RdrName]
+#if __GLASGOW_HASKELL__ <= 710
         stmtLst (GHC.HsDo _ stmtLst _) = Just (init stmtLst)
+#else
+        stmtLst (GHC.HsDo _ (GHC.L _ stmtLst) _) = Just (init stmtLst)
+#endif
         stmtLst _ = Nothing
 
 findBoundVars :: [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName]
 findBoundVars = SYB.everything (++) ([] `SYB.mkQ` findVarPats)
   where findVarPats :: GHC.Pat GHC.RdrName -> [GHC.RdrName]
+#if __GLASGOW_HASKELL__ <= 710
         findVarPats (GHC.VarPat rdr) = [rdr]
+#else
+        findVarPats (GHC.VarPat (GHC.L _ rdr)) = [rdr]
+#endif
         findVarPats _ = []
 
 getReturnRhs :: UnlocParsedHsBind -> Maybe ParsedExpr
@@ -197,7 +236,7 @@ constructAppChain retRhs lst = do
       return effects
     (Just pure) -> do
       setDP (DP (0,1)) pure
-      lOp <- locate infixFmap
+      lOp <- lInfixFmap
       addAnnVal lOp
       locate (GHC.OpApp pure lOp GHC.PlaceHolder effects)
   where
@@ -205,23 +244,29 @@ constructAppChain retRhs lst = do
     buildChain [e] = return e
     buildChain (e:es) = do
       rhs <- buildChain es
-      lOp <- locate fApp
+      lOp <- lFApp
       addAnnVal lOp
       let opApp = (GHC.OpApp e lOp GHC.PlaceHolder rhs)
       locate opApp      
     getStmtExpr :: GHC.ExprLStmt GHC.RdrName -> ParsedLExpr
     getStmtExpr (GHC.L _ (GHC.BodyStmt body _ _ _)) = body
+#if __GLASGOW_HASKELL__ <= 710
     getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _)) = body
+#else
+    getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _ _)) = body    
+#endif
     buildSingleExpr :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedLExpr
     buildSingleExpr [st] = return $ getStmtExpr st
     buildSingleExpr lst@(st:stmts) = do
       let (before,(bindSt:after)) = break isBindStmt lst
-      mLeftOfBnds <- buildApps rApp (map getStmtExpr before)
-      mRightOfBnds <- buildApps lApp (map getStmtExpr after)
+      rOp <- rApp
+      lOp <- lApp
+      mLeftOfBnds <- buildApps rOp (map getStmtExpr before)
+      mRightOfBnds <- buildApps lOp (map getStmtExpr after)
       mapM_ (\ex -> (setDP (DP (0,1))) (getStmtExpr ex)) (tail lst)
-      lROp <- locate rApp
+      lROp <- lRApp
       addAnnVal lROp
-      lLOp <- locate lApp
+      lLOp <- lLApp
       addAnnVal lLOp
       newBndStmt <- mkBind (getStmtExpr bindSt)
       case (mLeftOfBnds,mRightOfBnds) of
@@ -269,25 +314,70 @@ nameOccurs nm = SYB.everything (||) (False `SYB.mkQ` isName)
         isName mName = nm == mName
 
 isBindStmt :: GHC.ExprLStmt GHC.RdrName -> Bool
+#if __GLASGOW_HASKELL__ <= 710
 isBindStmt (GHC.L _ (GHC.BindStmt _ _ _ _)) = True
+#else
+isBindStmt (GHC.L _ (GHC.BindStmt _ _ _ _ _)) = True
+#endif
 isBindStmt _ = False
 
-fApp :: ParsedExpr
+lFApp :: RefactGhc ParsedLExpr
+lFApp = fApp >>= locate
+
+fApp :: RefactGhc ParsedExpr
 fApp = let nm = fsLit "<*>" in
-  (GHC.HsVar (GHC.mkVarUnqual nm))
+#if __GLASGOW_HASKELL__ <= 710
+  locate (GHC.HsVar (GHC.mkVarUnqual nm))
+#else
+  do
+  lNm <- locate (GHC.mkVarUnqual nm)
+  return (GHC.HsVar lNm)
+#endif
+  
 
 isFApp :: ParsedLExpr -> Bool
+#if __GLASGOW_HASKELL__ <= 710
 isFApp (GHC.L _ (GHC.HsVar rdrNm)) = (GHC.mkVarUnqual (fsLit "<*>")) == rdrNm
+#else
+isFApp (GHC.L _ (GHC.HsVar (GHC.L _ rdrNm))) = (GHC.mkVarUnqual (fsLit "<*>")) == rdrNm
+#endif
 isFApp _ = False
 
-lApp :: ParsedExpr
+lLApp :: RefactGhc ParsedLExpr
+lLApp = lApp >>= locate
+
+lApp :: RefactGhc ParsedExpr
 lApp = let nm = fsLit "<*" in
-  (GHC.HsVar (GHC.mkVarUnqual nm))
+#if __GLASGOW_HASKELL__ <= 710
+  return (GHC.HsVar (GHC.mkVarUnqual nm))
+#else
+  do
+  lNm <- locate (GHC.mkVarUnqual nm)
+  return (GHC.HsVar lNm)
+#endif
 
-rApp :: ParsedExpr
+lRApp :: RefactGhc ParsedLExpr
+lRApp = rApp >>= locate
+
+rApp :: RefactGhc ParsedExpr
 rApp = let nm = fsLit "*>" in
-  (GHC.HsVar (GHC.mkVarUnqual nm))
+#if __GLASGOW_HASKELL__ <= 710
+  return (GHC.HsVar (GHC.mkVarUnqual nm))
+#else
+  do
+  lNm <- locate (GHC.mkVarUnqual nm)
+  return (GHC.HsVar lNm)
+#endif
 
-infixFmap :: ParsedExpr
-infixFmap = let nm = fsLit "<$>" in
-  (GHC.HsVar (GHC.mkVarUnqual nm))
+lInfixFmap :: RefactGhc ParsedLExpr
+lInfixFmap = infixFmap >>= locate
+
+infixFmap :: RefactGhc ParsedExpr
+infixFmap = let nm = fsLit "<$>" in 
+#if __GLASGOW_HASKELL__ <= 710
+  return (GHC.HsVar (GHC.mkVarUnqual nm))
+#else
+  do
+  lNm <- locate (GHC.mkVarUnqual nm)
+  return (GHC.HsVar lNm)
+#endif

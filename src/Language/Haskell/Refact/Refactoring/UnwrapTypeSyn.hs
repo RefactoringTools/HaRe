@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 module Language.Haskell.Refact.Refactoring.UnwrapTypeSyn where
 
 import qualified Language.Haskell.GhcMod as GM
@@ -53,7 +54,11 @@ doReplace synName lDecl@(GHC.L l dec) tyAnns = do
   setRefactAnns diffAnns
   return False
   where replaceSig :: (GHC.LHsType GHC.RdrName) -> RefactGhc (GHC.LHsType GHC.RdrName)
-        replaceSig old@(GHC.L l2 (GHC.HsTyVar name)) = do
+#if __GLASGOW_HASKELL__ <= 710
+        replaceSig old@(GHC.L _ (GHC.HsTyVar name)) = do
+#else
+        replaceSig old@(GHC.L _ (GHC.HsTyVar (GHC.L _ name))) = do
+#endif
           if name == synName
             then do
                newDec <- everywhereMStaged Parser (SYB.mkM updateLocations) lDecl

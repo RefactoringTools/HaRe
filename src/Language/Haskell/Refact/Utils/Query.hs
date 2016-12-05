@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Utils.Query where
 --This module contains functions that retrieve sections of the ast. It is fairly high level.
@@ -30,13 +31,23 @@ getHsBind pos funNm a =
   case rdrNm of
   Nothing -> Nothing
   (Just (GHC.L _ rNm)) -> SYB.everythingStaged SYB.Parser (<|>) Nothing (Nothing `SYB.mkQ` isBind) a
-    where isBind (bnd@(GHC.FunBind (GHC.L _ name) _ _ _ _ _) :: GHC.HsBind GHC.RdrName)
+    where
+#if __GLASGOW_HASKELL__ <= 710
+        isBind (bnd@(GHC.FunBind (GHC.L _ name) _ _ _ _ _) :: GHC.HsBind GHC.RdrName)
+#else
+        isBind (bnd@(GHC.FunBind (GHC.L _ name) _ _ _ _) :: GHC.HsBind GHC.RdrName)
+#endif
             | name == rNm = (Just bnd)
-          isBind _ = Nothing
+        isBind _ = Nothing
 
 --It's common to want to know if an expression is just a certain var
 --This function takes a String of the var and returns true of the given expression represents that var
 isHsVar :: String -> ParsedExpr -> Bool
-isHsVar str (GHC.HsVar rNm) = let nm = mkVarUnqual (fsLit str) in
-  rNm == nm
+#if __GLASGOW_HASKELL__ <= 710
+isHsVar str (GHC.HsVar rNm) =
+#else
+isHsVar str (GHC.HsVar (GHC.L _ rNm)) =
+#endif
+  let nm = mkVarUnqual (fsLit str) in
+    rNm == nm
 isHsVar _ _ = False

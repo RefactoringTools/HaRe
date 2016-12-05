@@ -1,3 +1,4 @@
+{-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 module Language.Haskell.Refact.Refactoring.IntroduceTypeSyn where
 
@@ -81,9 +82,14 @@ updateTypeDecs synName ty = do
       | compareHsType oldTy ty
       = do
           currAnns <- fetchAnnsFinal
+#if __GLASGOW_HASKELL__ <= 710
+          let correctSig = (GHC.L l (GHC.HsTyVar synName))
+#else
+          lTyVar <- locate synName
+          let correctSig = (GHC.L l (GHC.HsTyVar lTyVar))
+#endif
           let oldKey = mkAnnKey old
               (Just oldAnn) = Map.lookup oldKey currAnns
-              correctSig = (GHC.L l (GHC.HsTyVar synName))
               relevantAnns = lookupAnns currAnns l
               newKey = mkAnnKey correctSig
               newAnn = oldAnn{annsDP = [((G GHC.AnnVal),(DP (0,0)))]}
