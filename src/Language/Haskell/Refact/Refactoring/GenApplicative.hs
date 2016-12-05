@@ -327,7 +327,7 @@ lFApp = fApp >>= locate
 fApp :: RefactGhc ParsedExpr
 fApp = let nm = fsLit "<*>" in
 #if __GLASGOW_HASKELL__ <= 710
-  locate (GHC.HsVar (GHC.mkVarUnqual nm))
+  return (GHC.HsVar (GHC.mkVarUnqual nm))
 #else
   do
   lNm <- locate (GHC.mkVarUnqual nm)
