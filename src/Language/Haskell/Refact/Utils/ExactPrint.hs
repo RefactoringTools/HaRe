@@ -202,7 +202,6 @@ exactPrintExpr ast = do
 locate :: (SYB.Data a) => a -> RefactGhc (GHC.Located a)
 locate ast = do
   loc <- liftT uniqueSrcSpanT
-  anns <- fetchAnnsFinal
   let res = (GHC.L loc ast)
   addEmptyAnn res
   return res
