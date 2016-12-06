@@ -23,8 +23,8 @@ module Language.Haskell.Refact.HaRe
  -- , swapArgs
  , multRename
  , roundTrip
- , introduceTypeSyn
- , unwrapTypeSyn
+-- , introduceTypeSyn
+-- , unwrapTypeSyn
  , genApplicative
  )
 where
@@ -34,9 +34,9 @@ import Language.Haskell.Refact.Refactoring.Case
 import Language.Haskell.Refact.Refactoring.DupDef
 import Language.Haskell.Refact.Refactoring.MoveDef
 import Language.Haskell.Refact.Refactoring.Renaming
-import Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
+--import Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
 import Language.Haskell.Refact.Refactoring.DeleteDef
-import Language.Haskell.Refact.Refactoring.UnwrapTypeSyn
+--import Language.Haskell.Refact.Refactoring.UnwrapTypeSyn
 import Language.Haskell.Refact.Refactoring.GenApplicative
 -- import Language.Haskell.Refact.Refactoring.SwapArgs
 import Language.Haskell.Refact.Refactoring.RoundTrip

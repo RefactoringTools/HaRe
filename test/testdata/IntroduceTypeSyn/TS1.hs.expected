@@ -1,6 +1,0 @@
-module TS1 where
-
-type Name = String
-
-count :: Name -> Int
-count s = length s

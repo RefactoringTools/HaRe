@@ -1,8 +1,0 @@
-module UTS3 where
-
-type Foo = String
-
-addSpaces :: Foo -> (Int, Int) -> Foo
-addSpaces str (row, col) = str ++ (take row rows) ++ (take col cols)
-  where rows = repeat '\n'
-        cols = repeat ' '
