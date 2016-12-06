@@ -234,6 +234,7 @@ module Language.Haskell.Refact.API
  -- * from `Language.Haskell.Refact.Utils.ExactPrint'`
   , replace
   , setRefactAnns
+  , mergeRefactAnns
   , setAnnKeywordDP
   , copyAnn
   , clearPriorComments

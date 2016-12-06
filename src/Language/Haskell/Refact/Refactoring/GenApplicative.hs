@@ -142,7 +142,7 @@ processReturnStatement retExpr boundVars
               logm "processReturnStatement: error parsing tuple constructor"
               return Nothing
             (Right (anns, expr)) -> do
-              mergeAnns anns
+              mergeRefactAnns anns
               return (Just expr)
         _ -> do
           lRet <- locate retExpr
@@ -162,12 +162,6 @@ processReturnStatement retExpr boundVars
               case ne2 of
                 Nothing -> return ne1
                 (Just e2) -> return (ne1 >>= (\e1 -> Just (GHC.L l (GHC.HsApp e1 e2))))
-
-mergeAnns :: Anns -> RefactGhc ()
-mergeAnns anns = do
-  currAnns <- fetchAnnsFinal
-  let newAnns = Map.union anns currAnns
-  setRefactAnns newAnns
 
 isJustBoundVar :: ParsedExpr -> [GHC.RdrName] -> Bool
 #if __GLASGOW_HASKELL__ <= 710

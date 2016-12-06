@@ -35,6 +35,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Annotations
        -- , addRefactAnns
        , setRefactAnns
+       , mergeRefactAnns
 
        -- *
        , putParsedModule
@@ -186,6 +187,14 @@ getRefactAnns :: RefactGhc Anns
 getRefactAnns =
   (Map.! mainTid) . tkCache . rsTokenCache . gfromJust "getRefactAnns"
     <$> gets rsModule
+
+-- |Merges new annotations with the currecnt annotations from the
+-- RefactGhc state.
+mergeRefactAnns :: Anns -> RefactGhc ()
+mergeRefactAnns anns = do
+  currAnns <- getRefactAnns
+  let newAnns = Map.union anns currAnns
+  setRefactAnns newAnns
 
 -- |Internal low level interface to access the current annotations from the
 -- RefactGhc state.
