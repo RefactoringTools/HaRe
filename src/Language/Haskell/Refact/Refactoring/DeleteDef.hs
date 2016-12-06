@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-module Language.Haskell.Refact.Refactoring.DeleteDef where
+module Language.Haskell.Refact.Refactoring.DeleteDef
+  (deleteDef, compDeleteDef) where
 
 import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
@@ -19,10 +20,10 @@ import Language.Haskell.GHC.ExactPrint
 deleteDef :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 deleteDef settings cradle fileName (row,col) = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings cradle (comp absFileName (row,col))
+  runRefacSession settings cradle (compDeleteDef absFileName (row,col))
 
-comp ::FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName (row,col) = do
+compDeleteDef ::FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
+compDeleteDef fileName (row,col) = do
   parseSourceFileGhc fileName
   renamed <- getRefactRenamed
   parsed <- getRefactParsed
