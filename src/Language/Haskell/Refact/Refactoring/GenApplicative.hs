@@ -1,6 +1,7 @@
 {-# LANGUAGE CPP #-}
 {-# LANGUAGE DeriveDataTypeable #-}
-module Language.Haskell.Refact.Refactoring.GenApplicative where
+module Language.Haskell.Refact.Refactoring.GenApplicative
+  (genApplicative, compGenApplicative) where
 
 import Language.Haskell.Refact.API
 import qualified Language.Haskell.GhcMod as GM
@@ -20,10 +21,10 @@ import Language.Haskell.GHC.ExactPrint.Parsers
 genApplicative :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
 genApplicative settings cradle fileName funNm pos = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings cradle (comp absFileName funNm pos)
+  runRefacSession settings cradle (compGenApplicative absFileName funNm pos)
 
-comp :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
-comp fileName funNm pos = do
+compGenApplicative :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
+compGenApplicative fileName funNm pos = do
   (refRes@((_fp,ismod),_), ()) <- applyRefac (doGenApplicative fileName funNm pos) (RSFile fileName)
   case ismod of
     RefacUnmodifed -> error "Generalise to Applicative failed"
