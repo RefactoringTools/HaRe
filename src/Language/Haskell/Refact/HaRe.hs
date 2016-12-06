@@ -21,7 +21,6 @@ module Language.Haskell.Refact.HaRe
  , rmOneParameter,  compRmOneParameter
  , deleteDef
  -- , swapArgs
- , multRename
  , roundTrip
 -- , introduceTypeSyn
 -- , unwrapTypeSyn
@@ -42,5 +41,4 @@ import Language.Haskell.Refact.Refactoring.GenApplicative
 import Language.Haskell.Refact.Refactoring.RoundTrip
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.Types
-import Language.Haskell.Refact.Refactoring.MultiRename
 import qualified Language.Haskell.GhcMod as GM (Options(..),defaultOptions)
