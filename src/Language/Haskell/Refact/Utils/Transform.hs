@@ -7,6 +7,7 @@ module Language.Haskell.Refact.Utils.Transform
   , wrapInParsWithDPs
   , addNewLines
   , locate
+  , removePars
   ) where
 
 import qualified GHC as GHC
@@ -85,6 +86,14 @@ wrapInParsWithDPs openDP closeDP expr = do
 --Wraps a given expression in parenthesis and add the appropriate annotations, returns the modified ast chunk. 
 wrapInPars :: GHC.LHsExpr GHC.RdrName -> RefactGhc (GHC.LHsExpr GHC.RdrName)
 wrapInPars = wrapInParsWithDPs (DP (0,1)) (DP (0,0))
+
+--Does the opposite of wrapInPars
+removePars :: ParsedLExpr -> RefactGhc ParsedLExpr
+removePars (GHC.L _ (GHC.HsPar expr)) = do
+  setDP (DP (0,1)) expr
+  return expr
+removePars expr = return expr
+
   
 --Takes a piece of AST and adds an n row offset
 addNewLines :: (Data a) => Int -> GHC.Located a -> RefactGhc ()

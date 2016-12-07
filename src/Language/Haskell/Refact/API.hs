@@ -267,6 +267,7 @@ module Language.Haskell.Refact.API
   , addSimpleImportDecl
   , wrapInLambda
   , wrapInPars
+  , removePars
   , addNewLines
   , wrapInParsWithDPs
   , locate

@@ -12,8 +12,6 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , setAnnKeywordDP
   , clearPriorComments
   , balanceAllComments
-  , exactPrintParsed
-  , exactPrintExpr
   , locate
   , addEmptyAnn
   , addAnnVal

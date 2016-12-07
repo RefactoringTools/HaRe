@@ -209,12 +209,6 @@ getReturnRhs funBind = SYB.something (Nothing `SYB.mkQ` retStmt `SYB.extQ` dolla
         retRHS :: ParsedExpr -> ParsedExpr
         retRHS (GHC.HsApp _  (GHC.L _ rhs)) = rhs
 
-removePars :: ParsedLExpr -> RefactGhc ParsedLExpr
-removePars (GHC.L _ (GHC.HsPar expr)) = do
-  setDP (DP (0,1)) expr
-  return expr
-removePars expr = return expr
-
 constructAppChain :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedLExpr
 constructAppChain retRhs lst = do
   let clusters = clusterStmts lst

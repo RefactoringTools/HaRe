@@ -70,7 +70,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , logAnns
        , logParsedSource
        , logExactprint
-
+       , exactPrintParsed
+       , exactPrintExpr
        -- * For use by the tests only
        , initRefactModule
        , initTokenCacheLayout
