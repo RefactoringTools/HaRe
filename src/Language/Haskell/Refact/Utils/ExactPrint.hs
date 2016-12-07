@@ -21,7 +21,6 @@ module Language.Haskell.Refact.Utils.ExactPrint
   , zeroDP
   , setDP
   , handleParseResult
-  , getAllAnns
   , removeAnns
   , synthesizeAnns
   , addNewKeyword
@@ -241,23 +240,6 @@ handleParseResult :: String -> Either (GHC.SrcSpan, String) (Anns, a) -> RefactG
 handleParseResult msg e = case e of
   (Left (_, errStr)) -> error $ "The parse from: " ++ msg ++ " with error: " ++ errStr
   (Right res) -> return res
-
--- Retrieves all annotations that correspond to all subtrees of the provided ast chunk
-getAllAnns :: (SYB.Data a) => Anns -> a -> Anns
-getAllAnns anns = generic `SYB.ext2Q` located
-  where generic :: SYB.Data a => a -> Anns
-        generic a = foldr Map.union Map.empty (SYB.gmapQ (getAllAnns anns) a) 
-        located :: (SYB.Data b, SYB.Data loc) => GHC.GenLocated loc b -> Anns
-        located a = case (located' a) of
-          Nothing -> Map.empty
-          Just as -> as
-          where located' :: (SYB.Data b, SYB.Data loc) => GHC.GenLocated loc b -> Maybe Anns
-                located' a@(GHC.L ss b) = do
-                  s <- (SYB.cast ss) :: (Maybe GHC.SrcSpan)
-                  let k = mkAnnKey (GHC.L s b)
-                  v <- Map.lookup k anns
-                  let rst = getAllAnns anns b
-                  return $ Map.singleton k v `Map.union` rst
         
 -- This creates an empty annotation for every located item where an annotation does not already exist in the given AST chunk
 synthesizeAnns :: (SYB.Data a) => a -> RefactGhc a

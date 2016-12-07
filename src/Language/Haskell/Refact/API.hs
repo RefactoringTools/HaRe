@@ -244,7 +244,6 @@ module Language.Haskell.Refact.API
   , zeroDP
   , setDP
   , handleParseResult
-  , getAllAnns
   , removeAnns
   , synthesizeAnns
   , addNewKeyword
