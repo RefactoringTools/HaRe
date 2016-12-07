@@ -70,7 +70,6 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , logAnns
        , logParsedSource
        , logExactprint
-       , logAst
 
        -- * For use by the tests only
        , initRefactModule
@@ -436,11 +435,6 @@ logParsedSource :: String -> RefactGhc ()
 logParsedSource str = do
   parsed <- getRefactParsed
   logDataWithAnns str parsed
-
--- ---------------------------------------------------------------------
-
-logAst :: (SYB.Data a) => String -> a -> RefactGhc ()
-logAst str a = logm $ str ++ "\n[" ++ (SYB.showData SYB.Parser 3 a) ++ "]"
 
 -- ---------------------------------------------------------------------
 

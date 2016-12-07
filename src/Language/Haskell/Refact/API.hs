@@ -22,7 +22,6 @@ module Language.Haskell.Refact.API
        , logDataWithAnns
        , logExactprint
        , logParsedSource
-       , logAst
  -- * from `Language.Haskell.Refact.Utils.Utils`
 
        -- ** Managing the GHC / project environment
