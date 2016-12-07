@@ -175,27 +175,6 @@ balanceAllComments la
       unless (null decls) $ moveTrailingComments t (last decls)
       return t
 
--- ---------------------------------------------------------------------
---Useful helper function that logs the current refact parsed
-
-exactPrintParsed :: RefactGhc ()
-exactPrintParsed = do
-  parsed <- getRefactParsed
-  anns <- fetchAnnsFinal
-  let str = exactPrint parsed anns
-  logm str
-
--- ---------------------------------------------------------------------
---A helper function that logs chunks of ast
-
-exactPrintExpr :: Annotate ast => GHC.Located ast -> RefactGhc ()
-exactPrintExpr ast = do
-  anns <- fetchAnnsFinal
-  let str = exactPrint ast anns
-  logm str
-
--- ---------------------------------------------------------------------
-
 --This generates a unique location and wraps the given ast chunk with that location
 --Also adds an empty annotation at that location
 locate :: (SYB.Data a) => a -> RefactGhc (GHC.Located a)

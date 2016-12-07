@@ -438,6 +438,27 @@ logParsedSource str = do
 
 -- ---------------------------------------------------------------------
 
+--Useful helper function that logs the current refact parsed
+
+exactPrintParsed :: RefactGhc ()
+exactPrintParsed = do
+  parsed <- getRefactParsed
+  anns <- fetchAnnsFinal
+  let str = exactPrint parsed anns
+  logm str
+
+-- ---------------------------------------------------------------------
+--A helper function that logs chunks of ast
+
+exactPrintExpr :: Annotate ast => GHC.Located ast -> RefactGhc ()
+exactPrintExpr ast = do
+  anns <- fetchAnnsFinal
+  let str = exactPrint ast anns
+  logm str
+
+-- ---------------------------------------------------------------------
+
+
 initRefactModule :: [Comment] -> TypecheckedModule -> Maybe RefactModule
 initRefactModule cppComments tm
   = Just (RefMod { rsTypecheckedMod = tm
