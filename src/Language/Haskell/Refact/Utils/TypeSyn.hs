@@ -51,9 +51,9 @@ instance GHC.Outputable GHC.NameSpace where
   ppr x = GHC.text $ show x
 
 
+
 instance GHC.Outputable (GHC.MatchGroup GHC.Name (GHC.LHsExpr GHC.Name)) where
   ppr (GHC.MG ms _ _ _) = GHC.text "MatchGroup" GHC.<+> GHC.ppr ms
-
 
 instance GHC.Outputable (GHC.Match GHC.Name (GHC.LHsExpr GHC.Name)) where
   ppr (GHC.Match _fn pats mtyp grhs) = GHC.text "Match" GHC.<+> GHC.ppr pats
@@ -93,4 +93,3 @@ instance GHC.Outputable (GHC.TyFamEqn GHC.Name (GHC.LHsTyVarBndrs GHC.Name)) whe
 #endif
 
 -- ---------------------------------------------------------------------
-

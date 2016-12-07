@@ -186,6 +186,12 @@ Executable qualified
 
 -- ---------------------------------------------------------------------
 
+Executable deldef2
+  Main-Is: DeleteDef/Dd2Client.hs
+  Other-Modules : DeleteDef.Dd2
+  Build-Depends:          base >= 4.0  && < 5
+  default-language:    Haskell2010
+
 Executable addoneparama1
   Main-Is: AddOneParameter/A1.hs
   Other-Modules : AddOneParameter.C1
@@ -223,3 +229,32 @@ Executable rmoneparama2
   default-language:    Haskell2010
 
 -- ---------------------------------------------------------------------
+
+Executable ga1
+  Main-Is: GenApplicative/GA1.hs
+  Build-Depends:          base >= 4.0  && < 5
+                        , parsec
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------
+
+Executable ga2
+  Main-Is: GenApplicative/GA2.hs
+  Build-Depends:          base >= 4.0  && < 5
+                        , parsec
+  default-language:    Haskell2010
+
+-- ---------------------------------------------------------------------
+
+Executable gaHTML
+  Main-Is: GenApplicative/HTMLTokenizer.hs
+  Build-Depends:          base >= 4.0 && < 5
+                        , attoparsec
+                        , conversion-text
+                        , text
+                        , conversion
+                        , case-insensitive
+                        , conversion-case-insensitive
+                        , base-prelude
+  default-language:    Haskell2010
+ 

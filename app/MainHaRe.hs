@@ -85,6 +85,10 @@ main = do
                          "Remove a new parameter from a function"
                          runCmd
                          rmOneParamCmdOpts
+              addCommand "genApplicative"
+                         "Generalise a monadic function to use applicative"
+                         runCmd
+                         genApplicativeOpts
     run global
 
 -- ---------------------------------------------------------------------
@@ -100,6 +104,7 @@ data HareParams = DemoteCmd      FilePath Row Col
                 | RenameCmd      FilePath String Row Col
                 | AddOneParam    FilePath String Row Col
                 | RmOneParam     FilePath Row Col
+                | GenApplicative FilePath String Row Col
                deriving Show
 
 runCmd :: HareParams -> (RefactSettings,GM.Options) -> IO ()
@@ -127,7 +132,8 @@ runCmd (AddOneParam fileName newname r c) (opt, gOpt)
 runCmd (RmOneParam fileName r c) (opt, gOpt)
   = runFunc $ rmOneParameter opt gOpt fileName (r,c)
 
--- ---------------------------------------------------------------------
+runCmd (GenApplicative fileName funNm r c) (opt, gOpt)
+  = runFunc $ genApplicative opt gOpt fileName funNm (r,c)
 
 rmOneParamCmdOpts :: Parser HareParams
 rmOneParamCmdOpts =
@@ -254,8 +260,6 @@ demoteCmdOpts =
             ( metavar "col"
            <> help "The col the declaration starts at")
 
--- ---------------------------------------------------------------------
-
 dupDefCmdOpts :: Parser HareParams
 dupDefCmdOpts =
     DupDefCmd
@@ -273,6 +277,25 @@ dupDefCmdOpts =
       <*> argument auto
             ( metavar "col"
            <> help "A col inside the definition name")
+
+genApplicativeOpts :: Parser HareParams
+genApplicativeOpts =
+  GenApplicative
+     <$> strArgument
+          ( metavar "FILE"
+         <> help "Specify Haskell file to process"
+          )
+      <*> strArgument
+            ( metavar "FUNNAME"
+           <> help "The name of the function to be refactored"
+            )
+      <*> argument auto
+            ( metavar "line"
+           <> help "The line the definition is on")
+      <*> argument auto
+            ( metavar "col"
+           <> help "A col inside the definition name")
+  
 
 
 -- ---------------------------------------------------------------------

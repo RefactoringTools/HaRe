@@ -18,6 +18,7 @@ module Language.Haskell.Refact.Utils.Utils
        -- * The bits that do the work
        , runRefacSession
        , applyRefac
+       , applyRefac'
        , refactDone
 
        -- , Update(..)
@@ -25,6 +26,8 @@ module Language.Haskell.Refact.Utils.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
+       , lookupAnns
+       , runMultRefacSession
 
        , modifiedFiles
        , writeRefactoredFiles
@@ -43,7 +46,7 @@ import Data.IORef
 -- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
 import Language.Haskell.GHC.ExactPrint.Print
--- import Language.Haskell.GHC.ExactPrint.Types
+import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Language.Haskell.GhcMod          as GM
@@ -60,11 +63,11 @@ import System.FilePath.Posix
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
+import qualified SrcLoc        as GHC
 import qualified Hooks         as GHC
 import qualified HscMain       as GHC
 import qualified HscTypes      as GHC
 import qualified TcRnMonad     as GHC
--- import qualified TcRnTypes     as GHC
 
 -- import qualified GHC.SYB.Utils as SYB
 -- import qualified Data.Generics as SYB
@@ -325,6 +328,59 @@ runRefacSession settings opt comp = do
   return $ modifiedFiles refactoredMods
 
 -- ---------------------------------------------------------------------
+
+
+-- | Like runRefacSession but instead takes an ordered list of RefactGhc computations
+-- | and runs all of them threading the state through all of the computations
+
+runMultRefacSession :: RefactSettings -> GM.Options -> [RefactGhc [ApplyRefacResult]] -> IO [FilePath]
+runMultRefacSession settings opt comps = do
+  let
+    initialState = RefSt
+        { rsSettings      = settings
+        , rsUniqState     = 1
+        , rsSrcSpanCol    = 1
+        , rsFlags         = RefFlags False
+        , rsStorage       = StorageNone
+        , rsCurrentTarget = Nothing
+        , rsModule        = Nothing
+        }
+  results <- threadState opt initialState comps
+  let (_, finState) = last results
+      verbosity = rsetVerboseLevel (rsSettings finState)
+      refResults = map fst results
+      merged = mergeRefResults refResults
+  writeRefactoredFiles verbosity merged
+  return $ modifiedFiles merged
+
+mergeRefResults :: [[ApplyRefacResult]] -> [ApplyRefacResult]
+mergeRefResults lst = Map.elems $ mergeHelp lst Map.empty
+  where mergeHelp []  mp = mp
+        mergeHelp (x:xs) mp = mergeHelp xs (foldl insertRefRes mp x)
+        insertRefRes mp res@((fp,RefacModified), _) = Map.insert fp res mp
+        insertRefRes mp _ = mp
+
+threadState :: GM.Options -> RefactState -> [RefactGhc [ApplyRefacResult]] -> IO [([ApplyRefacResult], RefactState)]
+threadState _ _ [] = return []
+threadState opt currState (rGhc : rst) = do
+  res@(refMods, newState) <- runRefactGhc rGhc currState opt
+  let (Just mod) = rsModule newState
+      newMod = mod {rsStreamModified = RefacUnmodifed}
+      nextState = newState {rsModule = Just newMod }
+  rest <- threadState opt nextState rst
+  return (res : rest)
+
+-- ---------------------------------------------------------------------
+
+cdAndDo :: FilePath -> IO a -> IO a
+cdAndDo path fn = do
+  old <- getCurrentDirectory
+  r <- GHC.gbracket (setCurrentDirectory path) (\_ -> setCurrentDirectory old)
+          $ const fn
+  return r
+
+-- ---------------------------------------------------------------------
+
 {-
 canonicalizeTargets :: Targets-> IO Targets
 canonicalizeTargets tgts = do
@@ -340,12 +396,17 @@ canonicalizeTargets tgts = do
 -- afresh each time.
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
-applyRefac
-    :: RefactGhc a       -- ^ The refactoring
+
+applyRefac = applyRefac' True
+
+applyRefac'
+    ::
+       Bool               -- ^ Boolean that determines if the state should be cleared
+    -> RefactGhc a        -- ^ The refactoring
     -> RefacSource        -- ^ where to get the module and toks
     -> RefactGhc (ApplyRefacResult,a)
 
-applyRefac refac source = do
+applyRefac' clearSt refac source = do
 
     -- TODO: currently a temporary, poor man's surrounding state
     -- management: store state now, set it to fresh, run refac, then
@@ -370,8 +431,9 @@ applyRefac refac source = do
     m    <- getRefactStreamModified
 
     -- Clear the refactoring state
-    clearParsedModule
-
+    if clearSt
+      then clearParsedModule
+      else return ()
     absFileName <- liftIO $ canonicalizePath fileName
     return (((absFileName,m),(anns, mod')),res)
 
@@ -565,6 +627,13 @@ serverModsAndFiles m = do
                  $ map summaryNodeSummary $ GHC.reachableG mg modNode
 
   return serverMods
+
+-- ---------------------------------------------------------------------
+
+-- | Finds all anotations that are contained within the given source span
+lookupAnns :: Anns -> GHC.SrcSpan -> Anns
+lookupAnns anns (GHC.RealSrcSpan span) = Map.filterWithKey isInSpan anns
+  where isInSpan k@(AnnKey (GHC.RealSrcSpan annSpan) conN) v = GHC.containsSpan span annSpan
 
 -- ---------------------------------------------------------------------
 

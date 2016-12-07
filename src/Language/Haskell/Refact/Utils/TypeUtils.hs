@@ -1949,9 +1949,9 @@ declsSybTransform transform = mt
 doRmDecl :: [GHC.LHsDecl GHC.RdrName] -> [GHC.LHsDecl GHC.RdrName] -> RefactGhc [GHC.LHsDecl GHC.RdrName]
 doRmDecl decls1 decls2
   = do
+  
       let decls2'      = gtail "doRmDecl 1" decls2
           declToRemove = head decls2
-
       -- logDataWithAnns "doRmDecl:(decls1,decls2)" (decls1,decls2)
       unless (null decls1)  $ do liftT $ balanceComments (last decls1) declToRemove
       unless (null decls2') $ do liftT $ balanceComments declToRemove  (head decls2')
@@ -2593,4 +2593,3 @@ pNtoPat pname = GHC.VarPat (GHC.noLoc pname)
 #endif
 
 -- EOF
-

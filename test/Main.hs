@@ -65,7 +65,11 @@ stackFileContents = unlines
   , resolver
   , "packages:"
   , "- '.'"
-  , "extra-deps: []"
+  , "extra-deps: "
+  , "- conversion-1.2.1"
+  , "- conversion-bytestring-1.0.1"
+  , "- conversion-case-insensitive-1.0.0.0"
+  , "- conversion-text-1.0.1"
   ]
 
 -- ---------------------------------------------------------------------

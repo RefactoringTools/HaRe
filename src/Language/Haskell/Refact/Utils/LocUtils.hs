@@ -13,7 +13,8 @@ module Language.Haskell.Refact.Utils.LocUtils(
   , ghcSpanStartEnd
   , getStartEndLoc
   , startEndLocGhc
-  , emptyList, nonEmptyList
+  , emptyList
+  , nonEmptyList
   ) where
 
 
@@ -158,5 +159,3 @@ getSrcSpan t = res t
     importDecl (GHC.L l _) = Just l
 
 -- ---------------------------------------------------------------------
-
-

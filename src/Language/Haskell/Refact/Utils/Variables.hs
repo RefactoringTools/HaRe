@@ -1049,10 +1049,20 @@ definesRdr nm n (GHC.L _ (GHC.PatBind p _rhs _ty _fvs _))
 definesRdr _ _ _= False
 
 
--- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind
+-- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind or calls clsDeclDefinesRdr if a TyClD
 definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
 definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
+definesDeclRdr nameMap nin (GHC.L l (GHC.TyClD ty)) = clsDeclDefinesRdr nameMap nin ty
 definesDeclRdr _ _ _ = False
+
+-- | Return True of the type class declaration defines the
+-- specified identifier
+clsDeclDefinesRdr :: NameMap -> GHC.Name -> GHC.TyClDecl GHC.RdrName -> Bool
+clsDeclDefinesRdr nameMap nin (GHC.SynDecl (GHC.L ln nm) _ty _rhs _) =
+  case Map.lookup ln nameMap of
+    Nothing -> False
+    Just n  -> GHC.nameUnique n == GHC.nameUnique nin
+clsDeclDefinesRdr _ _ _ = False
 
 -- | Returns True if the provided Name is defined in the LHsDecl
 definesNameRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool

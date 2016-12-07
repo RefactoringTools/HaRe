@@ -156,6 +156,10 @@ Library
            , Language.Haskell.Refact.Refactoring.RoundTrip
            , Language.Haskell.Refact.Refactoring.Simple
            , Language.Haskell.Refact.Refactoring.SwapArgs
+           , Language.Haskell.Refact.Refactoring.DeleteDef
+--           , Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
+--           , Language.Haskell.Refact.Refactoring.UnwrapTypeSyn
+           , Language.Haskell.Refact.Refactoring.GenApplicative          
            , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -169,6 +173,9 @@ Library
            , Language.Haskell.Refact.Utils.Types
            , Language.Haskell.Refact.Utils.Utils
            , Language.Haskell.Refact.Utils.Variables
+           , Language.Haskell.Refact.Utils.Synonyms
+           , Language.Haskell.Refact.Utils.Transform
+           , Language.Haskell.Refact.Utils.Query
            , Paths_HaRe
         if impl (ghc < 7.10.2)
             buildable: False
@@ -228,6 +235,9 @@ test-suite spec
     , TestUtils
     , TypeUtilsSpec
     , UtilsSpec
+    , DeleteDefSpec
+--    , IntroduceTypeSynSpec
+--    , UnwrapTypeSynSpec
 
     -- , Language.Haskell.Refact.API
     -- , Language.Haskell.Refact.HaRe
@@ -263,8 +273,16 @@ test-suite spec
     , hspec
     , mtl
     , turtle
-
-    , HaRe
+    , foldl
+    -- , Paths_HaRe
+    , attoparsec
+    , base-prelude
+    , conversion-case-insensitive
+    , conversion
+    , conversion-text
+    , parsec
+    , case-insensitive          
+    , HaRe >= 0.8.2.1
   Extensions:      CPP
   if impl (ghc < 7.10.2)
     buildable: False

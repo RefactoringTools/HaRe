@@ -35,6 +35,7 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        -- * Annotations
        -- , addRefactAnns
        , setRefactAnns
+       , mergeRefactAnns
 
        -- *
        , putParsedModule
@@ -69,7 +70,8 @@ module Language.Haskell.Refact.Utils.MonadFunctions
        , logAnns
        , logParsedSource
        , logExactprint
-
+       , exactPrintParsed
+       , exactPrintExpr
        -- * For use by the tests only
        , initRefactModule
        , initTokenCacheLayout
@@ -89,6 +91,7 @@ import qualified Var
 #endif
 
 import qualified Data.Generics as SYB
+import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Annotate
@@ -184,6 +187,14 @@ getRefactAnns :: RefactGhc Anns
 getRefactAnns =
   (Map.! mainTid) . tkCache . rsTokenCache . gfromJust "getRefactAnns"
     <$> gets rsModule
+
+-- |Merges new annotations with the currecnt annotations from the
+-- RefactGhc state.
+mergeRefactAnns :: Anns -> RefactGhc ()
+mergeRefactAnns anns = do
+  currAnns <- getRefactAnns
+  let newAnns = Map.union anns currAnns
+  setRefactAnns newAnns
 
 -- |Internal low level interface to access the current annotations from the
 -- RefactGhc state.
@@ -427,6 +438,27 @@ logParsedSource str = do
   logDataWithAnns str parsed
 
 -- ---------------------------------------------------------------------
+
+--Useful helper function that logs the current refact parsed
+
+exactPrintParsed :: RefactGhc ()
+exactPrintParsed = do
+  parsed <- getRefactParsed
+  anns <- fetchAnnsFinal
+  let str = exactPrint parsed anns
+  logm str
+
+-- ---------------------------------------------------------------------
+--A helper function that logs chunks of ast
+
+exactPrintExpr :: Annotate ast => GHC.Located ast -> RefactGhc ()
+exactPrintExpr ast = do
+  anns <- fetchAnnsFinal
+  let str = exactPrint ast anns
+  logm str
+
+-- ---------------------------------------------------------------------
+
 
 initRefactModule :: [Comment] -> TypecheckedModule -> Maybe RefactModule
 initRefactModule cppComments tm
