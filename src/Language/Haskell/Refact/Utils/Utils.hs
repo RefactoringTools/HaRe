@@ -330,7 +330,8 @@ runRefacSession settings opt comp = do
 -- ---------------------------------------------------------------------
 
 
--- | Like runRefacSession but instead takes an ordered list of RefactGhc computations and runs all of them threading the state through all of the computations
+-- | Like runRefacSession but instead takes an ordered list of RefactGhc computations
+-- | and runs all of them threading the state through all of the computations
 
 runMultRefacSession :: RefactSettings -> GM.Options -> [RefactGhc [ApplyRefacResult]] -> IO [FilePath]
 runMultRefacSession settings opt comps = do
