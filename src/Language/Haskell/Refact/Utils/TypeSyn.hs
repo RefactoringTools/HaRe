@@ -76,7 +76,7 @@ instance GHC.Outputable (GHC.HsTupArg GHC.Name) where
   ppr (GHC.Missing _typ) = GHC.text "Missing"
 
 
-#if !defined(MIN_VERSION_GLASGOW_HASKELL) || !(MIN_VERSION_GLASGOW_HASKELL(8,0,2,0))
+#if !defined(MIN_VERSION_GLASGOW_HASKELL) || !(MIN_VERSION_GLASGOW_HASKELL(8,0,1,20161117))
 instance GHC.Outputable (GHC.ConDeclField GHC.Name) where
   ppr (GHC.ConDeclField name typ doc) = GHC.text "ConDeclField"
                                           GHC.<+> GHC.ppr name
