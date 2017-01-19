@@ -205,6 +205,7 @@ newtype RefactGhc a = RefactGhc
                )
 
 -- ---------------------------------------------------------------------
+
 runRefactGhc ::
   RefactGhc a -> RefactState -> GM.Options -> IO (a, RefactState)
 runRefactGhc comp initState opt = do

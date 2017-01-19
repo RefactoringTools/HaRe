@@ -49,7 +49,7 @@ removeBracketTransform fileName beginPos endPos = do
               return s
            removePar e = return e
        p2 <- SYB.everywhereM (SYB.mkM removePar) parsed
-       (liftT getAnnsT) >>= putRefactParsed p2
+       putRefactParsed p2 emptyAnns
        logm $ "logm: after refactor\n" ++ showGhc p2
 
 -- EOF

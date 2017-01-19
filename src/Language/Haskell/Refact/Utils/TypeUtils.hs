@@ -1053,10 +1053,11 @@ mkNewEnt :: Bool -> GHC.RdrName -> RefactGhc (GHC.LIE GHC.RdrName)
 mkNewEnt addCommaAnn pn = do
   newSpan <- liftT uniqueSrcSpanT
   let lpn = GHC.L newSpan pn
-  if addCommaAnn
-    then liftT $ addSimpleAnnT lpn (DP (0,0)) [((G GHC.AnnVal),DP (0,0)),((G GHC.AnnComma),DP (0,0))]
-    else liftT $ addSimpleAnnT lpn (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
-  return (GHC.L newSpan (GHC.IEVar lpn))
+  let lie = GHC.L newSpan (GHC.IEVar lpn)
+  liftT $ addSimpleAnnT lpn (DP (0,0)) [((G GHC.AnnVal),DP (0,0))]
+  when addCommaAnn $
+    liftT $ addSimpleAnnT lie (DP (0,0)) [((G GHC.AnnComma),DP (0,0))]
+  return lie
 
 -- | Represents the operation type we want to select on addItemsToImport'
 data ImportType = Hide     -- ^ Used for addHiding
@@ -1614,10 +1615,11 @@ addActualParamsToRhs pn paramPNames rhs = do
          registerRdrName (GHC.L ss2 param)
 #if __GLASGOW_HASKELL__ <= 710
          let var   = GHC.L ss2 (GHC.HsVar param)
+         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #else
          let var   = GHC.L ss2 (GHC.HsVar (GHC.L ss2 param))
+         liftT $ addSimpleAnnT (GHC.L ss2 param) (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
 #endif
-         liftT $ addSimpleAnnT var (DP (0,0)) [(G GHC.AnnVal,DP (0,1))]
          let expr' = GHC.L ss1 (GHC.HsApp expr var)
          liftT $ addSimpleAnnT expr' (DP (0,0)) []
          return expr'

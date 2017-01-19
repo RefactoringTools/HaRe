@@ -121,7 +121,7 @@ Library
                                , directory
                                , filepath
                                , ghc
-                               , ghc-exactprint >= 0.5.2.1
+                               , ghc-exactprint >= 0.5.3.0
                                , ghc-mod >= 5.6.0.0
                                , ghc-syb-utils
                                , hslogger
@@ -266,7 +266,7 @@ test-suite spec
     , directory
     , foldl
     , ghc
-    , ghc-exactprint >= 0.5.2.1
+    , ghc-exactprint >= 0.5.3.0
     , ghc-mod >= 5.6.0.0
     , ghc-syb-utils
     , hslogger

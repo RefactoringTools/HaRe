@@ -14,6 +14,7 @@ import Data.Generics as SYB
 import GHC.SYB.Utils as SYB
 import Data.List
 import Control.Monad
+import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Print
 import Language.Haskell.GHC.ExactPrint.Parsers
@@ -45,7 +46,7 @@ doGenApplicative fileName funNm pos = do
   checkPreconditions retRhs doStmts boundVars
   appChain <- constructAppChain retRhs doStmts
   replaceFunRhs funNm pos appChain
-  
+
 
 checkPreconditions :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName] -> RefactGhc ()
 checkPreconditions retRhs doStmts boundVars = do
@@ -82,10 +83,10 @@ checkPreconditions retRhs doStmts boundVars = do
           then (checkOrdering vars stmts)
           else False
         checkPat var pat = gContains var pat
-        
+
 gContains :: (Data t, Eq a, Data a) => a -> t -> Bool
 gContains item t = SYB.everything (||) (False `SYB.mkQ` (\b -> item == b)) t
-                                                         
+
 replaceFunRhs :: String -> SimpPos -> ParsedLExpr -> RefactGhc ()
 replaceFunRhs funNm pos newRhs = do
   parsed <- getRefactParsed
@@ -94,7 +95,8 @@ replaceFunRhs funNm pos newRhs = do
     Nothing -> error "replaceFunRhs: Position does not correspond to a binding."
     (Just (GHC.L _ rNm)) -> do
       newParsed <- everywhereMStaged SYB.Parser (SYB.mkM (worker rNm)) parsed
-      fetchAnnsFinal >>= putRefactParsed newParsed
+      putRefactParsed newParsed emptyAnns
+      logParsedSource "GenApplicative.replaceFunRhs"
   where worker :: GHC.RdrName -> ParsedBind -> RefactGhc (GHC.HsBind GHC.RdrName)
 #if __GLASGOW_HASKELL__ <= 710
         worker rNm fBind@(GHC.FunBind (GHC.L _ fNm) _ mg _ _ _)
@@ -116,16 +118,16 @@ replaceFunRhs funNm pos newRhs = do
               oldGrhss = GHC.m_grhss match
               newGrhss = mkGrhss oldGrhss newRhs
               newLMatch = (GHC.L l (match{GHC.m_grhss = newGrhss}))
-#if __GLASGOW_HASKELL__ <= 710              
+#if __GLASGOW_HASKELL__ <= 710
           return mg{GHC.mg_alts = [newLMatch]}
 #else
           lMatchLst <- locate [newLMatch]
           return mg{GHC.mg_alts = lMatchLst}
 #endif
         mkGrhss old newExpr = let [(GHC.L l (GHC.GRHS lst _))] = GHC.grhssGRHSs old in
-          old{GHC.grhssGRHSs = [(GHC.L l (GHC.GRHS lst newExpr))]}              
-                                   
-          
+          old{GHC.grhssGRHSs = [(GHC.L l (GHC.GRHS lst newExpr))]}
+
+
 
 processReturnStatement :: ParsedExpr -> [GHC.RdrName] -> RefactGhc (Maybe ParsedLExpr)
 processReturnStatement retExpr boundVars
@@ -236,13 +238,13 @@ constructAppChain retRhs lst = do
       lOp <- lFApp
       addAnnVal lOp
       let opApp = (GHC.OpApp e lOp GHC.PlaceHolder rhs)
-      locate opApp      
+      locate opApp
     getStmtExpr :: GHC.ExprLStmt GHC.RdrName -> ParsedLExpr
     getStmtExpr (GHC.L _ (GHC.BodyStmt body _ _ _)) = body
 #if __GLASGOW_HASKELL__ <= 710
     getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _)) = body
 #else
-    getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _ _)) = body    
+    getStmtExpr (GHC.L _ (GHC.BindStmt _ body _ _ _)) = body
 #endif
     buildSingleExpr :: [GHC.ExprLStmt GHC.RdrName] -> RefactGhc ParsedLExpr
     buildSingleExpr [st] = return $ getStmtExpr st
@@ -262,8 +264,8 @@ constructAppChain retRhs lst = do
         (Nothing,Nothing) -> error "buildSingleExpr was passed an empty list."
         ((Just leftOfBnds),Nothing) -> do
           app <- locate (GHC.OpApp leftOfBnds lROp GHC.PlaceHolder newBndStmt)
-          wrapInPars app          
-        (Nothing, (Just rightOfBnds)) -> do          
+          wrapInPars app
+        (Nothing, (Just rightOfBnds)) -> do
           app <- locate (GHC.OpApp newBndStmt lLOp GHC.PlaceHolder rightOfBnds)
           wrapInPars app
         ((Just leftOfBnds),(Just rightOfBnds)) -> do
@@ -314,15 +316,17 @@ lFApp :: RefactGhc ParsedLExpr
 lFApp = fApp >>= locate
 
 fApp :: RefactGhc ParsedExpr
-fApp = let nm = fsLit "<*>" in
-#if __GLASGOW_HASKELL__ <= 710
-  return (GHC.HsVar (GHC.mkVarUnqual nm))
-#else
-  do
-  lNm <- locate (GHC.mkVarUnqual nm)
-  return (GHC.HsVar lNm)
-#endif
-  
+fApp = hsVar "<*>"
+-- fApp = let nm = fsLit "<*>" in
+-- #if __GLASGOW_HASKELL__ <= 710
+--   return (GHC.HsVar (GHC.mkVarUnqual nm))
+-- #else
+--   do
+--   lNm <- locate (GHC.mkVarUnqual nm)
+--   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
+--   return (GHC.HsVar lNm)
+-- #endif
+
 
 isFApp :: ParsedLExpr -> Bool
 #if __GLASGOW_HASKELL__ <= 710
@@ -336,37 +340,53 @@ lLApp :: RefactGhc ParsedLExpr
 lLApp = lApp >>= locate
 
 lApp :: RefactGhc ParsedExpr
-lApp = let nm = fsLit "<*" in
-#if __GLASGOW_HASKELL__ <= 710
-  return (GHC.HsVar (GHC.mkVarUnqual nm))
-#else
-  do
-  lNm <- locate (GHC.mkVarUnqual nm)
-  return (GHC.HsVar lNm)
-#endif
+lApp = hsVar "<*"
+-- lApp = let nm = fsLit "<*" in
+-- #if __GLASGOW_HASKELL__ <= 710
+--   return (GHC.HsVar (GHC.mkVarUnqual nm))
+-- #else
+--   do
+--   lNm <- locate (GHC.mkVarUnqual nm)
+--   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
+--   return (GHC.HsVar lNm)
+-- #endif
 
 lRApp :: RefactGhc ParsedLExpr
 lRApp = rApp >>= locate
 
 rApp :: RefactGhc ParsedExpr
-rApp = let nm = fsLit "*>" in
-#if __GLASGOW_HASKELL__ <= 710
-  return (GHC.HsVar (GHC.mkVarUnqual nm))
-#else
-  do
-  lNm <- locate (GHC.mkVarUnqual nm)
-  return (GHC.HsVar lNm)
-#endif
+rApp = hsVar "*>"
+-- rApp = let nm = fsLit "*>" in
+-- #if __GLASGOW_HASKELL__ <= 710
+--   return (GHC.HsVar (GHC.mkVarUnqual nm))
+-- #else
+--   do
+--   lNm <- locate (GHC.mkVarUnqual nm)
+--   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
+--   return (GHC.HsVar lNm)
+-- #endif
 
 lInfixFmap :: RefactGhc ParsedLExpr
 lInfixFmap = infixFmap >>= locate
 
 infixFmap :: RefactGhc ParsedExpr
-infixFmap = let nm = fsLit "<$>" in 
+infixFmap = hsVar "<$>"
+-- infixFmap = let nm = fsLit "<$>" in
+-- #if __GLASGOW_HASKELL__ <= 710
+--   return (GHC.HsVar (GHC.mkVarUnqual nm))
+-- #else
+--   do
+--   lNm <- locate (GHC.mkVarUnqual nm)
+--   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
+--   return (GHC.HsVar lNm)
+-- #endif
+
+hsVar :: String -> RefactGhc ParsedExpr
+hsVar n = do
 #if __GLASGOW_HASKELL__ <= 710
-  return (GHC.HsVar (GHC.mkVarUnqual nm))
+  return (GHC.HsVar (mkRdrName n))
 #else
-  do
-  lNm <- locate (GHC.mkVarUnqual nm)
+  lNm <- locate $ mkRdrName n
+  liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
   return (GHC.HsVar lNm)
 #endif

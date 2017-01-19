@@ -133,20 +133,6 @@ condChecking oldPN newName newNameGhc modName ast existChecking exportChecking =
 
 -- ---------------------------------------------------------------------
 
--- TODO: Temporary copy from ghc-exactpring WIP. Remove this
-occAttributes :: GHC.OccName -> String
-occAttributes o = "(" ++ ns ++ vo ++ tv ++ tc ++ d ++ ds ++ s ++ v ++ ")"
-  where
-    ns = (GHC.showSDocUnsafe $ GHC.pprNameSpaceBrief $ GHC.occNameSpace o) ++ ", "
-    vo = if GHC.isVarOcc     o then "Var "     else ""
-    tv = if GHC.isTvOcc      o then "Tv "      else ""
-    tc = if GHC.isTcOcc      o then "Tc "      else ""
-    d  = if GHC.isDataOcc    o then "Data "    else ""
-    ds = if GHC.isDataSymOcc o then "DataSym " else ""
-    s  = if GHC.isSymOcc     o then "Sym "     else ""
-    v  = if GHC.isValOcc     o then "Val "     else ""
-
-
 -- |Actually do the renaming, split into the various things that can
 -- be renamed. Returns True if the name is exported
 doRenaming :: GHC.Located GHC.Name -> String -> String -> GHC.Name -> GHC.ModuleName -> RefactGhc Bool

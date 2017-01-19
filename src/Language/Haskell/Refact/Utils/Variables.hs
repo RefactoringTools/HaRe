@@ -73,7 +73,7 @@ import Language.Haskell.GHC.ExactPrint.Utils
 import qualified Bag           as GHC
 import qualified GHC           as GHC
 import qualified Name          as GHC
-import qualified Outputable    as GHC
+-- import qualified Outputable    as GHC
 import qualified RdrName       as GHC
 
 import qualified Data.Generics as SYB
@@ -761,21 +761,6 @@ hsFreeAndDeclaredRdr' nm t = do
 
 -- ---------------------------------------------------------------------
 
--- TODO: Temporary copy from ghc-exactpring WIP. Remove this
-occAttributes :: GHC.OccName -> String
-occAttributes o = "(" ++ ns ++ vo ++ tv ++ tc ++ d ++ ds ++ s ++ v ++ ")"
-  where
-    ns = (GHC.showSDocUnsafe $ GHC.pprNameSpaceBrief $ GHC.occNameSpace o) ++ ", "
-    vo = if GHC.isVarOcc     o then "Var "     else ""
-    tv = if GHC.isTvOcc      o then "Tv "      else ""
-    tc = if GHC.isTcOcc      o then "Tc "      else ""
-    d  = if GHC.isDataOcc    o then "Data "    else ""
-    ds = if GHC.isDataSymOcc o then "DataSym " else ""
-    s  = if GHC.isSymOcc     o then "Sym "     else ""
-    v  = if GHC.isValOcc     o then "Val "     else ""
-
--- ---------------------------------------------------------------------
-
 -- |Get the names of all types declared in the given declaration
 -- getDeclaredTypesRdr :: GHC.LTyClDecl GHC.RdrName -> RefactGhc [GHC.Name]
 getDeclaredTypesRdr :: GHC.LHsDecl GHC.RdrName -> RefactGhc [GHC.Name]
@@ -1052,13 +1037,13 @@ definesRdr _ _ _= False
 -- |Unwraps a LHsDecl and calls definesRdr on the result if a HsBind or calls clsDeclDefinesRdr if a TyClD
 definesDeclRdr :: NameMap -> GHC.Name -> GHC.LHsDecl GHC.RdrName -> Bool
 definesDeclRdr nameMap nin (GHC.L l (GHC.ValD d)) = definesRdr nameMap nin (GHC.L l d)
-definesDeclRdr nameMap nin (GHC.L l (GHC.TyClD ty)) = clsDeclDefinesRdr nameMap nin ty
+definesDeclRdr nameMap nin (GHC.L _ (GHC.TyClD ty)) = clsDeclDefinesRdr nameMap nin ty
 definesDeclRdr _ _ _ = False
 
 -- | Return True of the type class declaration defines the
 -- specified identifier
 clsDeclDefinesRdr :: NameMap -> GHC.Name -> GHC.TyClDecl GHC.RdrName -> Bool
-clsDeclDefinesRdr nameMap nin (GHC.SynDecl (GHC.L ln nm) _ty _rhs _) =
+clsDeclDefinesRdr nameMap nin (GHC.SynDecl (GHC.L ln _nm) _ty _rhs _) =
   case Map.lookup ln nameMap of
     Nothing -> False
     Just n  -> GHC.nameUnique n == GHC.nameUnique nin

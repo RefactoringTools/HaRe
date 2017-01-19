@@ -90,6 +90,7 @@ compLiftToTopLevel :: FilePath -> SimpPos
      -> RefactGhc [ApplyRefacResult]
 compLiftToTopLevel fileName (row,col) = do
       parseSourceFileGhc fileName
+      logParsedSource "liftToMod orig:"
       parsed  <- getRefactParsed
       nm <- getRefactNameMap
 
@@ -209,6 +210,8 @@ liftToTopLevel' modName pn@(GHC.L _ n) = do
              parsed2 <- moveDecl1 parsed1 (Just defName) [GHC.unLoc pn] liftedDecls'
                                                             declaredPns mLiftedSigs'
              putRefactParsed parsed2 emptyAnns
+
+             logParsedSource "liftToMod done:"
 
              return declaredPns
 

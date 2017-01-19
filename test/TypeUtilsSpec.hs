@@ -1715,6 +1715,31 @@ spec = do
       (showGhcQual nb) `shouldBe` "fun x y z\n  = inc (addthree x1 y1 z1)\n  where\n      inc a = a + 1\n      addthree = x + y + z"
       (exactPrintFromState s nb) `shouldBe` "\n\n--A definition can be lifted from a where or let to the top level binding group.\n--Lifting a definition widens the scope of the definition.\n\n--In this example, lift 'addthree' defined in 'fun'.\n--This example aims to test adding parenthese.\n\n\nfun x y z =inc (addthree x1 y1 z1)\n       where inc a =a +1\n             addthree=x+y+z"
 
+    -- ---------------------------------
+
+    it "adds parameters to a declaration in a tuple" $ do
+      t <- ct $ parsedFileGhc "./AddParams2.hs"
+      let parsed = GHC.pm_parsed_source $ tmParsedModule t
+          nm = initRdrNameMap t
+
+      let Just n = locToNameRdrPure nm (5, 36) parsed
+      let Just n = locToNameRdrPure nm (5, 36) parsed
+      let Just e  = locToExp (5,23) (5,47) parsed :: Maybe (GHC.Located (GHC.HsExpr GHC.RdrName))
+      let
+        comp = do
+         let newName1 = mkRdrName "baz"
+         let newName2 = mkRdrName "bar"
+         e' <- addActualParamsToRhs n [newName1,newName2] e
+
+         return e'
+      (nb,s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+      (showGhcQual n) `shouldBe` "rightOuter"
+      (showGhcQual e) `shouldBe` "(rightInner, rightOuter)"
+
+      (exactPrintFromState s nb) `shouldBe` " (rightInner, (rightOuter baz bar))"
+      -- putStrLn (showAnnDataItemFromState s e)
+      -- putStrLn (showAnnDataItemFromState s nb)
 
   -- ---------------------------------------------
 
@@ -3267,9 +3292,6 @@ spec = do
          let parsed1 = GHC.pm_parsed_source $ tmParsedModule t1
          let parsed2 = GHC.pm_parsed_source $ tmParsedModule t2
 
-         -- let mn = locToName (4,1) renamed1
-         -- let (Just (GHC.L _ _n)) = mn
-
          let Just (modName,_) = getModuleName parsed1
          let
            n1 = mkRdrName "n1"
@@ -3280,6 +3302,8 @@ spec = do
          return (res,renamed2)
       ((_r,_r2),s) <- ct $ runRefactGhc comp (initialState { rsModule = initRefactModule [] t1}) testOptions
       -- ((_r,_r2),s) <- ct $ runRefactGhc comp (initialLogOnState { rsModule = initRefactModule [] t1}) testOptions
+
+      -- putStrLn $ showAnnDataFromState s
 
       (sourceFromState s) `shouldBe` "module DupDef.Dd2 where\n\nimport DupDef.Dd1 hiding (n1,n2)\n\n\nf2 x = ff (x+1)\n\nmm = 5\n\n\n"
 
