@@ -317,15 +317,6 @@ lFApp = fApp >>= locate
 
 fApp :: RefactGhc ParsedExpr
 fApp = hsVar "<*>"
--- fApp = let nm = fsLit "<*>" in
--- #if __GLASGOW_HASKELL__ <= 710
---   return (GHC.HsVar (GHC.mkVarUnqual nm))
--- #else
---   do
---   lNm <- locate (GHC.mkVarUnqual nm)
---   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
---   return (GHC.HsVar lNm)
--- #endif
 
 
 isFApp :: ParsedLExpr -> Bool
@@ -341,46 +332,20 @@ lLApp = lApp >>= locate
 
 lApp :: RefactGhc ParsedExpr
 lApp = hsVar "<*"
--- lApp = let nm = fsLit "<*" in
--- #if __GLASGOW_HASKELL__ <= 710
---   return (GHC.HsVar (GHC.mkVarUnqual nm))
--- #else
---   do
---   lNm <- locate (GHC.mkVarUnqual nm)
---   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
---   return (GHC.HsVar lNm)
--- #endif
 
 lRApp :: RefactGhc ParsedLExpr
 lRApp = rApp >>= locate
 
 rApp :: RefactGhc ParsedExpr
 rApp = hsVar "*>"
--- rApp = let nm = fsLit "*>" in
--- #if __GLASGOW_HASKELL__ <= 710
---   return (GHC.HsVar (GHC.mkVarUnqual nm))
--- #else
---   do
---   lNm <- locate (GHC.mkVarUnqual nm)
---   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
---   return (GHC.HsVar lNm)
--- #endif
 
 lInfixFmap :: RefactGhc ParsedLExpr
 lInfixFmap = infixFmap >>= locate
 
 infixFmap :: RefactGhc ParsedExpr
 infixFmap = hsVar "<$>"
--- infixFmap = let nm = fsLit "<$>" in
--- #if __GLASGOW_HASKELL__ <= 710
---   return (GHC.HsVar (GHC.mkVarUnqual nm))
--- #else
---   do
---   lNm <- locate (GHC.mkVarUnqual nm)
---   liftT $ addSimpleAnnT lNm (DP (0,0)) [(G GHC.AnnVal,DP (0,0))]
---   return (GHC.HsVar lNm)
--- #endif
 
+-- TODO: Move this to Utils/Variables.hs, but make it lhsVar
 hsVar :: String -> RefactGhc ParsedExpr
 hsVar n = do
 #if __GLASGOW_HASKELL__ <= 710
