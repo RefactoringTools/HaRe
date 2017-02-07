@@ -15,5 +15,3 @@ main x y z = case x of
                      where inc a =a+1
   where
     addthree=x+y+z
-
-

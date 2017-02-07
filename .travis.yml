@@ -47,7 +47,7 @@ install:
  - travis_retry cabal update
  - |
    git clone https://github.com/alanz/ghc-exactprint.git
-   (cd ghc-exactprint && git checkout no-annotations && cabal install)
+   (cd ghc-exactprint && git checkout master && cabal install)
  # - |
  #   git clone https://github.com/DanielG/cabal-helper.git
  #   (cd cabal-helper && git checkout master && cabal install)

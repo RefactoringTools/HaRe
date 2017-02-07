@@ -16,5 +16,3 @@ sumSquares x y = let sq 0=0
 
 anotherFun 0 y = sq y
      where  sq x = x^2
-
-
