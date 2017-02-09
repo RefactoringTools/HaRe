@@ -42,7 +42,7 @@ module Language.Haskell.Refact.API
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-       , lookupAnns  
+       -- , lookupAnns
 
        , stripCallStack
 

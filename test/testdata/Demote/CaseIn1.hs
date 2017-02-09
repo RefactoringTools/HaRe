@@ -10,9 +10,7 @@ module Demote.CaseIn1 where
 --show that lifting and demoting are not inverse.
 
 main x y z = case x of
-                0 -> addthree x y z  
-                1 -> inc y        
+                0 -> addthree x y z
+                1 -> inc y
                      where inc a =a+1
 addthree a b c=a+b+c
-
-  

@@ -42,7 +42,7 @@ Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 
-tested-with:                    GHC == 7.10.3, GHC == 8.0.1
+tested-with:                    GHC == 7.10.3, GHC == 8.0.1, GHC == 8.0.2
 
 data-files:                     elisp/*.el
                                 configure.sh
@@ -121,8 +121,8 @@ Library
                                , directory
                                , filepath
                                , ghc
-                               , ghc-exactprint >= 0.5.2.1
-                               , ghc-mod >= 5.6.0.0
+                               , ghc-exactprint == 0.5.3.*
+                               , ghc-mod >= 5.7.0.0
                                , ghc-syb-utils
                                , hslogger
                                , monad-control
@@ -159,7 +159,7 @@ Library
            , Language.Haskell.Refact.Refactoring.DeleteDef
 --           , Language.Haskell.Refact.Refactoring.IntroduceTypeSyn
 --           , Language.Haskell.Refact.Refactoring.UnwrapTypeSyn
-           , Language.Haskell.Refact.Refactoring.GenApplicative          
+           , Language.Haskell.Refact.Refactoring.GenApplicative
            , Language.Haskell.Refact.Utils.ExactPrint
            , Language.Haskell.Refact.Utils.GhcBugWorkArounds
            , Language.Haskell.Refact.Utils.GhcModuleGraph
@@ -266,13 +266,13 @@ test-suite spec
     , directory
     , foldl
     , ghc
-    , ghc-exactprint >= 0.5.2.1
-    , ghc-mod >= 5.6.0.0
+    , ghc-exactprint == 0.5.3.*
+    , ghc-mod >= 5.7.0.0
     , ghc-syb-utils
     , hslogger
     , hspec
     , mtl
-    , turtle
+    , turtle >= 1.3.0
     , foldl
     -- , Paths_HaRe
     , attoparsec
@@ -281,7 +281,7 @@ test-suite spec
     , conversion
     , conversion-text
     , parsec
-    , case-insensitive          
+    , case-insensitive
     , HaRe >= 0.8.2.1
   Extensions:      CPP
   if impl (ghc < 7.10.2)

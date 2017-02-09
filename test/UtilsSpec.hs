@@ -391,7 +391,7 @@ spec = do
          return g
       (mg,_s) <- ct $ runRefactGhc comp initialState testOptions
       -- (mg,_s) <- ct $ runRefactGhc comp initialLogOnState testOptions
-      showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
+      (sort $ map (showGhc . GM.mpModule) mg) `shouldBe` ["M2", "M3", "Main"]
 
     ------------------------------------
 
@@ -543,7 +543,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ tmParsedModule t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
-      showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
+      (sort $ map (showGhc . GM.mpModule) mg) `shouldBe` ["M2", "M3", "Main"]
 
     -- ---------------------------------
 
@@ -560,7 +560,7 @@ spec = do
       let parsed = GHC.pm_parsed_source $ tmParsedModule t
 
       (show $ getModuleName parsed) `shouldBe` "Just (ModuleName \"S1\",\"S1\")"
-      showGhc (map GM.mpModule mg) `shouldBe` "[Main, M3, M2]"
+      (sort $ map (showGhc . GM.mpModule) mg) `shouldBe` ["M2", "M3", "Main"]
 
     -- ---------------------------------
 

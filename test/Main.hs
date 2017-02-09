@@ -89,5 +89,5 @@ getDirs ending = do
 listStackDirs :: IO ()
 listStackDirs = Tu.sh $ do
   dirs <- Tu.find (Tu.ends "/.stack-work") "./test"
-  Tu.echo $ "found:" Tu.<> (Tu.repr dirs)
+  mapM Tu.echo $ Tu.textToLines $ "found:" Tu.<> (Tu.repr dirs)
 

@@ -14,6 +14,7 @@ spec = do
   describe "doGenApplicative" $ do
     it "Simple parser that can be easily rewritten in the applicative style." $ do
       res <- ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA1.hs" "parseStr" (4,1)
+      -- res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/GA1.hs" "parseStr" (4,1)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["GenApplicative/GA1.hs"]
       diff <- ct $ compareFiles "./GenApplicative/GA1.refactored.hs"
@@ -40,11 +41,11 @@ spec = do
       res <- catchException (ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/GA4.hs" "failOrderPrecon" (10,1))
       (show res) `shouldBe` "Just \"GenApplicative Precondition: Variables are not bound in the order that they appear in the return statement.\""
     it "Debugging a function from html-tokenizer" $ do
-      res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/HTMLTokenizer.hs" "openingTag" (88,1)
+      res <- ct $ genApplicative defaultTestSettings testOptions "./GenApplicative/HTMLTokenizer.hs" "openingTag" (88,1)
+      -- res <- ct $ genApplicative logTestSettings testOptions "./GenApplicative/HTMLTokenizer.hs" "openingTag" (88,1)
       res' <- ct $ mapM makeRelativeToCurrentDirectory res
       res' `shouldBe` ["GenApplicative/HTMLTokenizer.hs"]
       diff <- ct $ compareFiles "./GenApplicative/HTMLTokenizer.refactored.hs"
                                 "./GenApplicative/HTMLTokenizer.hs.expected"
       diff `shouldBe` []
 
-                            

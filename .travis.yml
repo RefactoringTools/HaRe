@@ -15,6 +15,7 @@ cache:
 env:
  - CABALVER=1.22 GHCVER=7.10.3
  - CABALVER=1.24 GHCVER=8.0.1
+ - CABALVER=1.24 GHCVER=8.0.2
  # - CABALVER=1.22 GHCVER=head   # see section about GHC HEAD snapshots
 
 addons:
@@ -30,6 +31,7 @@ addons:
     - alex-3.1.3
     - ghc-7.10.3
     - ghc-8.0.1
+    - ghc-8.0.2
     - emacs24
 
 # matrix:
@@ -47,7 +49,7 @@ install:
  - travis_retry cabal update
  # - |
  #   git clone https://github.com/alanz/ghc-exactprint.git
- #   (cd ghc-exactprint && git checkout wip && cabal install)
+ #   (cd ghc-exactprint && git checkout master && cabal install)
  # - |
  #   git clone https://github.com/DanielG/cabal-helper.git
  #   (cd cabal-helper && git checkout master && cabal install)

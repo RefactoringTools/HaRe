@@ -33,8 +33,6 @@ import Control.Monad
 import Language.Haskell.GHC.ExactPrint.Transform
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import Language.Haskell.GHC.ExactPrint
-import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.Refact.Utils.GhcUtils
 
 import Language.Haskell.Refact.Utils.Monad
@@ -217,7 +215,7 @@ handleParseResult :: String -> Either (GHC.SrcSpan, String) (Anns, a) -> RefactG
 handleParseResult msg e = case e of
   (Left (_, errStr)) -> error $ "The parse from: " ++ msg ++ " with error: " ++ errStr
   (Right res) -> return res
-        
+
 -- This creates an empty annotation for every located item where an annotation does not already exist in the given AST chunk
 synthesizeAnns :: (SYB.Data a) => a -> RefactGhc a
 synthesizeAnns = generic `SYB.ext2M` located

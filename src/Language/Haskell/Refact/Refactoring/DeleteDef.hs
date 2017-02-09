@@ -16,6 +16,7 @@ import qualified Language.Haskell.GhcMod as GM
 import qualified Language.Haskell.GhcMod.Internal as GM
 import System.Directory
 import Language.Haskell.GHC.ExactPrint
+import Language.Haskell.GHC.ExactPrint.Types
 
 deleteDef :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
 deleteDef settings cradle fileName (row,col) = do
@@ -46,7 +47,7 @@ compDeleteDef fileName (row,col) = do
           (refRes@((_fp,ismod), (anns,ps)),()) <- applyRefac (doDeletion ghcn) RSAlreadyLoaded
           case (ismod) of
             RefacUnmodifed -> do
-              error "The def deletion failed" 
+              error "The def deletion failed"
             RefacModified -> return ()
           logm $ "Res after delete === " ++ (exactPrint ps anns)
           return [refRes]
@@ -71,7 +72,7 @@ pnUsedInScope pn t' = do
       bind ((GHC.FunBind (GHC.L l name)  match _ _ _) :: GHC.HsBindLR GHC.Name GHC.Name)
 #endif
         | name == pn = do
-            logm $ "Found Binding at: " ++ (showGhc l) 
+            logm $ "Found Binding at: " ++ (showGhc l)
             return []
       bind other = do
         mzero
@@ -85,8 +86,8 @@ pnUsedInScope pn t' = do
             return [pn]
       var other = do
         mzero
-                  
-     
+
+
 isPNUsedInClients :: GHC.Name -> GHC.RdrName -> GM.ModulePath -> RefactGhc Bool
 isPNUsedInClients pn rdrn modPath = do
         pnIsExported <- isExported pn
@@ -96,7 +97,7 @@ isPNUsedInClients pn rdrn modPath = do
                   res <- foldM (pnUsedInClientScope pn) False clients
                   return res
           else do return False
-                  
+
 pnUsedInClientScope :: GHC.Name -> Bool -> TargetModule -> RefactGhc Bool
 pnUsedInClientScope name b mod = do
   getTargetGhc mod
@@ -107,6 +108,6 @@ pnUsedInClientScope name b mod = do
 doDeletion :: GHC.Name -> RefactGhc ()
 doDeletion n = do
   parsed <- getRefactParsed
-  (res,decl, mSig) <- rmDecl n True parsed
-  (liftT getAnnsT) >>= putRefactParsed res
+  (res, _decl, _mSig) <- rmDecl n True parsed
+  putRefactParsed res emptyAnns
   return ()

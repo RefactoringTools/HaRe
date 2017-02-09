@@ -26,7 +26,7 @@ module Language.Haskell.Refact.Utils.Utils
        , getModuleName
        , clientModsAndFiles
        , serverModsAndFiles
-       , lookupAnns
+       -- , lookupAnns
        , runMultRefacSession
 
        , modifiedFiles
@@ -46,7 +46,6 @@ import Data.IORef
 -- import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Preprocess
 import Language.Haskell.GHC.ExactPrint.Print
-import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
 
 import qualified Language.Haskell.GhcMod          as GM
@@ -63,7 +62,7 @@ import System.FilePath.Posix
 import qualified Digraph       as GHC
 import qualified DynFlags      as GHC
 import qualified GHC           as GHC
-import qualified SrcLoc        as GHC
+-- import qualified SrcLoc        as GHC
 import qualified Hooks         as GHC
 import qualified HscMain       as GHC
 import qualified HscTypes      as GHC
@@ -330,8 +329,9 @@ runRefacSession settings opt comp = do
 -- ---------------------------------------------------------------------
 
 
--- | Like runRefacSession but instead takes an ordered list of RefactGhc computations
--- | and runs all of them threading the state through all of the computations
+-- | Like runRefacSession but instead takes an ordered list of RefactGhc
+-- computations and runs all of them threading the state through all of the
+-- computations
 
 runMultRefacSession :: RefactSettings -> GM.Options -> [RefactGhc [ApplyRefacResult]] -> IO [FilePath]
 runMultRefacSession settings opt comps = do
@@ -360,12 +360,15 @@ mergeRefResults lst = Map.elems $ mergeHelp lst Map.empty
         insertRefRes mp res@((fp,RefacModified), _) = Map.insert fp res mp
         insertRefRes mp _ = mp
 
-threadState :: GM.Options -> RefactState -> [RefactGhc [ApplyRefacResult]] -> IO [([ApplyRefacResult], RefactState)]
+-- | Take an ordered list of refactorings and apply them in order, threading the
+-- state through all of them
+threadState :: GM.Options -> RefactState -> [RefactGhc [ApplyRefacResult]]
+            -> IO [([ApplyRefacResult], RefactState)]
 threadState _ _ [] = return []
 threadState opt currState (rGhc : rst) = do
-  res@(refMods, newState) <- runRefactGhc rGhc currState opt
-  let (Just mod) = rsModule newState
-      newMod = mod {rsStreamModified = RefacUnmodifed}
+  res@(_rGhcRes, newState) <- runRefactGhc rGhc currState opt
+  let (Just modu) = rsModule newState
+      newMod = modu {rsStreamModified = RefacUnmodifed}
       nextState = newState {rsModule = Just newMod }
   rest <- threadState opt nextState rst
   return (res : rest)
@@ -397,7 +400,10 @@ canonicalizeTargets tgts = do
 
 -- | Apply a refactoring (or part of a refactoring) to a single module
 
-applyRefac = applyRefac' True
+applyRefac :: RefactGhc a -> RefacSource -> RefactGhc (ApplyRefacResult, a)
+applyRefac = applyRefac' True -- TODO: applyRefac' is never called except from
+                              -- here. Do we always need to clear the state on
+                              -- completion?
 
 applyRefac'
     ::
@@ -629,12 +635,12 @@ serverModsAndFiles m = do
   return serverMods
 
 -- ---------------------------------------------------------------------
-
+{-
 -- | Finds all anotations that are contained within the given source span
 lookupAnns :: Anns -> GHC.SrcSpan -> Anns
 lookupAnns anns (GHC.RealSrcSpan span) = Map.filterWithKey isInSpan anns
   where isInSpan k@(AnnKey (GHC.RealSrcSpan annSpan) conN) v = GHC.containsSpan span annSpan
-
+-}
 -- ---------------------------------------------------------------------
 
 -- | In GHC 8 an error has an attached callstack. This is not always what we

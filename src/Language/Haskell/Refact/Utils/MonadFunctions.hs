@@ -91,7 +91,7 @@ import qualified Var
 #endif
 
 import qualified Data.Generics as SYB
-import qualified GHC.SYB.Utils as SYB
+-- import qualified GHC.SYB.Utils as SYB
 
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Annotate
