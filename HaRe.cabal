@@ -42,7 +42,7 @@ Category:                       Development, Refactoring
 Cabal-Version:                  >= 1.8
 Build-Type:                     Simple
 
-tested-with:                    GHC == 7.10.3, GHC == 8.0.1
+tested-with:                    GHC == 7.10.3, GHC == 8.0.1, GHC == 8.0.2
 
 data-files:                     elisp/*.el
                                 configure.sh
@@ -121,7 +121,7 @@ Library
                                , directory
                                , filepath
                                , ghc
-                               , ghc-exactprint >= 0.5.3.0
+                               , ghc-exactprint == 0.5.3.*
                                , ghc-mod >= 5.7.0.0
                                , ghc-syb-utils
                                , hslogger
@@ -266,7 +266,7 @@ test-suite spec
     , directory
     , foldl
     , ghc
-    , ghc-exactprint >= 0.5.3.0
+    , ghc-exactprint == 0.5.3.*
     , ghc-mod >= 5.7.0.0
     , ghc-syb-utils
     , hslogger
