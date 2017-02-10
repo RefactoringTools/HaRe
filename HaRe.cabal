@@ -1,6 +1,8 @@
 Name:                           HaRe
-Version:                        0.8.3.0
-Author:                         Chris Brown, Huiqing Li, Simon Thompson, Alan Zimmerman
+Version:                        0.8.4.0
+
+Author:                         Chris Brown, Huiqing Li, Simon Thompson,
+                                Alan Zimmerman, Stephen Adams
 Maintainer:                     Alan Zimmerman (alan.zimm@gmail.com)
 Stability:                      Alpha
 Bug-Reports:                    http://github.com/RefactoringTools/HaRe/issues
@@ -19,7 +21,9 @@ Description:
    .
    From version 0.8.3.0, GHC 8.0.1 is supported.
    .
-   It is tested against GHC 7.10.3 and GHC 8.0.1 (via travis-ci.org)
+   From version 0.8.4.0, GHC 8.0.2 is supported.
+   .
+   It is tested against GHC 7.10.3, GHC 8.0.1 and GHC 8.0.2 (via travis-ci.org)
    .
    It currently only has emacs integration built in, community input
    welcome for others.

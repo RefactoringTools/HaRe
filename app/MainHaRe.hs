@@ -85,10 +85,16 @@ main = do
                          "Remove a new parameter from a function"
                          runCmd
                          rmOneParamCmdOpts
+
               addCommand "genApplicative"
                          "Generalise a monadic function to use applicative"
                          runCmd
                          genApplicativeOpts
+
+              addCommand "deleteDef"
+                         "Delete a definition"
+                         runCmd
+                         deleteDefOpts
     run global
 
 -- ---------------------------------------------------------------------
@@ -105,6 +111,7 @@ data HareParams = DemoteCmd      FilePath Row Col
                 | AddOneParam    FilePath String Row Col
                 | RmOneParam     FilePath Row Col
                 | GenApplicative FilePath String Row Col
+                | DeleteDef      FilePath Row Col
                deriving Show
 
 runCmd :: HareParams -> (RefactSettings,GM.Options) -> IO ()
@@ -134,6 +141,9 @@ runCmd (RmOneParam fileName r c) (opt, gOpt)
 
 runCmd (GenApplicative fileName funNm r c) (opt, gOpt)
   = runFunc $ genApplicative opt gOpt fileName funNm (r,c)
+
+runCmd (DeleteDef fileName r c) (opt, gOpt)
+  = runFunc $ deleteDef opt gOpt fileName (r,c)
 
 rmOneParamCmdOpts :: Parser HareParams
 rmOneParamCmdOpts =
@@ -295,7 +305,23 @@ genApplicativeOpts =
       <*> argument auto
             ( metavar "col"
            <> help "A col inside the definition name")
-  
+
+-- ---------------------------------------------------------------------
+
+deleteDefOpts :: Parser HareParams
+deleteDefOpts =
+    DeleteDef
+      <$> strArgument
+            ( metavar "FILE"
+           <> help "Specify Haskell file to process"
+            )
+      <*> argument auto
+            ( metavar "line"
+           <> help "The line the declaration is on")
+      <*> argument auto
+            ( metavar "col"
+           <> help "The col the declaration starts at")
+
 
 
 -- ---------------------------------------------------------------------

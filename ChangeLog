@@ -1,3 +1,10 @@
+2017-02-09 v0.8.4.0
+	* Update for GHC 8.0.2
+	* Use ghc-mod version to 5.7
+	* Add deleteDef refactoring to generalise a monadic function
+	to use applicative (@SAdams601)
+	* Add genapplicative refactoring to generalise a monadic function
+	to use applicative (@SAdams601)
 2016-08-03 v0.8.3.0
 	* Update for GHC 8.0.1
 	* Use ghc-mod version to 5.6 now it is released
