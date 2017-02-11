@@ -126,7 +126,7 @@ Library
                                , filepath
                                , ghc
                                , ghc-exactprint == 0.5.3.*
-                               , ghc-mod >= 5.7.0.0
+                               , ghc-mod == 5.7.0.*
                                , ghc-syb-utils
                                , hslogger
                                , monad-control
@@ -271,7 +271,7 @@ test-suite spec
     , foldl
     , ghc
     , ghc-exactprint == 0.5.3.*
-    , ghc-mod >= 5.7.0.0
+    , ghc-mod == 5.7.0.*
     , ghc-syb-utils
     , hslogger
     , hspec
