@@ -39,9 +39,12 @@ compGenApplicative fileName pos = do
 doGenApplicative :: FilePath -> SimpPos -> RefactGhc ()
 doGenApplicative fileName pos = do
   parsed <- getRefactParsed
-  let Just funBind = getHsBind pos parsed
-      (Just retRhs) = getReturnRhs funBind
-      (Just doStmts) = getDoStmts funBind
+  let funBind = case getHsBind pos parsed of
+                  (Just fb) -> fb
+                  Nothing -> error "That location is not the start of a function"
+      (retRhs, doStmts) = case (getReturnRhs funBind, getDoStmts funBind) of
+                            ((Just rets), (Just stmt)) -> (rets, stmt)
+                            _ -> error "The function needs to consist of set of do statements with a return value."
       boundVars = findBoundVars doStmts
   checkPreconditions retRhs doStmts boundVars
   appChain <- constructAppChain retRhs doStmts
