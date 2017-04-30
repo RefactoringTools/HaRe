@@ -19,14 +19,14 @@ import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Print
 import Language.Haskell.GHC.ExactPrint.Parsers
 
-genApplicative :: RefactSettings -> GM.Options -> FilePath -> String -> SimpPos -> IO [FilePath]
-genApplicative settings cradle fileName funNm pos = do
+genApplicative :: RefactSettings -> GM.Options -> FilePath -> SimpPos -> IO [FilePath]
+genApplicative settings cradle fileName pos = do
   absFileName <- canonicalizePath fileName
-  runRefacSession settings cradle (compGenApplicative absFileName funNm pos)
+  runRefacSession settings cradle (compGenApplicative absFileName pos)
 
-compGenApplicative :: FilePath -> String -> SimpPos -> RefactGhc [ApplyRefacResult]
-compGenApplicative fileName funNm pos = do
-  (refRes@((_fp,ismod),_), ()) <- applyRefac (doGenApplicative fileName funNm pos) (RSFile fileName)
+compGenApplicative :: FilePath -> SimpPos -> RefactGhc [ApplyRefacResult]
+compGenApplicative fileName pos = do
+  (refRes@((_fp,ismod),_), ()) <- applyRefac (doGenApplicative fileName pos) (RSFile fileName)
   case ismod of
     RefacUnmodifed -> error "Generalise to Applicative failed"
     RefacModified -> return ()
@@ -36,16 +36,16 @@ compGenApplicative fileName funNm pos = do
 -- to an (OpApp :: HsExpr)
 -- The function begins by constructing the beginning of the applicative chain by looking at the construction of the return statement
 
-doGenApplicative :: FilePath -> String -> SimpPos -> RefactGhc ()
-doGenApplicative fileName funNm pos = do
+doGenApplicative :: FilePath -> SimpPos -> RefactGhc ()
+doGenApplicative fileName pos = do
   parsed <- getRefactParsed
-  let Just funBind = getHsBind pos funNm parsed
+  let Just funBind = getHsBind pos parsed
       (Just retRhs) = getReturnRhs funBind
       (Just doStmts) = getDoStmts funBind
       boundVars = findBoundVars doStmts
   checkPreconditions retRhs doStmts boundVars
   appChain <- constructAppChain retRhs doStmts
-  replaceFunRhs funNm pos appChain
+  replaceFunRhs pos appChain
 
 
 checkPreconditions :: ParsedExpr -> [GHC.ExprLStmt GHC.RdrName] -> [GHC.RdrName] -> RefactGhc ()
@@ -87,8 +87,8 @@ checkPreconditions retRhs doStmts boundVars = do
 gContains :: (Data t, Eq a, Data a) => a -> t -> Bool
 gContains item t = SYB.everything (||) (False `SYB.mkQ` (\b -> item == b)) t
 
-replaceFunRhs :: String -> SimpPos -> ParsedLExpr -> RefactGhc ()
-replaceFunRhs funNm pos newRhs = do
+replaceFunRhs :: SimpPos -> ParsedLExpr -> RefactGhc ()
+replaceFunRhs pos newRhs = do
   parsed <- getRefactParsed
   let rdrNm = locToRdrName pos parsed
   case rdrNm of
