@@ -25,8 +25,8 @@ getVarAndRHS match = do
           varPat _ = Nothing
 
 --Looks up the function binding at the given position. Returns nothing if the position does not contain a binding.
-getHsBind :: (Data a) => SimpPos -> String -> a -> Maybe (GHC.HsBind GHC.RdrName)
-getHsBind pos funNm a =
+getHsBind :: (Data a) => SimpPos -> a -> Maybe (GHC.HsBind GHC.RdrName)
+getHsBind pos a =
   let rdrNm = locToRdrName pos a in
   case rdrNm of
   Nothing -> Nothing

@@ -110,7 +110,7 @@ data HareParams = DemoteCmd      FilePath Row Col
                 | RenameCmd      FilePath String Row Col
                 | AddOneParam    FilePath String Row Col
                 | RmOneParam     FilePath Row Col
-                | GenApplicative FilePath String Row Col
+                | GenApplicative FilePath Row Col
                 | DeleteDef      FilePath Row Col
                deriving Show
 
@@ -139,8 +139,8 @@ runCmd (AddOneParam fileName newname r c) (opt, gOpt)
 runCmd (RmOneParam fileName r c) (opt, gOpt)
   = runFunc $ rmOneParameter opt gOpt fileName (r,c)
 
-runCmd (GenApplicative fileName funNm r c) (opt, gOpt)
-  = runFunc $ genApplicative opt gOpt fileName funNm (r,c)
+runCmd (GenApplicative fileName r c) (opt, gOpt)
+  = runFunc $ genApplicative opt gOpt fileName (r,c)
 
 runCmd (DeleteDef fileName r c) (opt, gOpt)
   = runFunc $ deleteDef opt gOpt fileName (r,c)
@@ -295,10 +295,6 @@ genApplicativeOpts =
           ( metavar "FILE"
          <> help "Specify Haskell file to process"
           )
-      <*> strArgument
-            ( metavar "FUNNAME"
-           <> help "The name of the function to be refactored"
-            )
       <*> argument auto
             ( metavar "line"
            <> help "The line the definition is on")
