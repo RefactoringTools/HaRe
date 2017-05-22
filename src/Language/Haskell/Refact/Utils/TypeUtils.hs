@@ -869,7 +869,10 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
        newEnts <- mkNewEntList idNames
        let lNewEnts = GHC.L newSpan2 newEnts
        -- logm $ "addImportDecl.mkImpDecl:adding anns for:" ++ showGhc lNewEnts
-       liftT $ addSimpleAnnT lNewEnts (DP (0,1)) [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+           newEntsAnns = if hide
+             then [((G GHC.AnnHiding),DP (0,0)),((G GHC.AnnOpenP),DP (0,1)),((G GHC.AnnCloseP),DP (0,0))]
+             else [((G GHC.AnnOpenP),DP (0,0)),((G GHC.AnnCloseP),DP (0,0))]
+       liftT $ addSimpleAnnT lNewEnts (DP (0,1)) newEntsAnns
        let lmodname = GHC.L newSpan1 modName
        liftT $ addSimpleAnnT lmodname (DP (0,1)) [((G GHC.AnnVal),DP (0,0))]
        return $ GHC.ImportDecl
