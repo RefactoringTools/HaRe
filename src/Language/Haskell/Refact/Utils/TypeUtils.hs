@@ -855,7 +855,8 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
        impDecl <- mkImpDecl
        newSpan <- liftT uniqueSrcSpanT
        let newImp = GHC.L newSpan impDecl
-       liftT $ addSimpleAnnT newImp (DP (1,0)) [((G GHC.AnnImport),DP (0,0))]
+           qAnns = getQualAnns alias qualify
+       liftT $ addSimpleAnnT newImp (DP (1,0)) ([((G GHC.AnnImport),DP (0,0))]++qAnns)
        return (GHC.L l p { GHC.hsmodImports = (imp++[newImp])})
   where
 
@@ -890,6 +891,10 @@ addImportDecl (GHC.L l p) modName pkgQual source safe qualify alias hide idNames
                                        else
                                             (Just (hide, lNewEnts)))
                         }
+     getQualAnns Nothing _ = []
+     getQualAnns (Just _) q = let cond = if q then [((G GHC.AnnQualified), DP (0,1))] else [] in
+         [((G GHC.AnnAs), DP (0,1)),((G GHC.AnnVal), (DP (0,1)))] ++ cond
+
 
 -- ---------------------------------------------------------------------
 
