@@ -12,8 +12,8 @@ import qualified GHC
 import qualified Name                  as GHC
 import qualified Outputable            as GHC
 
-import qualified Language.Haskell.GhcMod as GM
-import Language.Haskell.GhcMod.Internal  as GM
+import qualified GhcMod as                        GM
+import qualified Language.Haskell.GhcMod.Types as GM
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types

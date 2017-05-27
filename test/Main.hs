@@ -45,7 +45,7 @@ stackFiles =
 resolver :: String
 resolver =
 #if __GLASGOW_HASKELL__ > 710
-  "resolver: nightly-2016-08-25"
+  "resolver: nightly-2017-05-23"
 #else
   "resolver: lts-6.13"
 #endif

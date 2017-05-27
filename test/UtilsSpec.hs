@@ -11,9 +11,8 @@ import qualified HscTypes   as GHC
 import Control.Exception
 import Control.Monad.State
 import Data.List
-import Data.Maybe
 
-import qualified Language.Haskell.GhcMod.Internal as GM (mpModule)
+import qualified Language.Haskell.GhcMod.Types as GM (mpModule)
 
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.Refactoring.Renaming

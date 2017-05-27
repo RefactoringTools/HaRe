@@ -6,7 +6,7 @@ import qualified Data.Generics         as SYB
 
 import qualified GHC           as GHC
 
-import qualified Language.Haskell.GhcMod as GM (Options(..))
+import qualified GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 -- To be moved into HaRe API

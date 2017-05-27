@@ -1,6 +1,6 @@
 module Language.Haskell.Refact.Refactoring.RoundTrip(roundTrip) where
 
-import qualified Language.Haskell.GhcMod as GM (Options(..))
+import qualified GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 import System.Directory

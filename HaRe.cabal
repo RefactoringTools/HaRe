@@ -126,7 +126,7 @@ Library
                                , filepath
                                , ghc
                                , ghc-exactprint == 0.5.3.*
-                               , ghc-mod == 5.7.0.*
+                               , ghc-mod == 5.8.0.*
                                , ghc-syb-utils
                                , hslogger
                                , monad-control
@@ -146,7 +146,7 @@ Library
         -- real	0m36.427s
         -- user 0m41.448s
         -- sys 0m2.544s
-        GHC-Options:            -O0
+        GHC-Options:            -O0 -Wall
         Hs-Source-Dirs:         src
         -- Other-Modules:          Paths_HaRe
         Exposed-modules:
@@ -188,17 +188,17 @@ Library
 Executable ghc-hare
         Main-Is:                MainHaRe.hs
         -- Other-Modules:          Paths_HaRe
-        GHC-Options:            -O0
+        GHC-Options:            -O0 -Wall
         -- GHC-Options:            -prof -fprof-auto -rtsopts -caf-all
         Hs-Source-Dirs:
           ./app
 
         -- GHC 7.10.2 ships with base 4.8.1.0
         Build-Depends:          base >= 4.8.1.0  && < 5
-                                , ghc-mod
+                                , ghc-mod == 5.8.0.*
                                 , gitrev >= 1.1
                                 , mtl
-                                , optparse-applicative
+                                , optparse-applicative == 0.13.2.*
                                 , optparse-simple
                                 , Cabal
                                 -- , Paths_HaRe
@@ -213,7 +213,7 @@ test-suite spec
   ghc-options:
       -O0
       -- reinstate these later  -Wall
-      -- -Wall
+      -Wall
       -- reinstate these later  -Werror
       -- -fhpc
       -- -fhpc -hpcdir dist/hpc/app-1.0
@@ -271,7 +271,7 @@ test-suite spec
     , foldl
     , ghc
     , ghc-exactprint == 0.5.3.*
-    , ghc-mod == 5.7.0.*
+    , ghc-mod == 5.8.0.*
     , ghc-syb-utils
     , hslogger
     , hspec
