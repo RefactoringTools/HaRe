@@ -3666,6 +3666,44 @@ spec = do
 
   -- ---------------------------------------
 
+    it "adds an import entry that only imports a single name" $ do
+      t <- ct $ parsedFileGhc "./TypeUtils/Empty.hs"
+      let
+        comp = do
+         renamed1 <- getRefactRenamed
+         parsed <- getRefactParsed
+         let listModName  = GHC.mkModuleName "Data.List"
+             rdr          = mkRdrName "head"
+         res  <- addImportDecl parsed listModName Nothing False False False Nothing False [rdr]
+         putRefactParsed res emptyAnns
+
+         return (res,renamed1)
+      ((_r,_r2),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+      (sourceFromState s) `shouldBe` "module Empty where\nimport Data.List (head)\n\n"
+
+
+  -- ---------------------------------------
+
+    it "adds a qualified import" $ do
+      t <- ct $ parsedFileGhc "./TypeUtils/Empty.hs"
+      let
+        comp = do
+         renamed1 <- getRefactRenamed
+         parsed <- getRefactParsed
+         let listModName  = GHC.mkModuleName "Data.List"
+             qual = Just "List"
+         res  <- addImportDecl parsed listModName Nothing False False True qual False []
+         putRefactParsed res emptyAnns
+
+         return (res,renamed1)
+      ((_r,_r2),s) <- runRefactGhc comp (initialState { rsModule = initRefactModule [] t }) testOptions
+
+      (sourceFromState s) `shouldBe` "module Empty where\nimport qualified Data.List as List\n\n"
+
+
+  -- ---------------------------------------
+
   describe "addItemsToImport" $ do
     it "adds an item to an import entry with no items" $ do
       t <- ct $ parsedFileGhc "./TypeUtils/JustImports.hs"
