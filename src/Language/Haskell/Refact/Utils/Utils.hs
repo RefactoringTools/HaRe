@@ -48,9 +48,9 @@ import Language.Haskell.GHC.ExactPrint.Preprocess
 import Language.Haskell.GHC.ExactPrint.Print
 import Language.Haskell.GHC.ExactPrint.Utils
 
-import qualified GhcMod                           as GM
-import qualified Language.Haskell.GhcMod.Target   as GM
-import qualified Language.Haskell.GhcMod.Types    as GM
+import qualified GhcMod          as GM
+import qualified GhcMod.Target   as GM
+import qualified GhcMod.Types    as GM
 
 import Language.Haskell.Refact.Utils.GhcModuleGraph
 import Language.Haskell.Refact.Utils.GhcVersionSpecific

@@ -15,7 +15,7 @@ import           Options.Applicative.Simple
 import qualified GhcMod as GM
 import qualified Paths_HaRe as Meta
 
-import           Language.Haskell.GhcMod.Options.Options
+import           GhcMod.Options.Options
 
 main :: IO ()
 main = do
