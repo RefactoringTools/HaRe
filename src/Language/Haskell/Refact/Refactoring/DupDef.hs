@@ -11,13 +11,13 @@ import qualified Data.Generics as SYB
 import qualified GHC.SYB.Utils as SYB
 
 import qualified GHC
-import qualified RdrName               as GHC
+import qualified RdrName       as GHC
 
 import Data.List
 import Data.Maybe
 
-import qualified Language.Haskell.GhcMod as GM
-import Language.Haskell.GhcMod.Internal  as GM
+import qualified GhcMod       as GM
+import qualified GhcMod.Types as GM
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types

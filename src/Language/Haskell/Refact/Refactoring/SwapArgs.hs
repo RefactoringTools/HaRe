@@ -8,7 +8,7 @@ import qualified GHC.SYB.Utils         as SYB
 import qualified Name                  as GHC
 import qualified GHC
 
-import qualified Language.Haskell.GhcMod as GM (Options(..))
+import qualified GhcMod as GM (Options(..))
 import Language.Haskell.Refact.API
 
 import Data.Generics.Schemes

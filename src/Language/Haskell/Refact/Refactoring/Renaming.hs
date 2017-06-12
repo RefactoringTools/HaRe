@@ -21,7 +21,7 @@ import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
 import Language.Haskell.Refact.API
 import System.Directory
-import qualified Language.Haskell.GhcMod as GM (Options(..))
+import qualified GhcMod as GM (Options(..))
 import qualified Data.Map as Map
 
 {-# ANN module "HLint: ignore Redunant do" #-}

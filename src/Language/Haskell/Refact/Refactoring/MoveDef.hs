@@ -31,7 +31,7 @@ import Data.Foldable
 import Data.List
 import Data.Maybe
 
-import qualified Language.Haskell.GhcMod as GM
+import qualified GhcMod as GM
 import Language.Haskell.Refact.API
 
 import Language.Haskell.GHC.ExactPrint.Types

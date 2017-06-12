@@ -53,8 +53,8 @@ import Language.Haskell.GHC.ExactPrint.Annotate
 import Language.Haskell.GHC.ExactPrint.Parsers
 import Language.Haskell.GHC.ExactPrint.Types
 import Language.Haskell.GHC.ExactPrint.Utils
-import qualified Language.Haskell.GhcMod as GM
-import qualified Language.Haskell.GhcMod.Types as GM
+import qualified GhcMod       as GM
+import qualified GhcMod.Types as GM
 import Language.Haskell.Refact.Utils.Monad
 import Language.Haskell.Refact.Utils.MonadFunctions
 import Language.Haskell.Refact.Utils.Types

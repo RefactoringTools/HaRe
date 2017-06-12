@@ -9,11 +9,11 @@ import BasicTypes
 import qualified GHC
 import Control.Monad
 import Control.Monad.State
-import Language.Haskell.GhcMod
+import GhcMod
 import Language.Haskell.Refact.API
 import Data.Generics.Strafunski.StrategyLib.StrategyLib
-import qualified Language.Haskell.GhcMod as GM
-import qualified Language.Haskell.GhcMod.Internal as GM
+import qualified GhcMod       as GM
+import qualified GhcMod.Types as GM
 import System.Directory
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Types

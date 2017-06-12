@@ -49,10 +49,11 @@ import Control.Monad.State
 --import Data.Time.Clock
 import Distribution.Helper
 import Exception
-import qualified Language.Haskell.GhcMod             as GM
-import qualified Language.Haskell.GhcMod.Internal    as GM
-import qualified Language.Haskell.GhcMod.Monad.Out   as GM
-import qualified Language.Haskell.GhcMod.Monad.Types as GM
+import qualified GhcMod             as GM
+import qualified GhcMod.Monad.Out   as GM
+import qualified GhcMod.Monad.Types as GM
+import qualified GhcMod.Target      as GM
+import qualified GhcMod.Types       as GM
 import Language.Haskell.Refact.Utils.Types
 import Language.Haskell.GHC.ExactPrint
 import Language.Haskell.GHC.ExactPrint.Utils
