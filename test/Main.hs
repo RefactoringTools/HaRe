@@ -4,7 +4,7 @@
 module Main where
 
 import Control.Monad
-import TestUtils
+-- import TestUtils
 import qualified Turtle as Tu
 import qualified Control.Foldl as Fold
 

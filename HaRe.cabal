@@ -1,5 +1,5 @@
 Name:                           HaRe
-Version:                        0.8.4.0
+Version:                        0.8.4.1
 
 Author:                         Chris Brown, Huiqing Li, Simon Thompson,
                                 Alan Zimmerman, Stephen Adams
@@ -125,7 +125,7 @@ Library
                                , directory
                                , filepath
                                , ghc
-                               , ghc-exactprint == 0.5.3.*
+                               , ghc-exactprint >= 0.5.3.0
                                , ghc-mod == 5.8.0.*
                                , ghc-syb-utils
                                , hslogger
@@ -270,7 +270,7 @@ test-suite spec
     , directory
     , foldl
     , ghc
-    , ghc-exactprint == 0.5.3.*
+    , ghc-exactprint >= 0.5.3.0
     , ghc-mod == 5.8.0.*
     , ghc-syb-utils
     , hslogger
@@ -286,7 +286,7 @@ test-suite spec
     , conversion-text
     , parsec
     , case-insensitive
-    , HaRe >= 0.8.2.1
+    , HaRe
   Extensions:      CPP
   if impl (ghc < 7.10.2)
     buildable: False
